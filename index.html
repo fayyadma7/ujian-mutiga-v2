@@ -3485,7 +3485,9 @@
             const keyDurasi = "durasi_" + idUser;
 
             const startHandler = async (data) => {
-                Swal.close(); // Tutup loading overlay takeover sebelum tampilkan soal
+                // Sembunyikan login page SEBELUM tutup Swal, agar tidak ada flash login
+                document.getElementById('identitas').style.display = 'none';
+                Swal.close(); // Tutup loading overlay takeover
                 tutupModal(); // Tutup modal saat soal sudah siap ditampilkan
 
                 // Initialize stateRagu
@@ -3590,6 +3592,9 @@
 
                 // Write Queue akan menangani sinkronisasi ke Supabase secara sequential
                 // (dipicu otomatis setiap kali saveProgress() dipanggil)
+
+                // Periodic token check untuk deteksi takeover (30 detik)
+                startPeriodicTokenCheck();
             };
 
             // === REGISTRASI SESI KE DATABASE (sebelum soal diambil) ===
@@ -4273,6 +4278,7 @@
         }
 
         function submitJawaban(auto) {
+            stopPeriodicTokenCheck();
             let jwb = [], adaYangKosong = false, nomorKosong = [];
             s_data.forEach((_, i) => {
                 let el = document.getElementsByName('q' + i);
@@ -4404,6 +4410,34 @@
             }).then(() => {
                 location.reload();
             });
+        }
+
+        // Periodic token check: deteksi takeover dari perangkat lain setiap 30 detik
+        let _tokenCheckInterval = null;
+
+        function startPeriodicTokenCheck() {
+            stopPeriodicTokenCheck();
+            _tokenCheckInterval = setInterval(async () => {
+                if (!window.idRowUjian || !ujianSedangBerlangsung()) return;
+                const myToken = localStorage.getItem("device_token_" + getQueueUserId());
+                if (!myToken) return;
+                try {
+                    const { data: tk } = await dbWithTimeout(
+                        db.from('jawaban_ujian').select('device_token').eq('id', window.idRowUjian).maybeSingle()
+                    );
+                    if (tk && tk.device_token !== myToken) {
+                        stopPeriodicTokenCheck();
+                        showSesiDiambilAlih();
+                    }
+                } catch (e) { /* skip */ }
+            }, 30000);
+        }
+
+        function stopPeriodicTokenCheck() {
+            if (_tokenCheckInterval) {
+                clearInterval(_tokenCheckInterval);
+                _tokenCheckInterval = null;
+            }
         }
 
         function downloadJawabanDarurat() {
