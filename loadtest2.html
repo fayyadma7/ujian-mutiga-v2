@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Load Test V2</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;min-height:100vh}
+h1{font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:4px}
+.sub{color:#64748b;font-size:13px;margin-bottom:24px}
+
+.panel{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin-bottom:20px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8}
+.field select,.field input{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:8px 12px;color:#e2e8f0;font-size:13px;min-width:130px;outline:none}
+.field select:focus,.field input:focus{border-color:#3b82f6}
+
+.btn{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-weight:600;font-size:14px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#2563eb;transform:translateY(-1px)}
+.btn:disabled{background:#475569;cursor:not-allowed;transform:none}
+.btn.danger{background:#ef4444}
+.btn.danger:hover{background:#dc2626}
+
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.stat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 20px;min-width:100px;text-align:center}
+.stat .num{font-size:26px;font-weight:700}
+.stat .lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;margin-top:2px}
+.stat.ok .num{color:#22c55e}
+.stat.fail .num{color:#ef4444}
+.stat.run .num{color:#3b82f6}
+.stat.time .num{color:#f59e0b;font-size:18px}
+
+.pbar{background:#1e293b;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px}
+.pbar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:8px;transition:width .3s;width:0}
+.plabel{font-size:12px;color:#64748b;margin-bottom:16px}
+
+.log-box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;height:200px;overflow-y:auto;font-size:12px;font-family:monospace;margin-bottom:16px}
+.log-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-ok{color:#22c55e}
+.log-fail{color:#ef4444}
+.log-info{color:#94a3b8}
+.log-warn{color:#f59e0b}
+
+.err-box{display:none;margin-bottom:16px}
+.err-box.visible{display:block}
+.err-box table{width:100%;border-collapse:collapse;font-size:12px}
+.err-box th{background:#1e293b;color:#94a3b8;padding:8px 10px;text-align:left;border-bottom:1px solid #334155}
+.err-box td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.err-box .err-msg{color:#ef4444;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<h1>⚡ Load Test Ujian</h1>
+<p class="sub">Simulasi siswa mengerjakan ujian — langsung ke Supabase. <span id="statusSupabase" style="color:#f59e0b;">menyiapkan...</span></p>
+
+<div class="panel" id="panelConfig">
+  <div class="field">
+    <label>Mapel</label>
+    <select id="selMapel"><option value="">Loading...</option></select>
+  </div>
+  <div class="field">
+    <label>Kelas</label>
+    <input type="text" id="inpKelas" value="LOADTEST">
+  </div>
+  <div class="field">
+    <label>Siswa</label>
+    <select id="selJumlah">
+      <option value="10">10</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+      <option value="250">250</option>
+      <option value="500">500</option>
+      <option value="1000">1000</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Konkurensi</label>
+    <select id="selConcur">
+      <option value="3">3</option>
+      <option value="5">5</option>
+      <option value="10" selected>10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Essay</label>
+    <select id="selEssay">
+      <option value="0">PG saja</option>
+      <option value="1" selected>PG + Essay</option>
+    </select>
+  </div>
+  <button class="btn" id="btnStart" onclick="mulai()">🚀 Mulai</button>
+  <button class="btn danger" id="btnStop" onclick="hentikan()" style="display:none">⏹ Stop</button>
+</div>
+
+<div class="stats">
+  <div class="stat ok"><div class="num" id="stOk">0</div><div class="lbl">✅ Berhasil</div></div>
+  <div class="stat fail"><div class="num" id="stFail">0</div><div class="lbl">❌ Gagal</div></div>
+  <div class="stat run"><div class="num" id="stRun">0</div><div class="lbl">⏳ Berjalan</div></div>
+  <div class="stat time"><div class="num" id="stTime">-</div><div class="lbl">⏱ Rata-rata</div></div>
+</div>
+
+<div class="pbar"><div class="pbar-fill" id="pbarFill"></div></div>
+<div class="plabel" id="pLabel">Belum dimulai</div>
+
+<div class="log-box" id="logBox"></div>
+
+<div class="err-box" id="errBox">
+  <table>
+    <thead><tr><th>#</th><th>Siswa</th><th>Fase</th><th>Error</th></tr></thead>
+    <tbody id="errBody"></tbody>
+  </table>
+</div>
+
+<script>
+// ============================================================
+// TES AWAL — JS BERJALAN?
+// ============================================================
+document.title = '⚡ Load Test V2 — RUNNING';
+document.getElementById('statusSupabase').textContent = '⏳ inisialisasi...';
+
+// ============================================================
+// SUPABASE
+// ============================================================
+const SUPABASE_URL = 'https://bkecjfrwqocguyvjymkn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+
+if (!window.supabase || !window.supabase.createClient) {
+  document.getElementById('statusSupabase').textContent = '❌ CDN Supabase gagal dimuat';
+  throw new Error('Supabase CDN not loaded');
+}
+const sup = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+document.getElementById('statusSupabase').textContent = '✅ siap';
+document.getElementById('selMapel').innerHTML = '<option value="">Memuat mapel...</option>';
+
+// ============================================================
+// STATE
+// ============================================================
+let berjalan = false;
+let stopFlag = false;
+let ok = 0, fail = 0, running = 0;
+let totalWaktu = 0, totalSelesai = 0;
+const logEl = document.getElementById('logBox');
+const errBody = document.getElementById('errBody');
+
+function tulis(msg, type = 'info') {
+  const d = document.createElement('div');
+  d.className = 'log-entry log-' + type;
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateUI() {
+  document.getElementById('stOk').textContent = ok;
+  document.getElementById('stFail').textContent = fail;
+  document.getElementById('stRun').textContent = running;
+  const target = parseInt(document.getElementById('selJumlah').value);
+  const done = ok + fail;
+  const pct = target > 0 ? (done / target * 100) : 0;
+  document.getElementById('pbarFill').style.width = Math.min(pct, 100) + '%';
+  document.getElementById('pLabel').textContent = done + '/' + target + ' selesai  |  ' + running + ' berjalan';
+  if (totalSelesai > 0) {
+    document.getElementById('stTime').textContent = (totalWaktu / totalSelesai / 1000).toFixed(1) + ' dtk';
+  }
+}
+
+function catatErr(siswa, fase, msg) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td>' + (errBody.children.length + 1) + '</td><td>' + siswa + '</td><td>' + fase + '</td><td class="err-msg">' + msg + '</td>';
+  errBody.appendChild(tr);
+  document.getElementById('errBox').classList.add('visible');
+}
+
+// ============================================================
+// LOAD MAPEL
+// ============================================================
+async function loadMapel() {
+  const sel = document.getElementById('selMapel');
+  try {
+    const res = await Promise.race([
+      sup.from('jadwal_ujian').select('mapel, waktu_mulai, waktu_selesai, durasi_menit').eq('is_aktif', true),
+      new Promise((_, rj) => setTimeout(() => rj(new Error('timeout 15dtk')), 15000))
+    ]);
+    const now = new Date();
+    const mapelSet = new Set();
+    if (res.data) {
+      res.data.forEach(j => {
+        const tMulai = new Date(j.waktu_mulai);
+        let tSelesai = j.waktu_selesai ? new Date(j.waktu_selesai) : null;
+        if (!tSelesai || isNaN(tSelesai.getTime())) {
+          tSelesai = new Date(tMulai.getTime() + (j.durasi_menit || 90) * 60000);
+        }
+        if (now >= tMulai && now <= tSelesai && j.mapel) {
+          mapelSet.add(j.mapel.trim());
+        }
+      });
+    }
+    const list = [...mapelSet].sort();
+    sel.innerHTML = '<option value="">— Pilih Mapel —</option>';
+    list.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      sel.appendChild(o);
+    });
+    if (list.length === 0) {
+      sel.innerHTML = '<option value="">⚠️ Tidak ada ujian aktif sekarang</option>';
+      tulis('❌ Tidak ada jadwal ujian yang sedang berjalan.', 'fail');
+    } else {
+      tulis('✅ Mapel aktif: ' + list.join(', '), 'ok');
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">❌ ' + e.message.substring(0, 50) + '</option>';
+    tulis('❌ Gagal muat mapel: ' + e.message, 'fail');
+  }
+}
+loadMapel();
+
+// ============================================================
+// LOAD SOAL
+// ============================================================
+async function loadSoal(mapel) {
+  const res = await Promise.race([
+    sup.from('bank_soal').select('id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, tipe_soal').eq('mapel', mapel).order('id', { ascending: true }),
+    new Promise((_, rj) => setTimeout(() => rj(new Error('timeout 15dtk')), 15000))
+  ]);
+  if (res.error) throw new Error(res.error.message);
+  if (!res.data || res.data.length === 0) throw new Error('Tidak ada soal untuk ' + mapel);
+  return res.data;
+}
+
+// ============================================================
+// SATU SISWA
+// ============================================================
+async function satuSiswa(idx, nama, kelas, mapel, soal, essayOn) {
+  const t0 = Date.now();
+  try {
+    const cek = await sup.from('jawaban_ujian').select('id').eq('nama', nama).eq('kelas', kelas).eq('mapel', mapel).maybeSingle();
+    let idRow;
+    if (cek.data) {
+      idRow = cek.data.id;
+      await sup.from('jawaban_ujian').update({ status: 'MENGERJAKAN', skor_pg: null, jawaban_essay: '', jawaban_pg: '', pelanggaran: 0, durasi: '-' }).eq('id', idRow);
+    } else {
+      const ins = await sup.from('jawaban_ujian').insert([{ created_at: new Date().toISOString(), nama, kelas, mapel, skor_pg: null, jawaban_essay: '', jawaban_pg: '', pelanggaran: 0, durasi: '-', status: 'MENGERJAKAN', device_token: 'lt_' + Date.now() + '_' + idx, urutan_soal: JSON.stringify(soal.map((_, i) => i)) }]).select('id').single();
+      if (!ins.data) throw new Error('insert gagal');
+      idRow = ins.data.id;
+    }
+
+    const jwbPG = soal.map(s => {
+      if (s.tipe_soal === 'ESSAY' && !essayOn) return { id: s.id, j: '' };
+      return { id: s.id, j: ['A','B','C','D','E'][Math.floor(Math.random() * 5)] };
+    });
+    await sup.from('jawaban_ujian').update({ jawaban_pg: JSON.stringify(jwbPG) }).eq('id', idRow);
+
+    if (essayOn) {
+      const es = soal.map((s, i) => s.tipe_soal === 'ESSAY' ? 'No.' + (i + 1) + ': Jawaban test ' + (i + 1) : '').filter(Boolean);
+      if (es.length > 0) {
+        await sup.from('jawaban_ujian').update({ jawaban_essay: es.join('\n') }).eq('id', idRow);
+      }
+    }
+
+    const payload = soal.map((s, i) => ({ id: s.id, tipe: s.tipe_soal || 'PG', jawaban: jwbPG[i] ? jwbPG[i].j : '' }));
+    const durasi = Math.floor(Math.random() * 20 + 5) + ' menit';
+    const rpc = await sup.rpc('koreksi_dan_submit', { p_id_row: idRow, p_nama: nama, p_kelas: kelas, p_mapel: mapel, p_jawaban: payload, p_pelanggaran: 0, p_durasi: durasi, p_status: 'SELESAI - ' + new Date().toLocaleTimeString('id-ID') });
+    if (rpc.error) throw new Error(rpc.error.message);
+
+    return { ok: true, waktu: Date.now() - t0 };
+  } catch(e) {
+    return { ok: false, error: e.message || String(e), waktu: Date.now() - t0 };
+  }
+}
+
+// ============================================================
+// CONTROLLER
+// ============================================================
+async function mulai() {
+  if (berjalan) return;
+  const mapel = document.getElementById('selMapel').value;
+  const kelas = document.getElementById('inpKelas').value.trim() || 'LOADTEST';
+  const jumlah = parseInt(document.getElementById('selJumlah').value);
+  const concur = parseInt(document.getElementById('selConcur').value);
+  const essayOn = document.getElementById('selEssay').value === '1';
+
+  if (!mapel) { tulis('❌ Pilih mapel dulu!', 'fail'); return; }
+  if (!kelas) { tulis('❌ Isi kelas!', 'fail'); return; }
+
+  // Reset
+  ok = 0; fail = 0; running = 0; totalWaktu = 0; totalSelesai = 0;
+  stopFlag = false; berjalan = true;
+  errBody.innerHTML = '';
+  document.getElementById('errBox').classList.remove('visible');
+  logEl.innerHTML = '';
+  updateUI();
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnStop').style.display = 'inline-block';
+
+  // Load soal
+  tulis('📚 Memuat soal untuk ' + mapel + '...', 'info');
+  let soal;
+  try {
+    soal = await loadSoal(mapel);
+    tulis('✅ Soal: ' + soal.length + ' (' + soal.filter(s => s.tipe_soal === 'ESSAY').length + ' essay)', 'ok');
+  } catch(e) {
+    tulis('❌ ' + e.message, 'fail');
+    berjalan = false;
+    document.getElementById('btnStart').style.display = 'inline-block';
+    document.getElementById('btnStop').style.display = 'none';
+    return;
+  }
+
+  tulis('🚀 Mulai: ' + jumlah + ' siswa, konkurensi ' + concur, 'info');
+
+  // Buat antrian
+  const siswaList = [];
+  for (let i = 0; i < jumlah; i++) {
+    siswaList.push({ idx: i, nama: 'Test#' + String(i + 1).padStart(4, '0') });
+  }
+
+  let idx = 0;
+  const runningSet = new Set();
+
+  function jalankan(siswa) {
+    if (!berjalan || stopFlag) return Promise.resolve();
+    running++;
+    updateUI();
+    const tMulai = Date.now();
+    return satuSiswa(siswa.idx, siswa.nama, kelas, mapel, soal, essayOn).then(res => {
+      running--;
+      if (res.ok) {
+        ok++;
+        totalWaktu += res.waktu;
+        totalSelesai++;
+        tulis('✅ ' + siswa.nama + ' — ' + (res.waktu / 1000).toFixed(1) + ' dtk', 'ok');
+      } else {
+        fail++;
+        tulis('❌ ' + siswa.nama + ' — ' + (res.error || '').substring(0, 100), 'fail');
+        catatErr(siswa.nama, 'submit', res.error || 'unknown');
+      }
+      updateUI();
+      // Cek selesai semua
+      if (ok + fail >= jumlah) {
+        selesai();
+      }
+    }).catch(e => {
+      running--;
+      fail++;
+      tulis('❌ ' + siswa.nama + ' — CRASH: ' + e.message, 'fail');
+      catatErr(siswa.nama, 'crash', e.message);
+      updateUI();
+      if (ok + fail >= jumlah) selesai();
+    });
+  }
+
+  function loop() {
+    while (running < concur && idx < siswaList.length && !stopFlag) {
+      const s = siswaList[idx++];
+      runningSet.add(s);
+      jalankan(s).finally(() => runningSet.delete(s));
+    }
+  }
+
+  function selesai() {
+    berjalan = false;
+    document.getElementById('btnStart').style.display = 'inline-block';
+    document.getElementById('btnStop').style.display = 'none';
+    tulis('🏁 SELESAI — ✅ ' + ok + ' | ❌ ' + fail, 'info');
+  }
+
+  // Mulai loop
+  loop();
+  // Timer untuk mengisi ulang antrian
+  const interval = setInterval(() => {
+    if (!berjalan || stopFlag || ok + fail >= jumlah) {
+      clearInterval(interval);
+      return;
+    }
+    loop();
+  }, 200);
+}
+
+function hentikan() {
+  stopFlag = true;
+  tulis('⏹ Dihentikan user', 'warn');
+  document.getElementById('btnStart').style.display = 'inline-block';
+  document.getElementById('btnStop').style.display = 'none';
+  berjalan = false;
+}
+</script>
+</body>
+</html>
