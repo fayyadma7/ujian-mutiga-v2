@@ -25,6 +25,9 @@
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
+    <!-- Admin Database Proxy (bypass RLS untuk delete/update/insert) -->
+    <script src="js/admin-db.js"></script>
+
     <!-- Library MathJax untuk merender rumus Matematika -->
     <script>
         window.MathJax = {
@@ -1153,6 +1156,16 @@
         @keyframes pulse {
             0%, 100% { opacity: 1 }
             50% { opacity: .5 }
+        }
+
+        /* Tabel Jadwal — responsive & fleksibel */
+        #panel-jadwal table th,
+        #panel-jadwal table td {
+            padding: 12px 14px;
+            vertical-align: middle;
+        }
+        #panel-jadwal table tbody tr:hover {
+            background: rgba(59,130,246,0.04);
         }
 
         /* Custom Confirm Modal */
@@ -2721,26 +2734,28 @@
                                 </button>
                             </div>
                         </div>
-                        <table>
+                        <div style="overflow-x:auto;">
+                        <table style="width:100%; table-layout:auto;">
                             <thead>
                                 <tr>
-                                    <th style="width:40px;"><input type="checkbox" id="select-all-jadwal"
+                                    <th style="width:40px; text-align:center;"><input type="checkbox" id="select-all-jadwal"
                                             onchange="toggleSelectAll('jadwal')"></th>
-                                    <th>MATA PELAJARAN</th>
-                                    <th>TARGET KELAS</th>
-                                    <th>WAKTU PELAKSANAAN</th>
-                                    <th>DURASI/SISWA</th>
-                                    <th>STATUS</th>
-                                    <th>AKTIFKAN</th>
-                                    <th>OPSI</th>
+                                    <th style="text-align:left; min-width:160px;">MATA PELAJARAN</th>
+                                    <th style="text-align:center; min-width:180px;">TARGET KELAS</th>
+                                    <th style="text-align:center; min-width:200px; white-space:nowrap;">WAKTU PELAKSANAAN</th>
+                                    <th style="text-align:center; min-width:80px; white-space:nowrap;">DURASI/SISWA</th>
+                                    <th style="text-align:center; min-width:110px;">STATUS</th>
+                                    <th style="text-align:center; min-width:90px;">AKTIFKAN</th>
+                                    <th style="text-align:center; min-width:90px;">OPSI</th>
                                 </tr>
                             </thead>
                             <tbody id="tabel-jadwal">
                                 <tr>
-                                    <td colspan="5" style="text-align:center; padding: 20px;">Memuat jadwal...</td>
+                                    <td colspan="8" style="text-align:center; padding: 20px;">Memuat jadwal...</td>
                                 </tr>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -3435,13 +3450,13 @@
             // Simpan data soal sebelum dihapus untuk undo
             const { data: savedSoal, error: fetchError } = await db.from('bank_soal').select('*').eq('id', id).single();
             
-            const { error } = await db.from('bank_soal').delete().eq('id', id);
+            const { error } = await adminDb.delete('bank_soal', id);
             if (error) showToast("Gagal menghapus: " + error.message, 'error');
             else {
                 // Buat undo function
                 const undoDelete = async () => {
                     if (savedSoal) {
-                        const { error: insertError } = await db.from('bank_soal').insert([savedSoal]);
+                        const { error: insertError } = await adminDb.insert('bank_soal', [savedSoal]);
                         if (insertError) {
                             showToast("Gagal membatalkan penghapusan: " + insertError.message, 'error');
                         } else {
@@ -3474,19 +3489,26 @@
 
             // Fetch data sebelum delete untuk undo
             const { data: backupSoal } = await db.from('bank_soal').select('*').eq('mapel', mapel);
-            
-            const { error } = await db.from('bank_soal').delete().eq('mapel', mapel);
+            // Ambil ID untuk admin proxy
+            const { data: idsSoal } = await db.from('bank_soal').select('id').eq('mapel', mapel);
+
+            if (!idsSoal || idsSoal.length === 0) {
+                showToast("Tidak ada soal untuk mapel ini", 'info');
+                return;
+            }
+
+            const { error } = await adminDb.batchDelete('bank_soal', idsSoal.map(i => i.id));
             if (error) {
                 showToast("Gagal menghapus mapel: " + error.message, 'error');
             } else {
                 const undoFunc = async () => {
                     if (backupSoal && backupSoal.length > 0) {
-                        await db.from('bank_soal').insert(backupSoal);
+                        await adminDb.insert('bank_soal', backupSoal);
                         populatePreviewMapel();
                         showToast(`Soal mapel "${mapel}" berhasil di-restore`, 'success');
                     }
                 };
-                
+
                 showToast(`Seluruh soal untuk mapel "${mapel}" berhasil dihapus`, 'success', undoFunc, 'Undo');
                 populatePreviewMapel();
             }
@@ -3519,17 +3541,25 @@
 
                 // Fetch data sebelum delete untuk undo
                 const { data: backupData } = await db.from('bank_soal').select('*').in('mapel', mapels);
-                const { error } = await db.from('bank_soal').delete().in('mapel', mapels);
+                // Ambil ID untuk admin proxy
+                const { data: idsData } = await db.from('bank_soal').select('id').in('mapel', mapels);
+
+                if (!idsData || idsData.length === 0) {
+                    showToast("Tidak ada soal untuk mapel dipilih", 'info');
+                    return;
+                }
+
+                const { error } = await adminDb.batchDelete('bank_soal', idsData.map(i => i.id));
                 if (error) showToast("Gagal menghapus: " + error.message, 'error');
                 else {
                     const undoFunc = async () => {
                         if (backupData && backupData.length > 0) {
-                            await db.from('bank_soal').insert(backupData);
+                            await adminDb.insert('bank_soal', backupData);
                             populatePreviewMapel();
                             showToast(`${mapels.length} mata pelajaran berhasil di-restore`, 'success');
                         }
                     };
-                    
+
                     showToast(`${mapels.length} mata pelajaran berhasil dihapus`, 'success', undoFunc, 'Undo');
                     populatePreviewMapel();
                 }
@@ -3934,7 +3964,7 @@
                 if (manualOpsiCount >= 5) payload.opsi_e = document.getElementById('manual-opsi-e').innerHTML.trim();
             }
 
-            const { error } = await db.from('bank_soal').insert([payload]);
+            const { error } = await adminDb.insert('bank_soal', [payload]);
 
             if (error) {
                 status.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Gagal: ${error.message}</span>`;
@@ -4019,13 +4049,13 @@
             // Simpan data sebelum dihapus untuk undo
             const { data: savedData, error: fetchError } = await db.from('jawaban_ujian').select('*').eq('id', id).single();
             
-            const { error } = await db.from('jawaban_ujian').delete().eq('id', id);
+            const { error } = await adminDb.delete('jawaban_ujian', id);
             if (error) showToast("Gagal menghapus: " + error.message, 'error');
             else {
                 // Buat undo function
                 const undoDelete = async () => {
                     if (savedData) {
-                        const { error: insertError } = await db.from('jawaban_ujian').insert([savedData]);
+                        const { error: insertError } = await adminDb.insert('jawaban_ujian', [savedData]);
                         if (insertError) {
                             showToast("Gagal membatalkan penghapusan: " + insertError.message, 'error');
                         } else {
@@ -4067,16 +4097,20 @@
                 }
                 // Fetch data sebelum delete untuk undo
                 const { data: backupData } = await db.from('jawaban_ujian').select('*').in('id', ids);
-                await db.from('jawaban_ujian').delete().in('id', ids);
-                
+                const { error: batchErr } = await adminDb.batchDelete('jawaban_ujian', ids);
+                if (batchErr) {
+                    showToast("Gagal menghapus: " + batchErr.message, 'error');
+                    return;
+                }
+
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await db.from('jawaban_ujian').insert(backupData);
+                        await adminDb.insert('jawaban_ujian', backupData);
                         loadMonitoring();
                         showToast(`${ids.length} data siswa berhasil di-restore`, 'success');
                     }
                 };
-                
+
                 showToast(`${ids.length} data siswa berhasil dihapus`, 'success', undoFunc, 'Undo');
                 loadMonitoring();
             }
@@ -4094,20 +4128,27 @@
                 }
                 // Fetch data sebelum delete untuk undo
                 const { data: backupData } = await db.from('jadwal_ujian').select('*').in('id', ids);
-                await db.from('jadwal_ujian').delete().in('id', ids);
-                
+                const { error: jBatchErr } = await adminDb.batchDelete('jadwal_ujian', ids);
+                if (jBatchErr) {
+                    showToast("Gagal menghapus: " + jBatchErr.message, 'error');
+                    return;
+                }
+
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await db.from('jadwal_ujian').insert(backupData);
+                        await adminDb.insert('jadwal_ujian', backupData);
                         loadJadwal();
                         showToast(`${ids.length} jadwal berhasil di-restore`, 'success');
                     }
                 };
-                
+
                 showToast(`${ids.length} jadwal berhasil dihapus`, 'success', undoFunc, 'Undo');
             } else {
                 const status = (action === 'active');
-                await db.from('jadwal_ujian').update({ is_aktif: status }).in('id', ids);
+                // Batch update — panggil per ID
+                for (const jid of ids) {
+                    await adminDb.update('jadwal_ujian', jid, { is_aktif: status });
+                }
                 showToast(`${ids.length} jadwal ${status ? 'diaktifkan' : 'dinonaktifkan'}`, 'success');
             }
             loadJadwal();
@@ -4125,16 +4166,20 @@
                 }
                 // Fetch data sebelum delete untuk undo
                 const { data: backupData } = await db.from('bank_soal').select('*').in('id', ids);
-                await db.from('bank_soal').delete().in('id', ids);
-                
+                const { error: sBatchErr } = await adminDb.batchDelete('bank_soal', ids);
+                if (sBatchErr) {
+                    showToast("Gagal menghapus: " + sBatchErr.message, 'error');
+                    return;
+                }
+
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await db.from('bank_soal').insert(backupData);
+                        await adminDb.insert('bank_soal', backupData);
                         loadPreviewSoal();
                         showToast(`${ids.length} soal berhasil di-restore`, 'success');
                     }
                 };
-                
+
                 showToast(`${ids.length} soal berhasil dihapus`, 'success', undoFunc, 'Undo');
                 loadPreviewSoal();
             } else if (action === 'move') {
@@ -4188,7 +4233,7 @@
                             return rest;
                         });
 
-                        const { error: insertErr } = await db.from('bank_soal').insert(newSoalArray);
+                        const { error: insertErr } = await adminDb.insert('bank_soal', newSoalArray);
                         if (insertErr) {
                             Swal.fire('Gagal!', insertErr.message, 'error');
                         } else {
@@ -4197,10 +4242,14 @@
                             });
                         }
                     } else {
-                        // Pindah (Cut)
-                        const { error } = await db.from('bank_soal').update({ mapel: newMapel }).in('id', ids);
-                        if (error) {
-                            Swal.fire('Gagal!', error.message, 'error');
+                        // Pindah (Cut) — update per ID
+                        let moveErr = null;
+                        for (const sid of ids) {
+                            const { error: e } = await adminDb.update('bank_soal', sid, { mapel: newMapel });
+                            if (e) moveErr = e;
+                        }
+                        if (moveErr) {
+                            Swal.fire('Gagal!', moveErr.message, 'error');
                         } else {
                             Swal.fire('Berhasil!', `${ids.length} soal berhasil dipindahkan ke mapel ${newMapel}`, 'success').then(() => {
                                 loadPreviewSoal();
@@ -4222,16 +4271,20 @@
             }
             // Fetch data sebelum delete untuk undo
             const { data: backupData } = await db.from('jawaban_ujian').select('*').in('id', ids);
-            await db.from('jawaban_ujian').delete().in('id', ids);
-            
+            const { error: lBatchErr } = await adminDb.batchDelete('jawaban_ujian', ids);
+            if (lBatchErr) {
+                showToast("Gagal menghapus: " + lBatchErr.message, 'error');
+                return;
+            }
+
             const undoFunc = async () => {
                 if (backupData && backupData.length > 0) {
-                    await db.from('jawaban_ujian').insert(backupData);
+                    await adminDb.insert('jawaban_ujian', backupData);
                     loadNilaiSiswa();
                     showToast(`${ids.length} data nilai berhasil di-restore`, 'success');
                 }
             };
-            
+
             showToast(`${ids.length} data nilai berhasil dihapus`, 'success', undoFunc, 'Undo');
             loadNilaiSiswa();
         }
@@ -4548,7 +4601,10 @@
                     return 'append';
                 } else if (result.isDenied) {
                     statusEl.innerHTML = `<span style="color: var(--primary);"><i class="fas fa-spinner fa-spin"></i> Menghapus soal lama...</span>`;
-                    await db.from('bank_soal').delete().eq('mapel', mapel);
+                    const { data: oldIds } = await db.from('bank_soal').select('id').eq('mapel', mapel);
+                    if (oldIds && oldIds.length > 0) {
+                        await adminDb.batchDelete('bank_soal', oldIds.map(i => i.id));
+                    }
                     return 'overwrite';
                 } else {
                     return 'cancel';
@@ -4667,7 +4723,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
 
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Menyimpan...';
 
-                const { error: insertError } = await db.from('bank_soal').insert(soalArray);
+                const { error: insertError } = await adminDb.insert('bank_soal', soalArray);
                 if (insertError) throw insertError;
 
                 document.getElementById('ai-materi').value = '';
@@ -4759,7 +4815,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG"
                     }));
 
-                    const { error } = await db.from('bank_soal').insert(dataSoalSupabase);
+                    const { error } = await adminDb.insert('bank_soal', dataSoalSupabase);
 
                     if (error) throw error;
 
@@ -5092,7 +5148,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         status.innerHTML = `<span style="color: var(--primary);"><i class="fas fa-spinner fa-spin"></i> Menyimpan ${soalArray.length} soal (termasuk gambar) ke database...</span>`;
 
                         // Insert ke Supabase
-                        const { error } = await db.from('bank_soal').insert(soalArray);
+                        const { error } = await adminDb.insert('bank_soal', soalArray);
 
                         if (error) throw error;
 
@@ -5733,7 +5789,7 @@ Kisi-kisi harus:
                 payload.opsi_e = editOpsiCount >= 5 ? document.getElementById('edit-soal-e').innerHTML : '';
             }
 
-            const { error } = await db.from('bank_soal').update(payload).eq('id', id);
+            const { error } = await adminDb.update('bank_soal', id, payload);
 
             btn.innerHTML = '<i class="fas fa-save"></i> Simpan';
             btn.disabled = false;
@@ -5820,7 +5876,7 @@ Kisi-kisi harus:
             let kelasFinal = kelasInput || null;
             if (jurusan && kelasInput) kelasFinal = jurusan + "::" + kelasInput;
 
-            const { error } = await db.from('jadwal_ujian').insert([{
+            const { error } = await adminDb.insert('jadwal_ujian', [{
                 mapel, kelas: kelasFinal,
                 waktu_mulai: waktuMulai,
                 waktu_selesai: waktuSelesai,
@@ -5886,12 +5942,18 @@ Kisi-kisi harus:
                     kelasLabel = `<span style="color:var(--text-muted); font-size:12px;">Semua kelas</span>`;
                 } else if (typeof j.kelas === 'string' && j.kelas.includes('::')) {
                     const parts = j.kelas.split('::');
-                    kelasLabel = `<div style="line-height:1.4; min-width:150px;">
-                        <div style="font-size:10px; color:var(--primary); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${parts[0]}</div>
-                        <div style="font-size:13px; color:var(--text-main); font-weight:500;">${parts[1]}</div>
+                    const listKelas = parts[1].split(',').map(k => k.trim()).filter(Boolean);
+                    kelasLabel = `<div style="line-height:1.4; display:inline-flex; flex-direction:column; gap:4px;">
+                        <div style="font-size:10px; color:var(--gold-light); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${parts[0]}</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
+                            ${listKelas.map(k => `<span style="background:rgba(59,130,246,0.1); color:#93c5fd; border:1px solid rgba(59,130,246,0.2); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; white-space:nowrap;">${k}</span>`).join('')}
+                        </div>
                     </div>`;
                 } else {
-                    kelasLabel = `<span class="badge" style="background:rgba(59,130,246,0.1); color:var(--primary); border:1px solid rgba(59,130,246,0.2);">${j.kelas}</span>`;
+                    const listKelas = j.kelas.split(',').map(k => k.trim()).filter(Boolean);
+                    kelasLabel = `<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
+                        ${listKelas.map(k => `<span style="background:rgba(59,130,246,0.1); color:#93c5fd; border:1px solid rgba(59,130,246,0.2); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; white-space:nowrap;">${k}</span>`).join('')}
+                    </div>`;
                 }
 
                 const now = new Date();
@@ -5946,12 +6008,12 @@ Kisi-kisi harus:
                 tbody.innerHTML += `
                     <tr>
                         <td style="text-align:center;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
-                        <td style="font-weight:700; color:var(--text-main); text-align:left; padding-left:15px;">${j.mapel}</td>
-                        <td style="text-align:center;">${kelasLabel}</td>
-                        <td style="text-align:center;">${displayWaktu}</td>
+                        <td style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 10px 14px 18px;">${j.mapel}</td>
+                        <td style="text-align:center; padding:14px 12px;">${kelasLabel}</td>
+                        <td style="text-align:center; white-space:nowrap;">${displayWaktu}</td>
                         <td style="text-align:center;">${durasiLabel}</td>
                         <td style="text-align:center;">${statusAuto}</td>
-                        <td style="text-align:center; min-width:80px;">
+                        <td style="text-align:center;">
                             <label class="toggle">
                                 <input type="checkbox" ${checked} onchange="toggleAktifJadwal(${j.id}, this.checked)">
                                 <span class="toggle-slider"></span>
@@ -5995,7 +6057,7 @@ Kisi-kisi harus:
         }
 
         async function toggleAktifJadwal(id, isAktif) {
-            const { error } = await db.from('jadwal_ujian').update({ is_aktif: isAktif }).eq('id', id);
+            const { error } = await adminDb.update('jadwal_ujian', id, { is_aktif: isAktif });
             if (error) {
                 showToast('Gagal mengubah status: ' + error.message, 'error');
                 loadJadwal();
@@ -6011,17 +6073,17 @@ Kisi-kisi harus:
             // Fetch data sebelum delete untuk undo
             const { data: savedJadwal } = await db.from('jadwal_ujian').select('*').eq('id', id).single();
             
-            const { error } = await db.from('jadwal_ujian').delete().eq('id', id);
+            const { error } = await adminDb.delete('jadwal_ujian', id);
             if (error) showToast('Gagal menghapus: ' + error.message, 'error');
             else {
                 const undoFunc = async () => {
                     if (savedJadwal) {
-                        await db.from('jadwal_ujian').insert([savedJadwal]);
+                        await adminDb.insert('jadwal_ujian', [savedJadwal]);
                         loadJadwal();
                         showToast(`Jadwal "${mapel}" berhasil di-restore`, 'success');
                     }
                 };
-                
+
                 showToast(`Jadwal "${mapel}" berhasil dihapus`, 'success', undoFunc, 'Undo');
                 loadJadwal();
             }
@@ -6105,13 +6167,13 @@ Kisi-kisi harus:
             let kelasFinal = kelasInput || null;
             if (jurusan && kelasInput) kelasFinal = jurusan + "::" + kelasInput;
 
-            const { error } = await db.from('jadwal_ujian').update({
+            const { error } = await adminDb.update('jadwal_ujian', editingJadwalId, {
                 mapel, kelas: kelasFinal,
                 waktu_mulai: mulai,
                 waktu_selesai: selesai,
                 durasi_menit: durasiInput,
                 is_aktif: true
-            }).eq('id', editingJadwalId);
+            });
 
             if (btnSubmit) {
                 btnSubmit.disabled = false;
@@ -6703,10 +6765,11 @@ Kisi-kisi harus:
 
                 // Nonaktifkan semuanya sekaligus
                 if (idsToDeactivate.length > 0) {
-                    const { error: updateError } = await db
-                        .from('jadwal_ujian')
-                        .update({ is_aktif: false })
-                        .in('id', idsToDeactivate);
+                    let updateError = null;
+                    for (const did of idsToDeactivate) {
+                        const { error: e } = await adminDb.update('jadwal_ujian', did, { is_aktif: false });
+                        if (e) updateError = e;
+                    }
 
                     // Selalu hapus dari Set setelah proses (berhasil maupun gagal)
                     idsToDeactivate.forEach(id => _deactivatingIds.delete(id));
@@ -7120,17 +7183,17 @@ Kisi-kisi harus:
                     if (cekSesi) {
                         idRow = cekSesi.id;
                     } else {
-                        const { data: inserted, error: errIns } = await db.from('jawaban_ujian').insert([{
+                        const { data: inserted, error: errIns } = await adminDb.insert('jawaban_ujian', [{
                             nama: n, kelas: k, mapel: m, status: 'AKTIF (OFFLINE)',
                             skor_pg: null, jawaban_essay: '', pelanggaran: 0, durasi: '-',
                             created_at: new Date().toISOString()
-                        }]).select('id').single();
+                        }]);
                         if (errIns) throw errIns;
-                        idRow = inserted.id;
+                        if (inserted && inserted.length > 0) idRow = inserted[0].id;
                     }
 
-                    // Koreksi dan submit
-                    const { error } = await db.rpc('koreksi_dan_submit', {
+                    // Koreksi dan submit via admin proxy
+                    const { error } = await adminDb.rpc('koreksi_dan_submit', {
                         p_id_row: idRow,
                         p_nama: n,
                         p_kelas: k,
