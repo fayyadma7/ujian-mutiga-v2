@@ -1275,11 +1275,12 @@
         }
 
         /* ======== LANDING OVERLAY NEW & PREMIUM ======== */
+        /* ===== CLAYMORPHIC LANDING OVERLAY — ui-ux-pro-max ===== */
         #landingOverlay {
             position: fixed;
             inset: 0;
             z-index: 99999;
-            background: #040812;
+            background: #060d1a;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1297,19 +1298,24 @@
             pointer-events: none;
         }
 
+        /* Deep gradient mesh background */
         .landing-bg {
             position: fixed;
             inset: 0;
-            background: url('assets/background-landingpage.png') center/cover no-repeat;
+            background:
+                radial-gradient(ellipse 80% 60% at 0% 20%, rgba(37, 99, 235, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 100% 80%, rgba(124, 58, 237, 0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 50% at 50% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
+                #060d1a;
             z-index: 0;
         }
 
         .landing-dim {
             position: fixed;
             inset: 0;
-            background: linear-gradient(135deg, rgba(4, 8, 18, 0.65) 0%, rgba(4, 8, 18, 0.8) 100%);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            background: linear-gradient(135deg, rgba(6, 13, 26, 0.50) 0%, rgba(6, 13, 26, 0.75) 100%);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
             z-index: 1;
         }
 
@@ -1318,57 +1324,55 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 350px;
-            background: linear-gradient(to top, #040812 0%, rgba(4, 8, 18, 0.95) 20%, rgba(4, 8, 18, 0.5) 60%, transparent 100%);
+            height: 300px;
+            background: linear-gradient(to top, #060d1a 0%, rgba(6, 13, 26, 0.92) 25%, rgba(6, 13, 26, 0.4) 65%, transparent 100%);
             z-index: 1;
             pointer-events: none;
         }
 
+        /* Refined glowing orbs — softer, richer */
         .landing-orb {
             position: absolute;
             border-radius: 50%;
-            filter: blur(140px);
-            opacity: 0.15;
-            animation: landingFloat 22s infinite alternate ease-in-out;
+            filter: blur(120px);
+            opacity: 0.18;
+            animation: landingFloat 20s infinite alternate ease-in-out;
             z-index: 1;
         }
 
         .landing-orb-1 {
-            top: -15%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, #2563eb, transparent 70%);
+            top: -12%;
+            left: -8%;
+            width: 45vw;
+            height: 45vw;
+            background: radial-gradient(circle, #3b82f6, transparent 70%);
         }
 
         .landing-orb-2 {
-            bottom: -20%;
-            right: -10%;
-            width: 45vw;
-            height: 45vw;
-            background: radial-gradient(circle, #7c3aed, transparent 70%);
-            animation-delay: -6s;
+            bottom: -18%;
+            right: -8%;
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, #8b5cf6, transparent 70%);
+            animation-delay: -7s;
         }
 
         .landing-orb-3 {
-            top: 40%;
-            left: 50%;
-            width: 30vw;
-            height: 30vw;
+            top: 35%;
+            left: 45%;
+            width: 28vw;
+            height: 28vw;
             background: radial-gradient(circle, #06b6d4, transparent 70%);
-            animation-delay: -12s;
-            opacity: 0.1;
+            animation-delay: -13s;
+            opacity: 0.10;
         }
 
         @keyframes landingFloat {
-            0% {
-                transform: translate(0, 0) scale(1) rotate(0deg);
-            }
-            100% {
-                transform: translate(-4%, 6%) scale(1.15) rotate(15deg);
-            }
+            0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+            100% { transform: translate(-3%, 5%) scale(1.12) rotate(12deg); }
         }
 
+        /* ---- MAIN CONTAINER ---- */
         .landing-container {
             position: relative;
             z-index: 2;
@@ -1381,7 +1385,7 @@
             margin: auto;
         }
 
-        /* LEFT PANEL: HERO & BRANDING */
+        /* ---- LEFT PANEL: HERO & BRANDING ---- */
         .landing-panel-left {
             display: flex;
             flex-direction: column;
@@ -1391,104 +1395,104 @@
         }
 
         @keyframes landingFadeRight {
-            from {
-                opacity: 0;
-                transform: translateX(-40px);
-                filter: blur(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-                filter: blur(0);
-            }
+            from { opacity: 0; transform: translateX(-40px); filter: blur(10px); }
+            to   { opacity: 1; transform: translateX(0);     filter: blur(0); }
         }
 
+        /* Brand — soft claymorphic area */
         .landing-brand {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 2rem;
+            gap: 18px;
+            margin-bottom: 1.8rem;
             animation: landingLogoFloat 6s ease-in-out infinite;
+            background: rgba(255,255,255,0.03);
+            padding: 0.8rem 1.5rem 0.8rem 1rem;
+            border-radius: 100px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow:
+                0 4px 12px rgba(0,0,0,0.2),
+                inset 0 1px 0 rgba(255,255,255,0.05);
         }
 
         .landing-logo {
-            height: 70px;
+            height: 56px;
             width: auto;
             object-fit: contain;
-            filter: drop-shadow(0 10px 25px rgba(59, 130, 246, 0.35));
+            filter: drop-shadow(0 8px 20px rgba(59, 130, 246, 0.30));
         }
 
         .landing-brand-text {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            border-left: 2px solid rgba(255, 255, 255, 0.15);
+            border-left: 2px solid rgba(255, 255, 255, 0.12);
             padding-left: 16px;
             text-align: left;
         }
 
         .landing-school-name {
             font-family: 'Outfit', sans-serif;
-            font-size: 1.35rem;
+            font-size: 1.15rem;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             color: #ffffff;
             line-height: 1.2;
         }
 
         .landing-school-loc {
             font-family: 'Outfit', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 600;
             letter-spacing: 3px;
-            color: #60a5fa;
+            color: #93bbff;
             line-height: 1.2;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         @keyframes landingLogoFloat {
-            0%, 100% {
-                transform: translateY(0) scale(1);
-            }
-            50% {
-                transform: translateY(-6px) scale(1.02);
-            }
+            0%, 100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-4px) scale(1.01); }
         }
 
+        /* Tagline pill */
         .landing-tagline {
             font-family: 'Outfit', sans-serif;
-            background: rgba(59, 130, 246, 0.1);
-            color: #60a5fa;
-            padding: 0.5rem 1.2rem;
+            background: rgba(59, 130, 246, 0.08);
+            color: #93bbff;
+            padding: 0.45rem 1.1rem;
             border-radius: 100px;
-            font-size: 0.75rem;
+            font-size: 0.70rem;
             font-weight: 700;
-            border: 1px solid rgba(59, 130, 246, 0.25);
+            border: 1px solid rgba(59, 130, 246, 0.20);
             letter-spacing: 2px;
             text-transform: uppercase;
             display: inline-flex;
             align-items: center;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1);
+            gap: 6px;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
         }
 
+        /* Main title — claymorphic depth via text shadow */
         .landing-title {
             font-family: 'Outfit', sans-serif;
-            font-size: clamp(2.5rem, 5vw, 4.2rem);
+            font-size: clamp(2.8rem, 5.5vw, 4.5rem);
             font-weight: 900;
-            line-height: 1.1;
-            letter-spacing: 1px;
-            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #64748b 100%);
+            line-height: 1.05;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.1rem;
+            text-shadow: 0 2px 40px rgba(0,0,0,0.3);
         }
 
         .landing-title-sub {
             font-family: 'Outfit', sans-serif;
-            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-size: clamp(1.6rem, 3.5vw, 2.8rem);
             font-weight: 800;
             line-height: 1.1;
             letter-spacing: 2px;
@@ -1497,54 +1501,171 @@
             background-clip: text;
             color: transparent;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.8rem;
+            margin-bottom: 1rem;
         }
-
 
         .landing-desc {
             font-size: 0.95rem;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #94a3b8;
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
             max-width: 520px;
         }
 
-        .landing-action {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
+        /* ---- CLAYMORPHIC LOGIN CARD ---- */
+        .landing-login-card {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(12, 22, 48, 0.70);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 28px;
+            padding: 1.8rem 1.8rem 1.4rem;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                0 1px 0 rgba(255, 255, 255, 0.06) inset,
+                0 -1px 0 rgba(0, 0, 0, 0.3) inset;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
         }
 
+        .landing-login-card:focus-within {
+            border-color: rgba(96, 165, 250, 0.25);
+            box-shadow:
+                0 24px 70px rgba(37, 99, 235, 0.15),
+                0 1px 0 rgba(255, 255, 255, 0.08) inset;
+        }
+
+        .login-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.2rem;
+        }
+
+        .login-card-header-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15));
+            border: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #93bbff;
+            font-size: 15px;
+        }
+
+        .login-card-header-text {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 0.5px;
+        }
+
+        /* Claymorphic input fields */
+        .clay-input-group {
+            margin-bottom: 14px;
+        }
+
+        .clay-input-group label {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.30);
+            margin-bottom: 6px;
+        }
+
+        .clay-input-wrapper {
+            position: relative;
+        }
+
+        .clay-input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.18);
+            font-size: 14px;
+            transition: color 0.3s;
+            pointer-events: none;
+        }
+
+        .clay-input-wrapper:focus-within i {
+            color: #93bbff;
+        }
+
+        .clay-input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px;
+            padding: 13px 16px 13px 44px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: #f1f5f9;
+            outline: none;
+            transition: all 0.25s ease;
+            box-shadow:
+                0 2px 6px rgba(0,0,0,0.2) inset,
+                0 1px 0 rgba(255,255,255,0.03) inset;
+        }
+
+        .clay-input::placeholder {
+            color: rgba(255,255,255,0.18);
+            font-weight: 400;
+        }
+
+        .clay-input:focus {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(96, 165, 250, 0.30);
+            box-shadow:
+                0 0 0 3px rgba(59, 130, 246, 0.06),
+                0 2px 8px rgba(0,0,0,0.25) inset;
+        }
+
+        /* Claymorphic button */
         .landing-btn {
             font-family: 'Outfit', sans-serif;
             position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, #2563eb, #7c3aed);
             color: white;
-            padding: 1.1rem 3.2rem;
+            padding: 0.95rem 2.4rem;
             border-radius: 100px;
             text-decoration: none;
             font-weight: 700;
-            font-size: 1.1rem;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+            font-size: 1rem;
+            border: none;
+            box-shadow:
+                0 8px 28px rgba(59, 130, 246, 0.30),
+                0 1px 0 rgba(255,255,255,0.15) inset,
+                0 -1px 0 rgba(0,0,0,0.2) inset;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
             display: inline-flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            gap: 10px;
             outline: none;
+            width: 100%;
         }
 
         .landing-btn:hover {
-            transform: translateY(-4px) scale(1.03);
-            box-shadow: 0 20px 45px rgba(96, 165, 250, 0.45);
-            border-color: rgba(255, 255, 255, 0.35);
+            transform: translateY(-3px) scale(1.01);
+            box-shadow:
+                0 16px 40px rgba(96, 165, 250, 0.40),
+                0 1px 0 rgba(255,255,255,0.20) inset;
         }
 
         .landing-btn:active {
-            transform: translateY(-1px) scale(0.98);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+            transform: translateY(0px) scale(0.98);
+            box-shadow:
+                0 4px 12px rgba(59, 130, 246, 0.25),
+                0 1px 0 rgba(255,255,255,0.05) inset;
         }
 
         .landing-btn.clicked {
@@ -1557,7 +1678,42 @@
             animation: btnSpinArrow 1s linear infinite;
         }
 
-        /* RIGHT PANEL: TELEMETRY & CAROUSEL */
+        .landing-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.30);
+            transform: scale(0);
+            animation: btnRipple 0.6s linear;
+            pointer-events: none;
+        }
+
+        /* Register link */
+        .register-link-btn {
+            background: none;
+            border: none;
+            color: rgba(134, 239, 172, 0.85);
+            font-size: 0.80rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: color 0.2s, transform 0.2s;
+            padding: 4px 0;
+        }
+
+        .register-link-btn:hover {
+            color: #86efac;
+            transform: translateY(-1px);
+        }
+
+        .login-error {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.80rem;
+            color: #fca5a5;
+            min-height: 20px;
+        }
+
+        /* ---- RIGHT PANEL: TELEMETRY & CAROUSEL ---- */
         .landing-panel-right {
             display: flex;
             flex-direction: column;
@@ -1567,52 +1723,49 @@
         }
 
         @keyframes landingFadeLeft {
-            from {
-                opacity: 0;
-                transform: translateX(40px);
-                filter: blur(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-                filter: blur(0);
-            }
+            from { opacity: 0; transform: translateX(40px); filter: blur(10px); }
+            to   { opacity: 1; transform: translateX(0);     filter: blur(0); }
         }
 
-        /* Glassmorphic cards */
+        /* Claymorphic cards — soft 3D with inset lights */
         .landing-card {
-            background: rgba(15, 23, 42, 0.45);
+            background: rgba(12, 22, 48, 0.55);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 1.8rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 1.6rem;
+            box-shadow:
+                0 16px 48px rgba(0, 0, 0, 0.30),
+                0 1px 0 rgba(255, 255, 255, 0.05) inset,
+                0 -1px 0 rgba(0, 0, 0, 0.25) inset;
+            transition: transform 0.30s ease, border-color 0.30s ease, box-shadow 0.30s ease;
         }
 
         .landing-card:hover {
-            border-color: rgba(96, 165, 250, 0.2);
-            box-shadow: 0 25px 60px rgba(37, 99, 235, 0.15);
-            transform: translateY(-2px);
+            border-color: rgba(96, 165, 250, 0.15);
+            box-shadow:
+                0 20px 56px rgba(37, 99, 235, 0.12),
+                0 1px 0 rgba(255, 255, 255, 0.07) inset;
+            transform: translateY(-3px);
         }
 
-        /* Live Counter Card */
+        /* Live Counter Card — green accent */
         .live-card {
             position: relative;
-            background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.45) 80%);
-            border-left: 4px solid #10b981;
+            background: radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.06) 0%, rgba(12, 22, 48, 0.55) 80%);
+            border-left: 3px solid #10b981;
         }
 
         .live-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.75rem;
+            font-size: 0.70rem;
             font-weight: 800;
             letter-spacing: 1.5px;
-            color: #10b981;
-            margin-bottom: 0.8rem;
+            color: #34d399;
+            margin-bottom: 0.6rem;
         }
 
         .live-dot {
@@ -1626,27 +1779,19 @@
         }
 
         @keyframes neonPulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 4px #10b981, 0 0 10px #10b981;
-                opacity: 0.6;
-            }
-            50% {
-                transform: scale(1.3);
-                box-shadow: 0 0 8px #10b981, 0 0 16px #10b981, 0 0 24px #10b981;
-                opacity: 1;
-            }
+            0%, 100% { transform: scale(1);     box-shadow: 0 0 4px #10b981, 0 0 10px #10b981; opacity: 0.6; }
+            50%      { transform: scale(1.3);   box-shadow: 0 0 8px #10b981, 0 0 16px #10b981, 0 0 24px #10b981; opacity: 1; }
         }
 
         .live-stat-container {
             display: flex;
             align-items: baseline;
             gap: 12px;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.3rem;
         }
 
         .live-stat-value {
-            font-size: 3.2rem;
+            font-size: 3rem;
             font-weight: 900;
             line-height: 1;
             font-family: 'Outfit', sans-serif;
@@ -1659,63 +1804,64 @@
         }
 
         .live-stat-label {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #e2e8f0;
         }
 
         .live-stat-desc {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
+            line-height: 1.5;
         }
 
-        /* Stats Grid */
+        /* Stats Mini Grid */
         .landing-stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1.2rem;
+            gap: 1rem;
         }
 
         .mini-card {
             display: flex;
             flex-direction: column;
-            gap: 0.4rem;
-            padding: 1.2rem 1.5rem;
+            gap: 0.3rem;
+            padding: 1.1rem 1.3rem;
         }
 
         .mini-icon {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #60a5fa;
-            opacity: 0.8;
+            opacity: 0.7;
         }
 
         .mini-value {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 800;
             color: #f8fafc;
             line-height: 1.1;
         }
 
         .mini-label {
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        /* Showcase Slideshow Card */
+        /* Feature Slideshow Card */
         .feature-card {
-            border-top: 3px solid #7c3aed;
+            border-top: 3px solid #8b5cf6;
         }
 
         .feature-title {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 700;
             color: #a78bfa;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin-bottom: 1.2rem;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1723,9 +1869,9 @@
 
         .feature-slideshow-container {
             position: relative;
-            min-height: 110px;
+            min-height: 105px;
             overflow: hidden;
-            margin-bottom: 0.8rem;
+            margin-bottom: 0.6rem;
         }
 
         .feature-slide {
@@ -1749,14 +1895,14 @@
         }
 
         .slide-title {
-            font-size: 1.05rem;
+            font-size: 0.95rem;
             font-weight: 700;
             color: #f1f5f9;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.3rem;
         }
 
         .slide-desc {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             line-height: 1.5;
             color: #94a3b8;
         }
@@ -1766,14 +1912,14 @@
             display: flex;
             gap: 8px;
             justify-content: flex-start;
-            padding-top: 0.4rem;
+            padding-top: 0.3rem;
         }
 
         .dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.18);
             cursor: pointer;
             transition: all 0.3s ease;
         }
@@ -1792,8 +1938,8 @@
             max-width: 1200px;
             text-align: center;
             z-index: 2;
-            color: var(--text-muted);
-            font-size: 0.8rem;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.75rem;
             letter-spacing: 0.5px;
             font-weight: 500;
             margin-top: auto;
@@ -1801,22 +1947,27 @@
             padding-bottom: 1rem;
         }
 
-        /* Ripple effect inside premium button */
-        .landing-btn .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.35);
-            transform: scale(0);
-            animation: btnRipple 0.6s linear;
-            pointer-events: none;
+        /* Button animation keyframes */
+        @keyframes btnRipple {
+            to { transform: scale(4); opacity: 0; }
         }
 
-        /* RESPONSIVE SCALING */
+        @keyframes btnPulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59,130,246,0.3), 0 0 60px rgba(139,92,246,0.15); }
+            50%      { box-shadow: 0 0 30px rgba(59,130,246,0.5), 0 0 80px rgba(139,92,246,0.25); }
+        }
+
+        @keyframes btnSpinArrow {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        /* ---- RESPONSIVE ---- */
         @media (max-width: 992px) {
             .landing-container {
                 grid-template-columns: 1fr;
                 gap: 3rem;
-                padding-bottom: 4rem; /* Safe space for footer */
+                padding-bottom: 4rem;
             }
 
             .landing-panel-left {
@@ -1827,37 +1978,45 @@
             .landing-brand {
                 justify-content: center;
                 margin-bottom: 1.5rem;
+                max-width: 100%;
             }
 
             .landing-desc {
                 max-width: 100%;
             }
 
-            .landing-action {
-                justify-content: center;
+            .landing-login-card {
+                max-width: 100%;
+            }
+
+            .landing-panel-right {
+                max-width: 480px;
+                margin: 0 auto;
                 width: 100%;
             }
         }
 
         @media (max-width: 576px) {
             #landingOverlay {
-                padding: 1.5rem 0.8rem;
+                padding: 1.2rem 0.6rem;
             }
 
             .landing-brand {
-                gap: 12px;
+                gap: 10px;
+                padding: 0.6rem 1rem;
+                flex-wrap: wrap;
             }
 
             .landing-logo {
-                height: 50px;
+                height: 44px;
             }
 
             .landing-school-name {
-                font-size: 1.05rem;
+                font-size: 0.95rem;
             }
 
             .landing-school-loc {
-                font-size: 0.8rem;
+                font-size: 0.72rem;
                 letter-spacing: 2px;
             }
 
@@ -1866,35 +2025,38 @@
             }
 
             .landing-title-sub {
-                font-size: 1.6rem;
+                font-size: 1.4rem;
             }
 
             .landing-desc {
-                font-size: 0.88rem;
+                font-size: 0.85rem;
+            }
+
+            .landing-login-card {
+                padding: 1.4rem 1.2rem;
+                border-radius: 22px;
             }
 
             .landing-btn {
-                padding: 1rem 2.2rem;
-                font-size: 1rem;
-                width: 100%;
-                justify-content: center;
+                padding: 0.85rem 1.8rem;
+                font-size: 0.95rem;
             }
 
             .live-stat-value {
-                font-size: 2.8rem;
+                font-size: 2.6rem;
             }
 
             .live-stat-label {
-                font-size: 1rem;
+                font-size: 0.95rem;
             }
 
             .landing-stats-grid {
                 grid-template-columns: 1fr;
-                gap: 1rem;
+                gap: 0.8rem;
             }
 
             .feature-slideshow-container {
-                min-height: 140px; /* More height on mobile for multiline wrapping */
+                min-height: 130px;
             }
         }
 
@@ -1914,7 +2076,7 @@
 
 <body>
 
-    <!-- ====== LANDING PAGE OVERLAY ====== -->
+    <!-- ====== LANDING PAGE OVERLAY — Claymorphic Redesign ====== -->
     <div id="landingOverlay">
         <div class="landing-bg"></div>
         <div class="landing-dim"></div>
@@ -1922,9 +2084,9 @@
         <div class="landing-orb landing-orb-1"></div>
         <div class="landing-orb landing-orb-2"></div>
         <div class="landing-orb landing-orb-3"></div>
-        
+
         <div class="landing-container">
-            <!-- LEFT PANEL: Brand, Title, and Action -->
+            <!-- LEFT PANEL: Brand, Title, Login -->
             <div class="landing-panel-left">
                 <div class="landing-brand">
                     <img src="assets/logo-mute.png" alt="Logo SMK" class="landing-logo">
@@ -1934,47 +2096,53 @@
                     </div>
                 </div>
                 <div class="landing-tagline">
-                    <i class="fa-solid fa-bolt-lightning"></i>&nbsp; Exam Intelligence Platform
+                    <i class="fa-solid fa-bolt-lightning"></i> Exam Intelligence Platform
                 </div>
                 <h1 class="landing-title">EXAM CONTROL</h1>
                 <div class="landing-title-sub">CENTER PANEL</div>
                 <p class="landing-desc">
                     Selamat datang di sistem manajemen ujian terintegrasi. Pantau aktivitas, kelola bank soal, dan analisis hasil ujian siswa secara cerdas, aman, dan real-time.
                 </p>
-                <div id="loginFormArea" class="landing-action">
-                    <!-- Input Username -->
-                    <div style="margin-bottom:14px;">
-                        <label style="display:block;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Username</label>
-                        <div style="position:relative;">
-                            <i class="fa-solid fa-user" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:14px;"></i>
-                            <input type="text" id="adminLoginUsername" placeholder="Masukkan username..."
-                                onkeydown="if(event.key==='Enter')adminLogin()"
-                                style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 16px 14px 44px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:white;outline:none;transition:all 0.3s;">
+
+                <!-- Login Card — Claymorphic -->
+                <div id="loginFormArea" class="landing-login-card">
+                    <div class="login-card-header">
+                        <div class="login-card-header-icon"><i class="fa-solid fa-lock"></i></div>
+                        <span class="login-card-header-text">Masuk ke Dashboard</span>
+                    </div>
+
+                    <div class="clay-input-group">
+                        <label for="adminLoginUsername">Username</label>
+                        <div class="clay-input-wrapper">
+                            <i class="fa-solid fa-user"></i>
+                            <input type="text" id="adminLoginUsername" class="clay-input" placeholder="Masukkan username..."
+                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="username">
                         </div>
                     </div>
-                    <!-- Input Password -->
-                    <div style="margin-bottom:18px;">
-                        <label style="display:block;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Password</label>
-                        <div style="position:relative;">
-                            <i class="fa-solid fa-lock" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:14px;"></i>
-                            <input type="password" id="adminLoginPassword" placeholder="Masukkan password..."
-                                onkeydown="if(event.key==='Enter')adminLogin()"
-                                style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 16px 14px 44px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:white;outline:none;transition:all 0.3s;">
+
+                    <div class="clay-input-group">
+                        <label for="adminLoginPassword">Password</label>
+                        <div class="clay-input-wrapper">
+                            <i class="fa-solid fa-lock"></i>
+                            <input type="password" id="adminLoginPassword" class="clay-input" placeholder="Masukkan password..."
+                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="current-password">
                         </div>
                     </div>
-                    <button class="landing-btn" id="btnMasuk" onclick="adminLogin()" style="position:relative;overflow:hidden;width:100%;">
-                        Masuk Dashboard <i class="fa-solid fa-chevron-right"></i>
+
+                    <button class="landing-btn" id="btnMasuk" onclick="adminLogin()">
+                        Masuk Dashboard <i class="fa-solid fa-arrow-right"></i>
                     </button>
-                    <div style="text-align:center;margin-top:14px;">
-                        <button onclick="bukaModalDaftarGuru()" style="background:none;border:none;color:#86efac;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
+
+                    <div style="text-align:center;margin-top:12px;">
+                        <button class="register-link-btn" onclick="bukaModalDaftarGuru()">
                             <i class="fa-solid fa-user-plus" style="margin-right:6px;"></i>Daftar Akun Guru Baru
                         </button>
                     </div>
-                    <div id="loginError" style="text-align:center;margin-top:12px;font-size:13px;color:#fca5a5;min-height:20px;"></div>
+                    <div id="loginError" class="login-error"></div>
                 </div>
             </div>
 
-            <!-- RIGHT PANEL: Telemetry Stats & Keunggulan Carousel -->
+            <!-- RIGHT PANEL: Telemetry Stats & Feature Slideshow -->
             <div class="landing-panel-right">
                 <!-- Live Telemetry Card -->
                 <div class="landing-card live-card">
@@ -1988,7 +2156,7 @@
                     <div class="live-stat-desc">Jumlah siswa yang saat ini sedang mengerjakan ujian di dalam sistem.</div>
                 </div>
 
-                <!-- Small Grid for other stats -->
+                <!-- Mini Stats Grid -->
                 <div class="landing-stats-grid">
                     <div class="landing-card mini-card">
                         <div class="mini-icon"><i class="fa-solid fa-folder-open"></i></div>
@@ -2002,7 +2170,7 @@
                     </div>
                 </div>
 
-                <!-- Keunggulan Slideshow -->
+                <!-- Feature Slideshow -->
                 <div class="landing-card feature-card">
                     <h3 class="feature-title"><i class="fa-solid fa-star"></i> Keunggulan Platform</h3>
                     <div class="feature-slideshow-container">
@@ -2019,7 +2187,7 @@
                             <p class="slide-desc">Buat bank soal berkualitas tinggi berbasis analisis HOTS secara instan dalam hitungan detik menggunakan kecerdasan buatan.</p>
                         </div>
                         <div class="feature-slide">
-                            <h4 class="slide-title">Auto-Save & Enkripsi Aman</h4>
+                            <h4 class="slide-title">Auto-Save &amp; Enkripsi Aman</h4>
                             <p class="slide-desc">Jawaban siswa tersimpan aman di cloud server setiap detik, meminimalkan risiko kehilangan data karena masalah teknis.</p>
                         </div>
                     </div>
