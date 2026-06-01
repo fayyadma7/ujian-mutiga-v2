@@ -1305,12 +1305,13 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 1120px;
+            max-width: 1100px;
             display: grid;
-            grid-template-columns: 1fr 1.1fr;
-            gap: 3rem;
-            align-items: start;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 3.5rem;
+            align-items: center;
             margin: auto;
+            min-height: calc(100vh - 5rem);
         }
 
         /* LEFT PANEL — info/branding */
@@ -1320,7 +1321,9 @@
             align-items: flex-start;
             color: #f1f5f9;
             animation: landingFadeIn 0.7s ease both;
-            gap: 1.2rem;
+            gap: 1rem;
+            padding-right: 1.5rem;
+            border-right: 1px solid rgba(255,255,255,0.05);
         }
         @keyframes landingFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1375,14 +1378,19 @@
             max-width: 480px;
         }
 
-        /* LOGIN CARD — minimal flat */
+        /* LOGIN CARD */
         .landing-login-card {
-            width: 100%; max-width: 380px;
+            width: 100%; max-width: 420px;
             background: #131c31;
             border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 20px;
-            padding: 1.5rem 1.5rem 1.2rem;
-            transition: border-color 0.25s;
+            border-radius: 24px;
+            padding: 2rem 2rem 1.6rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .landing-login-card:focus-within {
+            border-color: rgba(96,165,250,0.2);
+            box-shadow: 0 8px 40px rgba(37,99,235,0.08);
         }
         .landing-login-card:focus-within {
             border-color: rgba(96,165,250,0.2);
@@ -1444,7 +1452,7 @@
             position: relative; overflow: hidden;
             background: #2563eb;
             color: white;
-            padding: 0.8rem 2rem;
+            padding: 0.85rem 2rem;
             border-radius: 100px;
             font-weight: 700; font-size: 0.9rem;
             border: none;
@@ -1454,7 +1462,7 @@
             justify-content: center; gap: 8px;
             outline: none; width: 100%;
         }
-        .landing-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .landing-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
         .landing-btn:active { transform: translateY(0); }
         .landing-btn.clicked { background: #1e40af; pointer-events: none; }
         .landing-btn.clicked i { animation: btnSpinArrow 0.8s linear infinite; }
@@ -1486,21 +1494,31 @@
         .landing-panel-right {
             display: flex; flex-direction: column;
             justify-content: center;
+            align-items: center;
             color: #f8fafc;
             animation: landingFadeIn 0.7s ease 0.15s both;
             height: 100%;
+        }
+        .landing-panel-right-label {
+            font-size: 0.55rem; font-weight: 700; letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .landing-panel-right-label i {
+            font-size: 8px; color: rgba(255,255,255,0.12);
         }
 
         .landing-card {
             background: #131c31;
             border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 18px;
-            padding: 1.3rem;
-            transition: border-color 0.25s, transform 0.25s;
+            border-radius: 16px;
+            padding: 1.1rem;
+            transition: border-color 0.25s;
         }
         .landing-card:hover {
             border-color: rgba(96,165,250,0.12);
-            transform: translateY(-2px);
         }
 
         .live-card {
@@ -1524,39 +1542,39 @@
             margin-bottom: 0.2rem;
         }
         .live-stat-value {
-            font-size: 2.6rem; font-weight: 900; line-height: 1;
+            font-size: 2.2rem; font-weight: 900; line-height: 1;
             font-family: 'Outfit', sans-serif;
             color: #34d399;
             letter-spacing: -1px;
         }
         .live-stat-label {
-            font-size: 0.9rem; font-weight: 700; color: #e2e8f0;
+            font-size: 0.85rem; font-weight: 700; color: #e2e8f0;
         }
         .live-stat-desc {
-            font-size: 0.75rem; color: #64748b; line-height: 1.4;
+            font-size: 0.72rem; color: #64748b; line-height: 1.4;
         }
 
         .landing-stats-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem;
         }
         .mini-card {
-            display: flex; flex-direction: column; gap: 0.2rem;
-            padding: 1rem 1.2rem;
+            display: flex; flex-direction: column; gap: 0.15rem;
+            padding: 0.9rem 1.1rem;
         }
-        .mini-icon { font-size: 1rem; color: #60a5fa; }
-        .mini-value { font-size: 1.4rem; font-weight: 800; color: #f8fafc; line-height: 1.1; }
-        .mini-label { font-size: 0.65rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .mini-icon { font-size: 0.9rem; color: #60a5fa; }
+        .mini-value { font-size: 1.3rem; font-weight: 800; color: #f8fafc; line-height: 1.1; }
+        .mini-label { font-size: 0.6rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .feature-card { border-top: 2px solid #8b5cf6; }
         .feature-title {
-            font-size: 0.75rem; font-weight: 700; color: #a78bfa;
+            font-size: 0.7rem; font-weight: 700; color: #a78bfa;
             letter-spacing: 1px; text-transform: uppercase;
-            margin-bottom: 0.8rem;
+            margin-bottom: 0.6rem;
             display: flex; align-items: center; gap: 6px;
         }
         .feature-slideshow-container {
-            position: relative; min-height: 90px; overflow: hidden;
-            margin-bottom: 0.5rem;
+            position: relative; min-height: 78px; overflow: hidden;
+            margin-bottom: 0.4rem;
         }
         .feature-slide {
             position: absolute; inset: 0;
@@ -1589,13 +1607,19 @@
         }
 
         @media (max-width: 992px) {
-            .landing-container { grid-template-columns: 1fr; gap: 2.5rem; padding-bottom: 3rem; }
-            .landing-panel-left { align-items: center; text-align: center; }
+            .landing-container {
+                grid-template-columns: 1fr; gap: 2rem; padding-bottom: 3rem;
+                min-height: auto;
+            }
+            .landing-panel-left {
+                align-items: center; text-align: center;
+                padding-right: 0; border-right: none;
+            }
             .landing-panel-left .landing-stats-grid { text-align: left; }
             .landing-brand { justify-content: center; }
             .landing-desc { max-width: 100%; }
             .landing-panel-right {
-                max-width: 420px; margin: 0 auto; width: 100%;
+                max-width: 440px; margin: 0 auto; width: 100%;
                 height: auto;
             }
             .landing-login-card { max-width: 100%; }
@@ -1608,11 +1632,11 @@
             .landing-title { font-size: 2rem; }
             .landing-title-sub { font-size: 1.3rem; }
             .landing-desc { font-size: 0.82rem; }
-            .landing-login-card { padding: 1.2rem 1rem; }
+            .landing-login-card { padding: 1.4rem 1.2rem; }
             .landing-btn { padding: 0.75rem 1.5rem; font-size: 0.85rem; }
-            .live-stat-value { font-size: 2.2rem; }
+            .live-stat-value { font-size: 2rem; }
             .landing-stats-grid { grid-template-columns: 1fr; gap: 0.6rem; }
-            .feature-slideshow-container { min-height: 110px; }
+            .feature-slideshow-container { min-height: 100px; }
         }
 
         /* Dark SweetAlert popup untuk Pembantu Rumus Matematika */
@@ -1710,6 +1734,9 @@
 
             <!-- RIGHT PANEL: Login -->
             <div class="landing-panel-right">
+                <div class="landing-panel-right-label">
+                    <i class="fa-solid fa-chevron-left"></i> AKSES PANEL
+                </div>
                 <div id="loginFormArea" class="landing-login-card">
                     <div class="login-card-header">
                         <div class="login-card-header-icon"><i class="fa-solid fa-lock"></i></div>
