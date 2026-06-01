@@ -3426,13 +3426,8 @@
             const m = document.getElementById('mapel').value;
             const k = document.getElementById('kelas').value;
 
-            // DEV MODE: Bypass anti-cheat if Name or Class is DEVTEST
-            if (n === 'DEVTEST' || k === 'DEVTEST') {
-                window.isDevMode = true;
-                console.log('%c[DEV MODE] Anti-Cheat Disabled', 'color: #10B981; font-weight: bold; font-size: 14px;');
-            } else {
-                window.isDevMode = false;
-            }
+            // Anti-cheat selalu aktif — tidak ada mode bypass
+            window.isDevMode = false;
 
             // --- VALIDASI AWAL: CEK APAKAH SUDAH SELESAI ---
             const { data: sudahSelesai } = await safeDbCall(() => 
@@ -4173,16 +4168,20 @@
         async function restoreFromSupabase() {
             if (!window.idRowUjian) return;
             // Cek urutan_soal — jika ada, berarti restore aman termasuk essay & format lama
-            let cekUrutan;
+            let cekUrutan = null;
             let urutanAda = false;
-            try { cekUrutan = await dbWithTimeout(db.from('jawaban_ujian').select('urutan_soal').eq('id', window.idRowUjian).maybeSingle()); } catch (e) {}
-            if (cekUrutan && cekUrutan.urutan_soal) urutanAda = true;
+            try { cekUrutan = await dbWithTimeout(db.from('jawaban_ujian').select('urutan_soal').eq('id', window.idRowUjian).maybeSingle()); } catch (e) { cekUrutan = null; }
+            if (cekUrutan && typeof cekUrutan === 'object' && cekUrutan.urutan_soal) urutanAda = true;
 
-            let data, error;
-            try { const res = await dbWithTimeout(db.from('jawaban_ujian').select('jawaban_pg').eq('id', window.idRowUjian).maybeSingle()); data = res.data; error = res.error; } catch (e) { return; }
-            if (error || !data || !data.jawaban_pg) return;
+            let supabaseResult = null;
+            try {
+                supabaseResult = await dbWithTimeout(db.from('jawaban_ujian').select('jawaban_pg').eq('id', window.idRowUjian).maybeSingle());
+            } catch (e) { return; }
+            if (!supabaseResult || supabaseResult.error || !supabaseResult.data) return;
+            const jawabanPgData = supabaseResult.data.jawaban_pg;
+            if (!jawabanPgData || typeof jawabanPgData !== 'string') return;
             let jwbBackup;
-            try { jwbBackup = JSON.parse(data.jawaban_pg); } catch (e) { return; }
+            try { jwbBackup = JSON.parse(jawabanPgData); } catch (e) { return; }
             if (!Array.isArray(jwbBackup) || jwbBackup.length === 0) return;
 
             // Format baru {id, j}: aman restore tanpa urutan_soal karena match by ID soal
@@ -4851,7 +4850,6 @@ let aktifSignalSent = false;
             // Meta+Shift+S (Snipping Tool) atau Mac Screenshots (Meta+Shift+3/4/5)
             if ((e.metaKey || e.ctrlKey) && shift && (key === 's' || key === '3' || key === '4' || key === '5')) {
                 e.preventDefault();
-                navigator.clipboard.writeText("");
                 tampilkanWarningAntiCheat('Fungsi Screenshot / Snipping Tool dinonaktifkan!');
                 catatPelanggaran('Screenshot', 'Terdeteksi upaya menggunakan shortcut Screenshot.');
                 return;
@@ -4863,7 +4861,6 @@ let aktifSignalSent = false;
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             if (e.key === 'PrintScreen' || e.keyCode === 44) {
                 e.preventDefault();
-                navigator.clipboard.writeText("");
                 tampilkanWarningAntiCheat('Mengambil tangkapan layar (Screenshot) tidak diizinkan!');
                 catatPelanggaran('Screenshot', 'Terdeteksi penekanan tombol PrintScreen untuk screenshot.');
             }

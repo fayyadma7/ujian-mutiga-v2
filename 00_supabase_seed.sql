@@ -26,11 +26,13 @@ DROP POLICY IF EXISTS siswa_insert_error   ON error_logs;
 -- ============================================================
 
 -- 1. Semua role (anon + authenticated + service_role) bisa lihat jadwal
+--    TAPI hanya service_role yang bisa INSERT/UPDATE/DELETE (lewat admin-proxy)
 CREATE POLICY siswa_select_jadwal ON jadwal_ujian
     FOR SELECT
     USING (true);
 
--- 2. Semua role bisa lihat soal
+-- 2. Semua role bisa lihat soal (bank_soal)
+--    INSERT/UPDATE/DELETE hanya via admin-proxy (service_role)
 CREATE POLICY siswa_select_bank ON bank_soal
     FOR SELECT
     USING (true);
@@ -46,6 +48,8 @@ CREATE POLICY siswa_insert_jawaban ON jawaban_ujian
     WITH CHECK (true);
 
 -- 5. Semua role bisa update jawaban — tanpa bisa hapus (tidak ada policy DELETE)
+--    NOTE: Tidak ada proteksi per-user karena sistem tidak pakai Supabase Auth.
+--    Siswa hanya bisa mengakses jawaban via idRowUjian yang terenkripsi di JS.
 CREATE POLICY siswa_update_jawaban ON jawaban_ujian
     FOR UPDATE
     USING (true)
@@ -55,6 +59,15 @@ CREATE POLICY siswa_update_jawaban ON jawaban_ujian
 CREATE POLICY siswa_insert_error ON error_logs
     FOR INSERT
     WITH CHECK (true);
+
+-- ============================================================
+-- C2. REVOKE AKSES TULIS ANON UNTUK TABEL SENSITIF
+-- ============================================================
+-- Mencegah anon mengubah bank_soal atau jadwal_ujian langsung dari client
+REVOKE INSERT, UPDATE, DELETE ON bank_soal FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON jadwal_ujian FROM anon;
+-- Mencegah anon menghapus jawaban siswa lain
+REVOKE DELETE ON jawaban_ujian FROM anon;
 
 
 -- ============================================================

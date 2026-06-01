@@ -2,20 +2,37 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-admin-key, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// Restrict CORS to known origins — jangan pakai wildcard untuk keamanan
+const ALLOWED_ORIGINS = [
+  'https://bkecjfrwqocguyvjymkn.supabase.co',
+  'http://127.0.0.1:3000',
+  'http://localhost:3000',
+  'https://fayyadma7.github.io',
+  // Tambahkan domain production di sini
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : 'null';
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-admin-key, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     const adminKey = req.headers.get('x-admin-key');
-    const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET');
+    // Fallback hardcoded agar bisa jalan tanpa env var di Dashboard.
+    // Ganti nilai di bawah lalu set ADMIN_SECRET di Dashboard untuk override.
+    const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') || 'sk_live_ujian_mutiga_2026_f4yy4d';
     if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
