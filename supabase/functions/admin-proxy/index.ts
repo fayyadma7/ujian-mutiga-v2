@@ -2,14 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Restrict CORS to known origins — jangan pakai wildcard untuk keamanan
+// Restrict CORS to known origins
 const ALLOWED_ORIGINS = [
-  'null', // file:// (testing lokal double-click HTML)
+  'null',
   'https://bkecjfrwqocguyvjymkn.supabase.co',
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   'https://fayyadma7.github.io',
-  // Tambahkan domain production di sini
 ];
 
 function getCorsHeaders(req: Request) {
@@ -17,36 +16,51 @@ function getCorsHeaders(req: Request) {
   const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : 'null';
   return {
     'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-admin-key, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-guru-id, x-guru-username, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const adminKey = req.headers.get('x-admin-key');
-    // Fallback hardcoded agar bisa jalan tanpa env var di Dashboard.
-    // Ganti nilai di bawah lalu set ADMIN_SECRET di Dashboard untuk override.
-    const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') || 'sk_live_ujian_mutiga_2026_f4yy4d';
-    if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { action, table, data, filter, id } = await req.json();
+    // ========== SESSION VALIDATION ==========
+    // Terima guru_id dari client. Verifikasi guru aktif di database.
+    const guruId = req.headers.get('x-guru-id');
+    const guruUsername = req.headers.get('x-guru-username');
 
+    if (!guruId || !guruUsername) {
+      return new Response(JSON.stringify({ error: 'Missing guru credentials' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { data: guru, error: guruErr } = await supabase
+      .from('guru')
+      .select('id, role, is_active')
+      .eq('id', parseInt(guruId, 10))
+      .eq('username', guruUsername)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (guruErr || !guru) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: guru not found or inactive' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ========== EXECUTE OPERATION ==========
+    const { action, table, data, filter, id } = await req.json();
     let result;
 
     switch (action) {

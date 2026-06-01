@@ -8135,10 +8135,7 @@ Kisi-kisi harus:
         }
 
         // ==================== GURU AUTH ====================
-        function getGuruSession() {
-            try { return JSON.parse(localStorage.getItem('guru_session')); } catch { return null; }
-        }
-
+        // getGuruSession() didefinisikan di js/admin-db.js (di-load lebih awal)
         function bukaLoginModal() {
             document.getElementById('adminLoginUsername').value = '';
             document.getElementById('adminLoginPassword').value = '';
@@ -8169,17 +8166,9 @@ Kisi-kisi harus:
                     return;
                 }
                 const sessionData = data.data;
-                // Tentukan role: admin atau guru
-                let isAdmin = sessionData.is_admin === true;
-                // Jika field is_admin tidak ada di response, coba query langsung ke tabel guru
-                if (!('is_admin' in sessionData) && sessionData.id) {
-                    try {
-                        const { data: guruCheck } = await db.from('guru').select('is_admin').eq('id', sessionData.id).single();
-                        isAdmin = guruCheck && guruCheck.is_admin === true;
-                    } catch (_) {}
-                }
-                sessionData.isAdmin = isAdmin;
-                sessionData.role = isAdmin ? 'admin' : 'guru';
+                // Role dari server (migration 5: 'admin' atau 'guru')
+                sessionData.role = sessionData.role || 'guru';
+                sessionData.isAdmin = (sessionData.role === 'admin');
                 localStorage.setItem('guru_session', JSON.stringify(sessionData));
                 document.getElementById('guruNamaHeader').innerHTML = '<i class="fas fa-user-check"></i> ' + (sessionData.nama || sessionData.username);
                 // Isi welcome greeting dan header

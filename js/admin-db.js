@@ -1,20 +1,30 @@
 // ============================================================
 // admin-db.js — Admin SQL functions via admin-proxy Edge Function
-// Melakukan operasi DELETE/UPDATE/INSERT/delete via service_role key
-// di server-side, bukan dari browser langsung.
+// Operasi DELETE/UPDATE/INSERT via service_role key di server-side.
+// Auth: mengirim guru session (id + username) sebagai validasi.
+// Hanya guru aktif yang bisa mengakses proxy ini.
 // ============================================================
 
 const ADMIN_PROXY_URL = 'https://bkecjfrwqocguyvjymkn.supabase.co/functions/v1/admin-proxy';
-// Ganti nilai ini jika ADMIN_SECRET diubah di Supabase Dashboard
-const ADMIN_KEY = 'sk_live_ujian_mutiga_2026_f4yy4d';
+
+// Ambil session dari localStorage
+function getGuruSession() {
+  try { return JSON.parse(localStorage.getItem('guru_session')); } catch { return null; }
+}
 
 async function callProxy(action, body) {
+  const session = getGuruSession();
+  if (!session || !session.id) {
+    return { data: null, error: new Error('Silakan login terlebih dahulu') };
+  }
+
   try {
     const res = await fetch(ADMIN_PROXY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-admin-key': ADMIN_KEY
+        'x-guru-id': String(session.id),
+        'x-guru-username': session.username
       },
       body: JSON.stringify({ action, ...body })
     });
@@ -23,7 +33,6 @@ async function callProxy(action, body) {
       return { data: null, error: new Error(errBody.error || `HTTP ${res.status}`) };
     }
     const result = await res.json();
-    // Edge Function return { data, error } — sama format seperti db.rpc()
     return result;
   } catch (e) {
     return { data: null, error: e };
