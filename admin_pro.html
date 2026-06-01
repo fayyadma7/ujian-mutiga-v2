@@ -8136,6 +8136,26 @@ Kisi-kisi harus:
 
         // ==================== GURU AUTH ====================
         // getGuruSession() didefinisikan di js/admin-db.js (di-load lebih awal)
+
+        // Upgrade session lama ke format baru (dengan role)
+        async function upgradeSession() {
+            const raw = localStorage.getItem('guru_session');
+            if (!raw) return;
+            try {
+                const sesi = JSON.parse(raw);
+                // Cek apakah session perlu upgrade (role belum ada)
+                if (sesi && sesi.id && (!sesi.role || sesi.role === 'guru' && sesi.username === 'admin')) {
+                    // Query langsung ke tabel guru untuk cek role terbaru
+                    const { data: guruData } = await db.from('guru').select('role').eq('id', sesi.id).maybeSingle();
+                    if (guruData && guruData.role) {
+                        sesi.role = guruData.role;
+                        sesi.isAdmin = (guruData.role === 'admin');
+                        localStorage.setItem('guru_session', JSON.stringify(sesi));
+                    }
+                }
+            } catch (_) {}
+        }
+
         function bukaLoginModal() {
             document.getElementById('adminLoginUsername').value = '';
             document.getElementById('adminLoginPassword').value = '';
@@ -8433,8 +8453,10 @@ Kisi-kisi harus:
             });
         }
 
-        // Check if already logged in, auto-enter dashboard
-        // No auto-login — landing page always shows first; user must click Masuk Dashboard
+        // Upgrade session lama ke format baru (dengan role dari server)
+        (async () => {
+            try { await upgradeSession(); } catch (_) {}
+        })();
 
     </script>
 </body>
