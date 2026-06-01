@@ -3639,10 +3639,23 @@
                     }
                 }
 
-                renderSoal(s_data);
+                try {
+                    renderSoal(s_data);
+                } catch (e) {
+                    console.error("Fatal renderSoal error:", e);
+                    document.getElementById('containerSoal').innerHTML =
+                        `<div style="text-align:center;padding:80px 20px;color:rgba(255,255,255,0.5);">
+                            <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;margin-bottom:16px;display:block;"></i>
+                            <h3 style="color:#f1f5f9;">Terjadi kesalahan saat memuat soal</h3>
+                            <p style="margin-top:8px;">Silakan laporkan ke pengawas dan klik tombol di bawah.</p>
+                            <button class="btn-overlay" onclick="location.reload()" style="margin-top:20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;">
+                                <i class="fas fa-redo me-2"></i>Muat Ulang Halaman
+                            </button>
+                        </div>`;
+                }
                 
                 // Render grid nomor soal
-                renderNavigasiGrid();
+                try { renderNavigasiGrid(); } catch (_) {}
 
                 loadProgress();
                 updateProgressBar();
@@ -3958,7 +3971,21 @@
 
         function renderSoal(data) {
             let h = '';
+            let errorCount = 0;
             data.forEach((s, i) => {
+                // Proteksi: lewati soal yang rusak, jangan crash semua render
+                if (!s || typeof s[0] === 'undefined') {
+                    errorCount++;
+                    h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}" style="border-color:rgba(239,68,68,0.3);">
+        <div class="soal-header-row">
+            <div class="soal-num-badge" id="badge-${i}" style="background:rgba(239,68,68,0.2);color:#fca5a5;">Soal ${i + 1} ⚠️</div>
+        </div>
+        <div class="soal-text" style="color:rgba(255,255,255,0.4);font-style:italic;">
+            <i class="fas fa-exclamation-triangle" style="color:#fca5a5;margin-right:8px;"></i>Soal ini rusak — laporkan ke pengawas.
+        </div>
+    </div>`;
+                    return;
+                }
                 const isRagu = window.stateRagu && window.stateRagu[i];
                 const raguClass = isRagu ? 'btn-ragu ragu-active' : 'btn-ragu';
                 const raguIcon = isRagu ? 'fas fa-bookmark' : 'far fa-bookmark';
@@ -3974,14 +4001,16 @@
                 if (s[8] === "PG") {
                     h += `<div class="option-list">`;
                     ['A', 'B', 'C', 'D', 'E'].forEach((o, idx) => {
-                        const teksOpsi = s[idx + 1];
-                        if (teksOpsi && teksOpsi.toString().trim() !== "") {
-                            h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}')">
+                        try {
+                            const teksOpsi = s[idx + 1];
+                            if (teksOpsi && teksOpsi.toString().trim() !== "") {
+                                h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}')">
               <input type="radio" name="q${i}" value="${o}" id="r${i}${o}" onchange="saveProgress(); updateProgressBar();">
               <div class="option-key">${o}</div>
               <div class="option-label"><div class="option-label-inner">${teksOpsi}</div></div>
             </label>`;
-                        }
+                            }
+                        } catch (_) { /* skip opsi rusak */ }
                     });
                     h += `</div>`;
                 } else {
@@ -3989,6 +4018,17 @@
                 }
                 h += `</div>`;
             });
+            // Jika SEMUA soal rusak, beri fallback
+            if (errorCount === data.length) {
+                h = `<div style="text-align:center;padding:80px 20px;color:rgba(255,255,255,0.5);">
+                    <i class="fas fa-database" style="font-size:48px;color:#ef4444;margin-bottom:16px;display:block;"></i>
+                    <h3 style="color:#f1f5f9;">Semua soal gagal dimuat</h3>
+                    <p style="margin-top:8px;">Silakan laporkan ke pengawas ujian.</p>
+                    <button class="btn-overlay" onclick="location.reload()" style="margin-top:20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;">
+                        <i class="fas fa-redo me-2"></i>Muat Ulang Halaman
+                    </button>
+                </div>`;
+            }
             document.getElementById('containerSoal').innerHTML = h;
 
             // Bungkus tabel dengan wadah responsif untuk horizontal scrolling
