@@ -1307,19 +1307,20 @@
             width: 100%;
             max-width: 1120px;
             display: grid;
-            grid-template-columns: 1.1fr 1fr;
+            grid-template-columns: 1fr 1.1fr;
             gap: 3rem;
-            align-items: center;
+            align-items: start;
             margin: auto;
         }
 
-        /* LEFT PANEL */
+        /* LEFT PANEL — info/branding */
         .landing-panel-left {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             color: #f1f5f9;
             animation: landingFadeIn 0.7s ease both;
+            gap: 1.2rem;
         }
         @keyframes landingFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1327,7 +1328,6 @@
             display: flex;
             align-items: center;
             gap: 14px;
-            margin-bottom: 1.5rem;
         }
         .landing-logo {
             height: 52px; width: auto;
@@ -1356,7 +1356,6 @@
             font-size: 0.65rem; font-weight: 700;
             border: 1px solid rgba(59,130,246,0.15);
             letter-spacing: 2px; text-transform: uppercase;
-            margin-bottom: 1rem;
         }
 
         .landing-title {
@@ -1369,12 +1368,11 @@
             font-size: clamp(1.2rem, 2.8vw, 2.2rem);
             font-weight: 700; line-height: 1.1; letter-spacing: 1px;
             color: #60a5fa;
-            margin-bottom: 0.8rem;
         }
         .landing-desc {
             font-size: 0.9rem; line-height: 1.6;
             color: #94a3b8;
-            margin-bottom: 1.6rem; max-width: 480px;
+            max-width: 480px;
         }
 
         /* LOGIN CARD — minimal flat */
@@ -1484,11 +1482,13 @@
             font-size: 0.75rem; color: #fca5a5; min-height: 18px;
         }
 
-        /* RIGHT PANEL */
+        /* RIGHT PANEL — login card centered */
         .landing-panel-right {
             display: flex; flex-direction: column;
-            gap: 1.2rem; color: #f8fafc;
+            justify-content: center;
+            color: #f8fafc;
             animation: landingFadeIn 0.7s ease 0.15s both;
+            height: 100%;
         }
 
         .landing-card {
@@ -1591,10 +1591,14 @@
         @media (max-width: 992px) {
             .landing-container { grid-template-columns: 1fr; gap: 2.5rem; padding-bottom: 3rem; }
             .landing-panel-left { align-items: center; text-align: center; }
+            .landing-panel-left .landing-stats-grid { text-align: left; }
             .landing-brand { justify-content: center; }
             .landing-desc { max-width: 100%; }
+            .landing-panel-right {
+                max-width: 420px; margin: 0 auto; width: 100%;
+                height: auto;
+            }
             .landing-login-card { max-width: 100%; }
-            .landing-panel-right { max-width: 420px; margin: 0 auto; width: 100%; }
         }
         @media (max-width: 576px) {
             #landingOverlay { padding: 1rem 0.6rem; }
@@ -1632,6 +1636,7 @@
         <div class="landing-bg"></div>
 
         <div class="landing-container">
+            <!-- LEFT PANEL: Brand, Title, Info Cards -->
             <div class="landing-panel-left">
                 <div class="landing-brand">
                     <img src="assets/logo-mute.png" alt="Logo SMK" class="landing-logo">
@@ -1649,44 +1654,7 @@
                     Sistem manajemen ujian terintegrasi. Pantau aktivitas, kelola bank soal, dan analisis hasil ujian secara cerdas, aman, dan real-time.
                 </p>
 
-                <div id="loginFormArea" class="landing-login-card">
-                    <div class="login-card-header">
-                        <div class="login-card-header-icon"><i class="fa-solid fa-lock"></i></div>
-                        <span class="login-card-header-text">Masuk ke Dashboard</span>
-                    </div>
-
-                    <div class="clay-input-group">
-                        <label for="adminLoginUsername">Username</label>
-                        <div class="clay-input-wrapper">
-                            <i class="fa-solid fa-user"></i>
-                            <input type="text" id="adminLoginUsername" class="clay-input" placeholder="Username..."
-                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="username">
-                        </div>
-                    </div>
-
-                    <div class="clay-input-group">
-                        <label for="adminLoginPassword">Password</label>
-                        <div class="clay-input-wrapper">
-                            <i class="fa-solid fa-lock"></i>
-                            <input type="password" id="adminLoginPassword" class="clay-input" placeholder="Password..."
-                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="current-password">
-                        </div>
-                    </div>
-
-                    <button class="landing-btn" id="btnMasuk" onclick="adminLogin()">
-                        Masuk Dashboard <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-
-                    <div style="text-align:center;margin-top:10px;">
-                        <button class="register-link-btn" onclick="bukaModalDaftarGuru()">
-                            <i class="fa-solid fa-user-plus" style="margin-right:5px;"></i>Daftar Akun Guru Baru
-                        </button>
-                    </div>
-                    <div id="loginError" class="login-error"></div>
-                </div>
-            </div>
-
-            <div class="landing-panel-right">
+                <!-- Info Cards -->
                 <div class="landing-card live-card">
                     <div class="live-badge">
                         <span class="live-dot"></span> LIVE MONITORING
@@ -1737,6 +1705,45 @@
                         <span class="dot" onclick="setSlide(2)"></span>
                         <span class="dot" onclick="setSlide(3)"></span>
                     </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Login -->
+            <div class="landing-panel-right">
+                <div id="loginFormArea" class="landing-login-card">
+                    <div class="login-card-header">
+                        <div class="login-card-header-icon"><i class="fa-solid fa-lock"></i></div>
+                        <span class="login-card-header-text">Masuk ke Dashboard</span>
+                    </div>
+
+                    <div class="clay-input-group">
+                        <label for="adminLoginUsername">Username</label>
+                        <div class="clay-input-wrapper">
+                            <i class="fa-solid fa-user"></i>
+                            <input type="text" id="adminLoginUsername" class="clay-input" placeholder="Username..."
+                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="username">
+                        </div>
+                    </div>
+
+                    <div class="clay-input-group">
+                        <label for="adminLoginPassword">Password</label>
+                        <div class="clay-input-wrapper">
+                            <i class="fa-solid fa-lock"></i>
+                            <input type="password" id="adminLoginPassword" class="clay-input" placeholder="Password..."
+                                onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="current-password">
+                        </div>
+                    </div>
+
+                    <button class="landing-btn" id="btnMasuk" onclick="adminLogin()">
+                        Masuk Dashboard <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                    <div style="text-align:center;margin-top:10px;">
+                        <button class="register-link-btn" onclick="bukaModalDaftarGuru()">
+                            <i class="fa-solid fa-user-plus" style="margin-right:5px;"></i>Daftar Akun Guru Baru
+                        </button>
+                    </div>
+                    <div id="loginError" class="login-error"></div>
                 </div>
             </div>
         </div>
