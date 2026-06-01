@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Restrict CORS to known origins — jangan pakai wildcard untuk keamanan
 const ALLOWED_ORIGINS = [
+  'null', // file:// (testing lokal double-click HTML)
   'https://bkecjfrwqocguyvjymkn.supabase.co',
   'http://127.0.0.1:3000',
   'http://localhost:3000',
