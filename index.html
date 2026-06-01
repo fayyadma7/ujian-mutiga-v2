@@ -3138,7 +3138,7 @@
         let _flushTimer = null;
         let _flushing = false;
         let _flushFailCount = 0; // Hitung gagal berturut-turut untuk hentikan retry
-        const MAX_FLUSH_FAIL = 10; // Berhenti retry setelah 10x gagal berturut
+        const MAX_FLUSH_FAIL = 30; // Berhenti retry setelah 30x gagal berturut
 
         function getQueueUserId() {
             try {
@@ -3188,11 +3188,38 @@
             return result;
         }
 
+        let _flushWarned = false; // Tampilkan warning sekali saja
+
         async function doFlush() {
             if (_flushing || !window.idRowUjian) return;
             // Hentikan retry setelah terlalu banyak gagal (hindari spam ke server)
             if (_flushFailCount >= MAX_FLUSH_FAIL) {
+                // Tampilkan warning ke siswa (hanya sekali)
+                if (!_flushWarned) {
+                    _flushWarned = true;
+                    Swal.fire({
+                        icon: 'warning', title: 'Koneksi Tidak Stabil',
+                        text: 'Jawaban mungkin belum tersimpan. Periksa jaringan atau hubungi pengawas.',
+                        toast: true, position: 'top-end', showConfirmButton: false, timer: 6000,
+                        background: 'rgba(15,23,42,0.95)', color: '#f1f5f9',
+                        customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title' }
+                    });
+                }
+                // Tetap coba kirim sekali lagi (last attempt)
                 _flushFailCount = 0;
+                _flushing = true;
+                try {
+                    const snapshot = getAnswersSnapshot();
+                    if (snapshot && (snapshot.hasValue || snapshot.essay)) {
+                        const updateData = {};
+                        if (snapshot.hasValue) updateData.jawaban_pg = snapshot.pg;
+                        if (snapshot.essay) updateData.jawaban_essay = snapshot.essay;
+                        await dbWithTimeout(
+                            db.from('jawaban_ujian').update(updateData).eq('id', window.idRowUjian)
+                        );
+                    }
+                } catch (_) {}
+                _flushing = false;
                 return;
             }
             _flushing = true;
@@ -3250,8 +3277,24 @@
                 if (Date.now() > maxWait) break; // timeout 30dtk
                 await new Promise(r => setTimeout(r, 200));
             }
-            // Paksa flush langsung (pastikan data terkini terkirim)
-            await doFlush();
+            // Ambil snapshot terkini
+            const snapshot = getAnswersSnapshot();
+            if (!snapshot || (!snapshot.hasValue && !snapshot.essay)) return;
+            // Kirim langsung tanpa antrian — dengan retry sederhana
+            const updateData = {};
+            if (snapshot.hasValue) updateData.jawaban_pg = snapshot.pg;
+            if (snapshot.essay) updateData.jawaban_essay = snapshot.essay;
+            for (let retry = 0; retry < 3; retry++) {
+                try {
+                    await dbWithTimeout(
+                        db.from('jawaban_ujian').update(updateData).eq('id', window.idRowUjian)
+                    );
+                    return; // Berhasil
+                } catch (_) {
+                    if (retry < 2) await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+            // Gagal 3x — data masih aman di payload submit, jangan panik
         }
 
         // ===== AKHIR WRITE QUEUE =====
