@@ -8338,7 +8338,7 @@ Kisi-kisi harus:
                 }
                 let html = '';
                 list.forEach((g, i) => {
-                    const isGuruAdmin = g.is_admin === true;
+                    const isGuruAdmin = (g.role === 'admin');
                     html += '<tr>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);">' + (i+1) + '</td>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><strong>' + g.nama + '</strong></td>' +
