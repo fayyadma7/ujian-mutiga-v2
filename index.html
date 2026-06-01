@@ -2610,7 +2610,12 @@
                     <div class="line2">Purbalingga</div>
                 </div>
             </div>
-            <div class="top-bar-badge">TA 2025/2026</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <button class="top-bar-badge" style="cursor:pointer;background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.35);color:#86efac;" onclick="bukaModalLoginGuru()">
+                    <i class="fas fa-chalkboard-teacher" style="margin-right:6px;font-size:11px;"></i>Login Guru
+                </button>
+                <span class="top-bar-badge">TA 2025/2026</span>
+            </div>
         </div>
 
         <div class="hero">
@@ -2634,6 +2639,10 @@
                     <button class="btn-hero-secondary" onclick="scrollToRules()">
                         <i class="fas fa-scroll" style="font-size:13px;"></i>
                         Lihat Tata Tertib
+                    </button>
+                    <button class="btn-hero-secondary" onclick="bukaModalDaftarGuru()" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);">
+                        <i class="fas fa-user-plus" style="font-size:13px;"></i>
+                        Daftar Akun Guru
                     </button>
                 </div>
                 <div class="hero-stats">
@@ -3034,6 +3043,70 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- ===== MODAL LOGIN GURU ===== -->
+    <div id="modalLoginGuru" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+        <div class="modal-card" style="max-width:400px;padding:36px 32px;">
+            <div style="text-align:center;margin-bottom:24px;">
+                <div style="width:56px;height:56px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#86efac;font-size:22px;"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:white;margin-bottom:4px;">Login Guru</div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.45);">Masuk ke pusat akun guru</div>
+            </div>
+            <div class="login-field-group">
+                <div class="login-field">
+                    <label class="login-field-label">Username</label>
+                    <i class="fas fa-user login-field-icon" style="bottom:14px;"></i>
+                    <input type="text" id="guruUsername" class="login-input" placeholder="Masukkan username..." onkeydown="if(event.key==='Enter')loginGuru()">
+                </div>
+                <div class="login-field">
+                    <label class="login-field-label">Password</label>
+                    <i class="fas fa-lock login-field-icon" style="bottom:14px;"></i>
+                    <input type="password" id="guruPassword" class="login-input" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')loginGuru()">
+                </div>
+            </div>
+            <button class="btn-login" onclick="loginGuru()" style="margin-bottom:12px;">
+                <i class="fas fa-sign-in-alt"></i> Masuk
+            </button>
+            <div style="text-align:center;font-size:13px;color:rgba(255,255,255,0.4);">
+                Belum punya akun? 
+                <a href="#" onclick="event.preventDefault();document.getElementById('modalLoginGuru').style.display='none';bukaModalDaftarGuru();" style="color:#86efac;font-weight:600;text-decoration:none;">Daftar di sini</a>
+            </div>
+            <button onclick="document.getElementById('modalLoginGuru').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DAFTAR GURU ===== -->
+    <div id="modalDaftarGuru" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+        <div class="modal-card" style="max-width:420px;padding:36px 32px;">
+            <div style="text-align:center;margin-bottom:24px;">
+                <div style="width:56px;height:56px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#86efac;font-size:22px;"><i class="fas fa-user-plus"></i></div>
+                <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:white;margin-bottom:4px;">Daftar Akun Guru</div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.45);">Setelah mendaftar, tunggu persetujuan admin</div>
+            </div>
+            <div class="login-field-group">
+                <div class="login-field">
+                    <label class="login-field-label">Nama Lengkap</label>
+                    <i class="fas fa-id-card login-field-icon" style="bottom:14px;"></i>
+                    <input type="text" id="daftarNama" class="login-input" placeholder="Nama lengkap Anda...">
+                </div>
+                <div class="login-field">
+                    <label class="login-field-label">Username</label>
+                    <i class="fas fa-user login-field-icon" style="bottom:14px;"></i>
+                    <input type="text" id="daftarUsername" class="login-input" placeholder="Buat username (min 3 karakter)">
+                </div>
+                <div class="login-field">
+                    <label class="login-field-label">Password</label>
+                    <i class="fas fa-lock login-field-icon" style="bottom:14px;"></i>
+                    <input type="password" id="daftarPassword" class="login-input" placeholder="Buat password (min 6 karakter)">
+                </div>
+            </div>
+            <button class="btn-login" onclick="daftarGuru()" style="margin-bottom:8px;background:linear-gradient(135deg,#059669,#22C55E);box-shadow:0 8px 32px rgba(34,197,94,0.3);">
+                <i class="fas fa-paper-plane"></i> Kirim Pendaftaran
+            </button>
+            <div id="daftarStatus" style="font-size:13px;text-align:center;min-height:20px;"></div>
+            <button onclick="document.getElementById('modalDaftarGuru').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;"><i class="fas fa-times"></i></button>
+        </div>
     </div>
 
     <script>
@@ -4960,6 +5033,84 @@ let aktifSignalSent = false;
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // ===================== GURU AUTH =====================
+        function bukaModalLoginGuru() {
+            document.getElementById('guruUsername').value = '';
+            document.getElementById('guruPassword').value = '';
+            document.getElementById('modalLoginGuru').style.display = 'flex';
+        }
+
+        function bukaModalDaftarGuru() {
+            document.getElementById('daftarNama').value = '';
+            document.getElementById('daftarUsername').value = '';
+            document.getElementById('daftarPassword').value = '';
+            document.getElementById('daftarStatus').textContent = '';
+            document.getElementById('modalDaftarGuru').style.display = 'flex';
+        }
+
+        async function loginGuru() {
+            const username = document.getElementById('guruUsername').value.trim();
+            const password = document.getElementById('guruPassword').value;
+            if (!username || !password) {
+                Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Masukkan username dan password', background: 'rgba(10,18,40,0.92)', color: '#f1f5f9', confirmButtonColor: '#3B82F6', customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn' } });
+                return;
+            }
+            const btn = document.querySelector('#modalLoginGuru .btn-login');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            try {
+                const { data, error } = await db.rpc('guru_login', { p_username: username, p_password: password });
+                if (error || !data || !data.success) {
+                    Swal.fire({ icon: 'error', title: 'Login Gagal', text: (error ? error.message : (data && data.error ? data.error : 'Username atau password salah')), background: 'rgba(10,18,40,0.92)', color: '#f1f5f9', confirmButtonColor: '#3B82F6', customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn' } });
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
+                    return;
+                }
+                // Simpan session ke localStorage
+                localStorage.setItem('guru_session', JSON.stringify(data.data));
+                document.getElementById('modalLoginGuru').style.display = 'none';
+                // Redirect ke Pusat Akun Guru
+                window.location.href = 'pusat_akun_guru.html';
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: e.message || 'Terjadi kesalahan', background: 'rgba(10,18,40,0.92)', color: '#f1f5f9', confirmButtonColor: '#3B82F6', customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn' } });
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
+            }
+        }
+
+        async function daftarGuru() {
+            const nama = document.getElementById('daftarNama').value.trim();
+            const username = document.getElementById('daftarUsername').value.trim();
+            const password = document.getElementById('daftarPassword').value;
+            if (!nama || !username || !password) {
+                document.getElementById('daftarStatus').innerHTML = '<span style="color:#fca5a5;">Harap isi semua field</span>';
+                return;
+            }
+            if (username.length < 3) {
+                document.getElementById('daftarStatus').innerHTML = '<span style="color:#fca5a5;">Username minimal 3 karakter</span>';
+                return;
+            }
+            if (password.length < 6) {
+                document.getElementById('daftarStatus').innerHTML = '<span style="color:#fca5a5;">Password minimal 6 karakter</span>';
+                return;
+            }
+            const btn = document.querySelector('#modalDaftarGuru .btn-login');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+            document.getElementById('daftarStatus').innerHTML = '';
+            try {
+                const { data, error } = await db.rpc('guru_daftar', { p_username: username, p_password: password, p_nama: nama });
+                if (error || !data || !data.success) {
+                    document.getElementById('daftarStatus').innerHTML = '<span style="color:#fca5a5;">' + ((error ? error.message : (data && data.error ? data.error : 'Pendaftaran gagal'))) + '</span>';
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
+                    return;
+                }
+                document.getElementById('daftarStatus').innerHTML = '<span style="color:#86efac;font-weight:600;">' + data.message + '</span>';
+                btn.innerHTML = '<i class="fas fa-check"></i> Terkirim!';
+                btn.disabled = false;
+                setTimeout(() => { document.getElementById('modalDaftarGuru').style.display = 'none'; }, 3000);
+            } catch (e) {
+                document.getElementById('daftarStatus').innerHTML = '<span style="color:#fca5a5;">' + (e.message || 'Terjadi kesalahan') + '</span>';
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
             }
         }
 

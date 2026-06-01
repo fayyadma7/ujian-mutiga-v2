@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --navy: #0B1D3A;
+            --navy-mid: #132952;
+            --navy-light: #1a3468;
+            --blue: #1A56DB;
+            --blue-light: #3B82F6;
+            --blue-pale: #93C5FD;
+            --gold: #F59E0B;
+            --gold-light: #FCD34D;
+            --white: #FFFFFF;
+            --success: #22C55E;
+            --success-bg: rgba(34,197,94,0.12);
+            --danger: #EF4444;
+            --danger-bg: rgba(239,68,68,0.12);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            background: var(--navy) !important;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            color: white;
+        }
+        .bg-scene {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, #0B1D3A 0%, #132952 50%, #0d2240 100%);
+            z-index: -2;
+        }
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: -1;
+        }
+        .bg-orb {
+            position: fixed; border-radius: 50%; filter: blur(80px);
+            animation: floatOrb 8s ease-in-out infinite; pointer-events: none; z-index: -1;
+        }
+        .orb-1 { width: 500px; height: 500px; background: rgba(26,86,219,0.2); top: -100px; right: -100px; }
+        .orb-2 { width: 350px; height: 350px; background: rgba(34,197,94,0.08); bottom: -80px; left: -80px; animation-delay: 3s; }
+        @keyframes floatOrb {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(20px,-30px) scale(1.05); }
+            66% { transform: translate(-15px,20px) scale(0.97); }
+        }
+
+        /* Navbar */
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 40px; border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(11,29,58,0.7); backdrop-filter: blur(12px);
+        }
+        .top-bar-brand {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .top-bar-brand img { width: 36px; filter: drop-shadow(0 0 8px rgba(245,158,11,0.4)); }
+        .top-bar-brand-text .line1 { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-light); }
+        .top-bar-brand-text .line2 { font-size: 14px; font-weight: 700; }
+        .btn-topbar {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .btn-topbar:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); }
+
+        /* Login Screen */
+        #loginScreen {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px;
+        }
+        #loginScreen .login-card {
+            max-width: 420px; width: 100%;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(24px); border-radius: 28px; overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+        }
+        .login-card-header {
+            background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(11,29,58,0.5));
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 32px; text-align: center;
+        }
+        .login-card-header .icon-big {
+            width: 64px; height: 64px; margin: 0 auto 16px;
+            background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #86efac; font-size: 26px;
+        }
+        .login-card-header h2 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
+        .login-card-header p { font-size: 13px; color: rgba(255,255,255,0.5); }
+        .login-card-body { padding: 28px 32px 32px; }
+        .login-field { position: relative; margin-bottom: 18px; }
+        .login-field label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 6px; display: block; }
+        .login-input {
+            width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px; padding: 14px 16px 14px 44px;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 500;
+            color: white; outline: none; transition: all 0.3s;
+        }
+        .login-input::placeholder { color: rgba(255,255,255,0.25); }
+        .login-input:focus { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.06); box-shadow: 0 0 0 3px rgba(34,197,94,0.1); }
+        .login-field-icon { position: absolute; bottom: 14px; left: 16px; color: rgba(255,255,255,0.25); font-size: 14px; pointer-events: none; }
+        .btn-primary {
+            width: 100%; background: linear-gradient(135deg, #059669, #22C55E);
+            color: white; border: none; padding: 16px; border-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.3s;
+            box-shadow: 0 8px 32px rgba(34,197,94,0.3);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(34,197,94,0.45); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Dashboard */
+        #dashboardScreen { display: none; padding: 24px 40px 60px; }
+        .page-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+        .page-subtitle { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 32px; }
+        .stats-row { display: flex; gap: 20px; margin-bottom: 36px; flex-wrap: wrap; }
+        .stat-card {
+            flex: 1; min-width: 180px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+        .stat-card .icon-circle {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 16px; font-size: 18px;
+        }
+        .stat-card .stat-val { font-size: 28px; font-weight: 800; line-height: 1.2; }
+        .stat-card .stat-lbl { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .section-card {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px; padding: 28px; margin-bottom: 28px;
+        }
+        .section-title {
+            font-size: 18px; font-weight: 800; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+            padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th {
+            background: rgba(255,255,255,0.04); padding: 14px 16px;
+            font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+            color: rgba(255,255,255,0.45); text-align: left; white-space: nowrap;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        tbody td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.75); }
+        tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .badge-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-active { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+        .badge-inactive { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+        .badge-pending { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.25); color: #fcd34d; }
+
+        .btn-sm {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .btn-sm:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); }
+        .btn-sm-green { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.25); color: #86efac; }
+        .btn-sm-green:hover { background: rgba(34,197,94,0.2); }
+        .btn-sm-red { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.25); color: #fca5a5; }
+        .btn-sm-red:hover { background: rgba(239,68,68,0.2); }
+        .btn-sm-yellow { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #fcd34d; }
+        .btn-sm-yellow:hover { background: rgba(245,158,11,0.2); }
+        .btn-sm-blue { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.25); color: #93c5fd; }
+        .btn-sm-blue:hover { background: rgba(59,130,246,0.2); }
+        .action-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.3); }
+        .empty-state i { font-size: 40px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-state p { font-size: 14px; }
+
+        .toast-msg {
+            position: fixed; bottom: 24px; right: 24px;
+            background: rgba(11,29,58,0.95); border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 14px; padding: 16px 24px; font-size: 14px; font-weight: 600;
+            color: white; z-index: 99999; backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            animation: toastIn 0.3s ease; display: none;
+        }
+        .toast-msg.error { border-color: rgba(239,68,68,0.3); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            .top-bar { padding: 12px 20px; }
+            #dashboardScreen { padding: 16px 16px 40px; }
+            .stats-row { gap: 12px; }
+            .stat-card { min-width: 140px; padding: 16px; }
+            .stat-card .stat-val { font-size: 22px; }
+            .section-card { padding: 16px; }
+            thead th, tbody td { padding: 10px 12px; font-size: 12px; }
+            .action-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-scene"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <!-- TOP BAR -->
+    <div class="top-bar" id="topBar" style="display:none;">
+        <div class="top-bar-brand">
+            <img src="assets/logo-mute.png" alt="Logo">
+            <div class="top-bar-brand-text">
+                <div class="line1">SMK Muhammadiyah 3 Purbalingga</div>
+                <div class="line2">Pusat Akun Guru</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span id="guruNamaDisplay" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);"></span>
+            <button class="btn-topbar" onclick="logoutGuru()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen">
+        <div class="login-card">
+            <div class="login-card-header">
+                <div class="icon-big"><i class="fas fa-chalkboard-teacher"></i></div>
+                <h2>Pusat Akun Guru</h2>
+                <p>Masuk untuk mengelola akun guru</p>
+            </div>
+            <div class="login-card-body">
+                <div class="login-field">
+                    <label>Username</label>
+                    <i class="fas fa-user login-field-icon"></i>
+                    <input type="text" id="loginUsername" class="login-input" placeholder="Masukkan username" onkeydown="if(event.key==='Enter')handleLogin()">
+                </div>
+                <div class="login-field">
+                    <label>Password</label>
+                    <i class="fas fa-lock login-field-icon"></i>
+                    <input type="password" id="loginPassword" class="login-input" placeholder="Masukkan password" onkeydown="if(event.key==='Enter')handleLogin()">
+                </div>
+                <button class="btn-primary" id="btnLogin" onclick="handleLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Masuk
+                </button>
+                <div style="text-align:center;margin-top:16px;font-size:12px;color:rgba(255,255,255,0.35);">
+                    <a href="index.html" style="color:rgba(255,255,255,0.4);text-decoration:none;"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboardScreen">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+            <div>
+                <div class="page-title">Pusat Akun Guru</div>
+                <div class="page-subtitle">Kelola pendaftaran dan akun guru</div>
+            </div>
+        </div>
+
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card">
+                <div class="icon-circle" style="background:rgba(59,130,246,0.12);color:#93c5fd;"><i class="fas fa-users"></i></div>
+                <div class="stat-val" id="totalGuru">0</div>
+                <div class="stat-lbl">Total Guru</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon-circle" style="background:rgba(34,197,94,0.12);color:#86efac;"><i class="fas fa-user-check"></i></div>
+                <div class="stat-val" id="activeGuru">0</div>
+                <div class="stat-lbl">Aktif</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon-circle" style="background:rgba(245,158,11,0.12);color:#fcd34d;"><i class="fas fa-clock"></i></div>
+                <div class="stat-val" id="pendingCount">0</div>
+                <div class="stat-lbl">Pending</div>
+            </div>
+        </div>
+
+        <!-- DAFTAR GURU TERDAFTAR -->
+        <div class="section-card">
+            <div class="section-title"><i class="fas fa-users" style="color:#93c5fd;"></i> Daftar Guru Terdaftar</div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama</th>
+                            <th>Username</th>
+                            <th>Status</th>
+                            <th>Bergabung</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="guruTableBody">
+                        <tr><td colspan="6"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Memuat data...</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PENDAFTARAN BARU -->
+        <div class="section-card">
+            <div class="section-title"><i class="fas fa-user-plus" style="color:#fcd34d;"></i> Pendaftaran Baru (Pending)</div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama</th>
+                            <th>Username</th>
+                            <th>Tanggal Daftar</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTableBody">
+                        <tr><td colspan="5"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Memuat data...</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-msg" id="toast"></div>
+
+    <script>
+        const supabaseUrl = 'https://bkecjfrwqocguyvjymkn.supabase.co';
+        const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+        const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // ============ SESSION ============
+        function getSession() {
+            try { return JSON.parse(localStorage.getItem('guru_session')); } catch { return null; }
+        }
+
+        function checkSession() {
+            const s = getSession();
+            if (s && s.id) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboardScreen').style.display = 'block';
+                document.getElementById('topBar').style.display = 'flex';
+                document.getElementById('guruNamaDisplay').textContent = s.nama || s.username;
+                loadData();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('dashboardScreen').style.display = 'none';
+                document.getElementById('topBar').style.display = 'none';
+            }
+        }
+
+        function showToast(msg, isError) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast-msg' + (isError ? ' error' : '');
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+
+        // ============ LOGIN ============
+        async function handleLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            if (!username || !password) { showToast('Masukkan username dan password', true); return; }
+            const btn = document.getElementById('btnLogin');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            try {
+                const { data, error } = await db.rpc('guru_login', { p_username: username, p_password: password });
+                if (error || !data || !data.success) {
+                    showToast(error ? error.message : (data && data.error ? data.error : 'Login gagal'), true);
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
+                    return;
+                }
+                localStorage.setItem('guru_session', JSON.stringify(data.data));
+                checkSession();
+            } catch (e) {
+                showToast(e.message || 'Terjadi kesalahan', true);
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
+            }
+        }
+
+        function logoutGuru() {
+            Swal.fire({
+                title: 'Yakin keluar?',
+                text: 'Anda akan kembali ke halaman login',
+                icon: 'question', showCancelButton: true, confirmButtonColor: '#22C55E', cancelButtonColor: '#6B7280',
+                confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal',
+                background: 'rgba(10,18,40,0.92)', color: '#f1f5f9',
+                customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn', cancelButton: 'modern-swal-btn' }
+            }).then(res => {
+                if (res.isConfirmed) {
+                    localStorage.removeItem('guru_session');
+                    checkSession();
+                }
+            });
+        }
+
+        // ============ DATA ============
+        async function loadData() {
+            loadGuruList();
+            loadPendingList();
+        }
+
+        async function loadGuruList() {
+            try {
+                const { data, error } = await db.rpc('guru_list');
+                if (error) { document.getElementById('guruTableBody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Gagal memuat data</p></div></td></tr>'; return; }
+                const list = (data && data.success && data.data) ? data.data : [];
+                const total = list.length;
+                const active = list.filter(g => g.is_active).length;
+                document.getElementById('totalGuru').textContent = total;
+                document.getElementById('activeGuru').textContent = active;
+
+                if (!list.length) {
+                    document.getElementById('guruTableBody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>Belum ada guru terdaftar</p></div></td></tr>';
+                    return;
+                }
+                let html = '';
+                list.forEach((g, i) => {
+                    const tgl = g.created_at ? new Date(g.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                    html += '<tr>' +
+                        '<td>' + (i+1) + '</td>' +
+                        '<td><strong>' + g.nama + '</strong></td>' +
+                        '<td style="color:rgba(255,255,255,0.45);font-size:13px;">' + g.username + '</td>' +
+                        '<td><span class="badge-status ' + (g.is_active ? 'badge-active' : 'badge-inactive') + '"><i class="fas fa-' + (g.is_active ? 'check-circle' : 'times-circle') + '"></i> ' + (g.is_active ? 'Aktif' : 'Nonaktif') + '</span></td>' +
+                        '<td style="font-size:13px;color:rgba(255,255,255,0.45);">' + tgl + '</td>' +
+                        '<td><div class="action-group">' +
+                            '<button class="btn-sm ' + (g.is_active ? 'btn-sm-yellow' : 'btn-sm-green') + '" onclick="toggleGuru(' + g.id + ',' + !g.is_active + ')"><i class="fas fa-' + (g.is_active ? 'pause' : 'play') + '"></i> ' + (g.is_active ? 'Nonaktifkan' : 'Aktifkan') + '</button>' +
+                            '<button class="btn-sm btn-sm-red" onclick="hapusGuru(' + g.id + ')"><i class="fas fa-trash"></i> Hapus</button>' +
+                        '</div></td>' +
+                    '</tr>';
+                });
+                document.getElementById('guruTableBody').innerHTML = html;
+            } catch (e) {
+                document.getElementById('guruTableBody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Error: ' + e.message + '</p></div></td></tr>';
+            }
+        }
+
+        async function loadPendingList() {
+            try {
+                const { data, error } = await db.rpc('guru_list_pending');
+                if (error) { document.getElementById('pendingTableBody').innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Gagal memuat data</p></div></td></tr>'; return; }
+                const list = (data && data.success && data.data) ? data.data : [];
+                document.getElementById('pendingCount').textContent = list.length;
+
+                if (!list.length) {
+                    document.getElementById('pendingTableBody').innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-check-circle" style="color:#86efac;"></i><p>Tidak ada pendaftaran menunggu</p></div></td></tr>';
+                    return;
+                }
+                let html = '';
+                list.forEach((p, i) => {
+                    const tgl = p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                    html += '<tr>' +
+                        '<td>' + (i+1) + '</td>' +
+                        '<td><strong>' + p.nama + '</strong></td>' +
+                        '<td style="color:rgba(255,255,255,0.45);font-size:13px;">' + p.username + '</td>' +
+                        '<td style="font-size:13px;color:rgba(255,255,255,0.45);">' + tgl + '</td>' +
+                        '<td><div class="action-group">' +
+                            '<button class="btn-sm btn-sm-green" onclick="setujuiGuru(' + p.id + ')"><i class="fas fa-check"></i> Setujui</button>' +
+                            '<button class="btn-sm btn-sm-red" onclick="tolakGuru(' + p.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
+                        '</div></td>' +
+                    '</tr>';
+                });
+                document.getElementById('pendingTableBody').innerHTML = html;
+            } catch (e) {
+                document.getElementById('pendingTableBody').innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Error: ' + e.message + '</p></div></td></tr>';
+            }
+        }
+
+        // ============ ACTIONS ============
+        async function setujuiGuru(id) {
+            const btn = event.target.closest('button');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const { data, error } = await db.rpc('guru_setujui', { p_registrasi_id: id });
+                if (error || !data || !data.success) {
+                    showToast(error ? error.message : (data && data.error ? data.error : 'Gagal menyetujui'), true);
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Setujui';
+                    return;
+                }
+                showToast('Guru berhasil disetujui!');
+                loadData();
+            } catch (e) {
+                showToast(e.message, true);
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Setujui';
+            }
+        }
+
+        async function tolakGuru(id) {
+            const btn = event.target.closest('button');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const { data, error } = await db.rpc('guru_tolak', { p_registrasi_id: id });
+                if (error || !data || !data.success) {
+                    showToast(error ? error.message : (data && data.error ? data.error : 'Gagal menolak'), true);
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-times"></i> Tolak';
+                    return;
+                }
+                showToast('Pendaftaran ditolak');
+                loadData();
+            } catch (e) {
+                showToast(e.message, true);
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-times"></i> Tolak';
+            }
+        }
+
+        async function toggleGuru(id, active) {
+            try {
+                const { data, error } = await db.rpc('guru_toggle_active', { p_guru_id: id, p_active: active });
+                if (error || !data || !data.success) {
+                    showToast(error ? error.message : (data && data.error ? data.error : 'Gagal mengubah status'), true);
+                    return;
+                }
+                showToast('Status berhasil diubah');
+                loadGuruList();
+            } catch (e) {
+                showToast(e.message, true);
+            }
+        }
+
+        async function hapusGuru(id) {
+            Swal.fire({
+                title: 'Hapus Guru?',
+                text: 'Data guru akan dihapus permanen',
+                icon: 'warning', showCancelButton: true, confirmButtonColor: '#EF4444', cancelButtonColor: '#6B7280',
+                confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal',
+                background: 'rgba(10,18,40,0.92)', color: '#f1f5f9',
+                customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn', cancelButton: 'modern-swal-btn' }
+            }).then(async (res) => {
+                if (!res.isConfirmed) return;
+                try {
+                    const { data, error } = await db.rpc('guru_hapus', { p_guru_id: id });
+                    if (error || !data || !data.success) {
+                        showToast(error ? error.message : (data && data.error ? data.error : 'Gagal menghapus'), true);
+                        return;
+                    }
+                    showToast('Guru berhasil dihapus');
+                    loadData();
+                } catch (e) {
+                    showToast(e.message, true);
+                }
+            });
+        }
+
+        // ============ INIT ============
+        checkSession();
+    </script>
+</body>
+</html>
