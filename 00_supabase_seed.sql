@@ -47,13 +47,13 @@ CREATE POLICY siswa_insert_jawaban ON jawaban_ujian
     FOR INSERT
     WITH CHECK (true);
 
--- 5. Semua role bisa update jawaban — tanpa bisa hapus (tidak ada policy DELETE)
+-- 5. Semua role bisa update jawaban — tapi cegah update setelah status SELESAI
 --    NOTE: Tidak ada proteksi per-user karena sistem tidak pakai Supabase Auth.
 --    Siswa hanya bisa mengakses jawaban via idRowUjian yang terenkripsi di JS.
 CREATE POLICY siswa_update_jawaban ON jawaban_ujian
     FOR UPDATE
     USING (true)
-    WITH CHECK (true);
+    WITH CHECK (COALESCE(status, '') NOT LIKE 'SELESAI%');
 
 -- 6. Semua role bisa catat error
 CREATE POLICY siswa_insert_error ON error_logs
@@ -292,19 +292,27 @@ END;
 $$;
 
 -- ============================================================
--- I. ALTER DEFAULT PRIVILEGES (sesuai rekomendasi Supabase)
--- Antisipasi perubahan default schema permission (Oktober 2026)
+-- I. INDEXES (untuk performa query besar)
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_bank_soal_mapel ON bank_soal(mapel);
+CREATE INDEX IF NOT EXISTS idx_jawaban_ujian_sesi ON jawaban_ujian(nama, kelas, mapel);
+CREATE INDEX IF NOT EXISTS idx_jadwal_ujian_aktif_mapel ON jadwal_ujian(mapel, is_aktif);
+CREATE INDEX IF NOT EXISTS idx_jawaban_ujian_created ON jawaban_ujian(created_at DESC);
+
+-- ============================================================
+-- J. DEFAULT PRIVILEGES — HANYA untuk role yang perlu
+-- Jangan GRANT ALL to anon agar tabel baru tidak otomatis terekspos
 -- ============================================================
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+    GRANT ALL ON TABLES TO postgres, authenticated, service_role;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+    GRANT ALL ON SEQUENCES TO postgres, authenticated, service_role;
 
--- Juga untuk tabel yang sudah ada
-GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;
+-- Hanya GRANT SELECT untuk anon di tabel yang sudah ada
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+-- Berikan INSERT/UPDATE khusus untuk jawaban_ujian (siswa perlu menulis jawaban)
+GRANT INSERT, UPDATE ON jawaban_ujian TO anon;
 
 -- ============================================================
 -- SELESAI — Copas semua ke Supabase SQL Editor dan RUN
