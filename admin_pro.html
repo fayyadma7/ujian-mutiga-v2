@@ -8205,15 +8205,7 @@ Kisi-kisi harus:
         }
 
         // Check if already logged in, auto-enter dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            const session = getGuruSession();
-            if (session && session.id) {
-                setTimeout(() => {
-                    document.getElementById('guruNamaHeader').innerHTML = '<i class="fas fa-user-check"></i> ' + (session.nama || session.username);
-                    enterDashboard(document.getElementById('btnMasuk'));
-                }, 500);
-            }
-        });
+        // No auto-login — landing page always shows first; user must click Masuk Dashboard
 
     </script>
 </body>
