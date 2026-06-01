@@ -2510,7 +2510,7 @@
                     <span>Laporan Nilai</span></a></li>
             <li><a class="nav-btn" onclick="bukaHalaman('analisis-soal-page', this)"><i class="fas fa-chart-pie"></i>
                     <span>Analisis Soal</span></a></li>
-            <li style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px;">
+            <li id="nav-akun-guru" style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px;">
                 <a class="nav-btn" onclick="bukaHalaman('akun-guru', this)"><i class="fas fa-chalkboard-teacher"></i>
                     <span>Akun Guru</span></a></li>
         </ul>
@@ -2535,6 +2535,23 @@
                     <i class="fas fa-clock" style="font-size:12px; color:#60a5fa;"></i>
                     <span id="jam-sekarang"></span>
                 </div>
+                <span id="header-user-name"
+                    style="font-size:0.85rem;color:var(--text-subtle);font-weight:500;display:none;align-items:center;gap:5px;white-space:nowrap;">
+                    <i class="fas fa-user-circle" style="color:var(--primary);"></i>
+                    <span id="header-user-name-text"></span>
+                </span>
+                <span id="role-badge"
+                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border:1px solid;transition:all 0.3s;">
+                    <i class="fas fa-shield-halved" style="font-size:10px;"></i>
+                    <span id="role-badge-text">Guru</span>
+                </span>
+                <button id="header-logout-btn" onclick="logoutGuru()"
+                    style="display:none;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;white-space:nowrap;"
+                    onmouseover="this.style.background='rgba(239,68,68,0.15)';this.style.borderColor='rgba(239,68,68,0.4)';"
+                    onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';"
+                    title="Keluar dari panel">
+                    <i class="fas fa-sign-out-alt" style="font-size:11px;"></i> Keluar
+                </button>
             </div>
         </header>
 
@@ -2542,6 +2559,34 @@
 
             <!-- HALAMAN: DASHBOARD -->
             <section id="dashboard" class="page-section active">
+                <!-- Welcome Greeting -->
+                <div id="dashboard-welcome"
+                    style="background:linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.05));border:1px solid rgba(59,130,246,0.15);border-radius:20px;padding:22px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:16px;">
+                        <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.08));border:1px solid rgba(245,158,11,0.25);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fbbf24;flex-shrink:0;">
+                            <i class="fas fa-hand-wave"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:1.2rem;font-weight:700;color:var(--text-main);">
+                                Selamat datang, <span id="welcome-user-name">Pengguna</span>!
+                            </div>
+                            <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span id="welcome-role-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;">
+                                    <i class="fas fa-shield-halved"></i> Guru
+                                </span>
+                                <span><i class="fas fa-calendar-day" style="color:var(--text-muted);"></i> <span id="welcome-date"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <button onclick="logoutGuru()"
+                            style="display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;"
+                            onmouseover="this.style.background='rgba(239,68,68,0.18)';this.style.borderColor='rgba(239,68,68,0.4)';"
+                            onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';">
+                            <i class="fas fa-sign-out-alt"></i> Keluar
+                        </button>
+                    </div>
+                </div>
                 <div class="grid-cards">
                     <div class="stat-card">
                         <div class="icon-box icon-blue"><i class="fas fa-users"></i></div>
@@ -3379,12 +3424,13 @@
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">No</th>
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Nama</th>
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Status</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Role</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Akun / Online</th>
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="guruTableBody">
-                                    <tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>
+                                    <tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -3505,6 +3551,46 @@
         const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
+        // ==================== REALTIME — Live status guru ====================
+        let realtimeChannel = null;
+        function mulaiRealtimeGuru() {
+            if (realtimeChannel) return;
+            realtimeChannel = db.channel('guru-live-status')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'guru' },
+                    () => {
+                        // Update tabel guru tanpa perlu refresh halaman
+                        const tb = document.getElementById('guruTableBody');
+                        if (tb && tb.offsetParent !== null) {
+                            loadGuruList();
+                        }
+                    }
+                )
+                .subscribe();
+        }
+        function hentikanRealtimeGuru() {
+            if (realtimeChannel) {
+                db.removeChannel(realtimeChannel);
+                realtimeChannel = null;
+            }
+        }
+
+        // Best-effort: saat tab/tutup browser, set offline
+        window.addEventListener('beforeunload', () => {
+            const sesi = getGuruSession();
+            if (sesi && sesi.id) {
+                // navigator.sendBeacon tidak support custom header, jadi pakai fetch keepalive
+                try {
+                    fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+                        body: JSON.stringify({ p_guru_id: sesi.id, p_status: 'offline' }),
+                        keepalive: true
+                    });
+                } catch (_) {}
+            }
+        });
+
         let globalDataJawaban = []; // Untuk menyimpan data yang sedang difilter
         let lastActivityId = null;
 
@@ -3556,7 +3642,54 @@
 
         let jadwalTimeout = null;
 
+        // ==================== ROLE-BASED ACCESS ====================
+        function pasangNavigasiRole() {
+            const sesi = getGuruSession();
+            const isAdmin = sesi && sesi.isAdmin === true;
+            const navAkunGuru = document.getElementById('nav-akun-guru');
+            if (navAkunGuru) {
+                navAkunGuru.style.display = isAdmin ? '' : 'none';
+            }
+            // Update badge role di header
+            const spanRole = document.getElementById('role-badge');
+            const spanRoleText = document.getElementById('role-badge-text');
+            if (spanRole) {
+                spanRole.style.color = isAdmin ? '#fbbf24' : '#93c5fd';
+                spanRole.style.background = isAdmin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.12)';
+                spanRole.style.borderColor = isAdmin ? 'rgba(245, 158, 11, 0.3)' : 'rgba(59, 130, 246, 0.25)';
+            }
+            if (spanRoleText) {
+                spanRoleText.textContent = isAdmin ? 'Admin' : 'Guru';
+            }
+            // Tampilkan/Sembunyikan header user name & logout
+            const headerName = document.getElementById('header-user-name');
+            const headerLogout = document.getElementById('header-logout-btn');
+            if (headerName) headerName.style.display = sesi ? 'flex' : 'none';
+            if (headerLogout) headerLogout.style.display = sesi ? 'inline-flex' : 'none';
+            // Update welcome badge role
+            const welcomeBadge = document.getElementById('welcome-role-badge');
+            if (welcomeBadge) {
+                welcomeBadge.style.background = isAdmin ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.12)';
+                welcomeBadge.style.borderColor = isAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)';
+                welcomeBadge.style.color = isAdmin ? '#fbbf24' : '#93c5fd';
+                welcomeBadge.innerHTML = '<i class="fas fa-shield-halved"></i> ' + (isAdmin ? 'Admin' : 'Guru');
+            }
+        }
+
         function bukaHalaman(idHalaman, elemenTombol) {
+            // Cek akses: hanya admin yang bisa buka halaman akun-guru
+            if (idHalaman === 'akun-guru') {
+                const sesi = getGuruSession();
+                if (!sesi || sesi.isAdmin !== true) {
+                    showToast('Akses ditolak. Halaman ini hanya untuk Admin.', 'error');
+                    // Alihkan ke dashboard
+                    const dashboardBtn = document.querySelector('.nav-btn[onclick*="dashboard"]');
+                    if (dashboardBtn) {
+                        bukaHalaman('dashboard', dashboardBtn);
+                    }
+                    return;
+                }
+            }
             document.querySelectorAll('.page-section').forEach(page => page.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -3585,6 +3718,7 @@
             }
 
             if (idHalaman === 'dashboard') {
+                updateWelcomeGreeting();
                 updateDashboardStats();
                 loadDashboardJadwalAktif();
                 loadRecentActivity();
@@ -3611,6 +3745,7 @@
                 populateFilterKelas().then(() => loadMonitoring());
             }
             if (idHalaman === 'akun-guru') {
+                mulaiRealtimeGuru();
                 loadDataGuru();
             }
 
@@ -3753,6 +3888,24 @@
         }
 
         // --- 3. DASHBOARD LOGIC ---
+
+        // Perbarui welcome greeting (nama + tanggal)
+        function updateWelcomeGreeting() {
+            const sesi = getGuruSession();
+            if (sesi) {
+                const nama = sesi.nama || sesi.username || 'Pengguna';
+                const elWelcome = document.getElementById('welcome-user-name');
+                if (elWelcome) elWelcome.textContent = nama;
+                const elHeaderName = document.getElementById('header-user-name-text');
+                if (elHeaderName) elHeaderName.textContent = nama;
+            }
+            const elDate = document.getElementById('welcome-date');
+            if (elDate) {
+                const now = new Date();
+                const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                elDate.textContent = now.toLocaleDateString('id-ID', opts);
+            }
+        }
 
         async function updateDashboardStats() {
             const { data: siswa } = await db.from('jawaban_ujian').select('id');
@@ -7497,6 +7650,12 @@ Kisi-kisi harus:
                 setTimeout(() => ripple.remove(), 600);
             }
 
+            // Pastikan greeting & navigasi tercetak
+            updateWelcomeGreeting();
+            pasangNavigasiRole();
+            // Aktifkan realtime untuk live status guru
+            mulaiRealtimeGuru();
+
             // Play sound (async and non-blocking)
             playWelcomeSound().catch(err => {
                 console.warn('🔊 Welcome sound failed to play:', err);
@@ -8009,8 +8168,32 @@ Kisi-kisi harus:
                     btn.disabled = false; btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Masuk Dashboard';
                     return;
                 }
-                localStorage.setItem('guru_session', JSON.stringify(data.data));
-                document.getElementById('guruNamaHeader').innerHTML = '<i class="fas fa-user-check"></i> ' + (data.data.nama || data.data.username);
+                const sessionData = data.data;
+                // Tentukan role: admin atau guru
+                let isAdmin = sessionData.is_admin === true;
+                // Jika field is_admin tidak ada di response, coba query langsung ke tabel guru
+                if (!('is_admin' in sessionData) && sessionData.id) {
+                    try {
+                        const { data: guruCheck } = await db.from('guru').select('is_admin').eq('id', sessionData.id).single();
+                        isAdmin = guruCheck && guruCheck.is_admin === true;
+                    } catch (_) {}
+                }
+                sessionData.isAdmin = isAdmin;
+                sessionData.role = isAdmin ? 'admin' : 'guru';
+                localStorage.setItem('guru_session', JSON.stringify(sessionData));
+                document.getElementById('guruNamaHeader').innerHTML = '<i class="fas fa-user-check"></i> ' + (sessionData.nama || sessionData.username);
+                // Isi welcome greeting dan header
+                const namaLengkap = sessionData.nama || sessionData.username;
+                const elWelcome = document.getElementById('welcome-user-name');
+                if (elWelcome) elWelcome.textContent = namaLengkap;
+                const elHeaderName = document.getElementById('header-user-name-text');
+                if (elHeaderName) elHeaderName.textContent = namaLengkap;
+                // Terapkan visibility navigasi berdasarkan role
+                pasangNavigasiRole();
+                // Set online + mulai realtime + heartbeat
+                adminDb.update('guru', sessionData.id, { status: 'online', last_seen: new Date().toISOString() }).catch(() => {});
+                mulaiHeartbeat(sessionData.id);
+                mulaiRealtimeGuru();
                 // Close modal and enter dashboard
                 tutupLoginModal();
                 const landingBtn = document.getElementById('btnMasuk');
@@ -8029,12 +8212,34 @@ Kisi-kisi harus:
                 confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal',
                 background: 'rgba(15,23,42,0.95)', color: '#f1f5f9',
                 customClass: { popup: 'modern-swal-popup', title: 'modern-swal-title', confirmButton: 'modern-swal-btn', cancelButton: 'modern-swal-btn' }
-            }).then(res => {
+            }).then(async (res) => {
                 if (res.isConfirmed) {
+                    const sesi = getGuruSession();
+                    if (sesi && sesi.id) {
+                        // Set status offline langsung
+                        try {
+                            await adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() });
+                        } catch (_) {}
+                    }
+                    if (heartbeatInterval) {
+                        clearInterval(heartbeatInterval);
+                        heartbeatInterval = null;
+                    }
+                    hentikanRealtimeGuru();
                     localStorage.removeItem('guru_session');
                     location.reload();
                 }
             });
+        }
+
+        // ==================== HEARTBEAT (last_seen) ====================
+        let heartbeatInterval = null;
+        function mulaiHeartbeat(guruId) {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            // Kirim ping setiap 60 detik agar status online tetap akurat
+            heartbeatInterval = setInterval(() => {
+                adminDb.update('guru', guruId, { last_seen: new Date().toISOString() }).catch(() => {});
+            }, 60000);
         }
 
         function bukaModalDaftarGuru() {
@@ -8079,26 +8284,61 @@ Kisi-kisi harus:
             loadPendingList();
         }
 
+        // Helper: format selisih waktu relatif (Indonesian)
+        function waktuRelatif(tgl) {
+            if (!tgl) return '';
+            const diffMs = Date.now() - new Date(tgl).getTime();
+            const dtk = Math.floor(diffMs / 1000);
+            if (dtk < 60) return 'baru saja';
+            const mnt = Math.floor(dtk / 60);
+            if (mnt < 60) return mnt + ' menit lalu';
+            const jam = Math.floor(mnt / 60);
+            if (jam < 24) return jam + ' jam lalu';
+            const hari = Math.floor(jam / 24);
+            if (hari < 7) return hari + ' hari lalu';
+            return new Date(tgl).toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+        }
+
+        // Helper: HTML badge online/offline (real-time via status column + timeout fallback)
+        function badgeStatus(status, lastSeen) {
+            // Timeout fallback: jika status='online' tapi last_seen > 5 menit, anggap offline
+            const isTimedOut = status === 'online' && lastSeen && (Date.now() - new Date(lastSeen).getTime() > 5 * 60 * 1000);
+            const trulyOnline = status === 'online' && !isTimedOut;
+            if (trulyOnline) {
+                return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34d399;"><i class="fas fa-circle" style="font-size:6px;color:#10b981;filter:drop-shadow(0 0 4px #10b981);"></i> Online</span>';
+            }
+            // Offline: tunjukkan kapan terakhir online
+            if (lastSeen) {
+                return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(148,163,184,0.05);border:1px solid rgba(148,163,184,0.12);color:#94a3b8;" title="Terakhir online: ' + new Date(lastSeen).toLocaleString('id-ID') + '"><i class="fas fa-circle" style="font-size:6px;color:#64748b;"></i> ' + waktuRelatif(lastSeen) + '</span>';
+            }
+            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);color:#94a3b8;"><i class="fas fa-circle" style="font-size:6px;color:#64748b;"></i> Offline</span>';
+        }
+
         async function loadGuruList() {
             try {
                 const { data, error } = await db.rpc('guru_list');
                 const tbody = document.getElementById('guruTableBody');
-                if (error) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#fca5a5;">Gagal memuat data</td></tr>'; return; }
+                if (error) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#fca5a5;">Gagal memuat data</td></tr>'; return; }
                 const list = (data && data.success && data.data) ? data.data : [];
                 document.getElementById('guruTotal').textContent = list.length;
                 document.getElementById('guruAktif').textContent = list.filter(g => g.is_active).length;
 
                 if (!list.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);"><i class="fas fa-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.5;"></i>Belum ada guru terdaftar</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);"><i class="fas fa-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.5;"></i>Belum ada guru terdaftar</td></tr>';
                     return;
                 }
                 let html = '';
                 list.forEach((g, i) => {
+                    const isGuruAdmin = g.is_admin === true;
                     html += '<tr>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);">' + (i+1) + '</td>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><strong>' + g.nama + '</strong></td>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;">' + g.username + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (g.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)') + ';border:1px solid ' + (g.is_active ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)') + ';color:' + (g.is_active ? '#86efac' : '#fca5a5') + ';"><i class="fas fa-' + (g.is_active ? 'check-circle' : 'times-circle') + '"></i>' + (g.is_active ? 'Aktif' : 'Nonaktif') + '</span></td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (isGuruAdmin ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)') + ';border:1px solid ' + (isGuruAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)') + ';color:' + (isGuruAdmin ? '#fbbf24' : '#93c5fd') + ';"><i class="fas fa-' + (isGuruAdmin ? 'crown' : 'user-graduate') + '"></i>' + (isGuruAdmin ? 'Admin' : 'Guru') + '</span></td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">' +
+                            '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (g.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)') + ';border:1px solid ' + (g.is_active ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)') + ';color:' + (g.is_active ? '#86efac' : '#fca5a5') + ';"><i class="fas fa-' + (g.is_active ? 'check-circle' : 'times-circle') + '"></i>' + (g.is_active ? 'Aktif' : 'Nonaktif') + '</span>' +
+                            badgeStatus(g.status, g.last_seen) +
+                        '</div></td>' +
                         '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:4px;">' +
                             '<button onclick="toggleGuruStatus(' + g.id + ',' + !g.is_active + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);font-family:\'Inter\',sans-serif;">' +
                                 '<i class="fas fa-' + (g.is_active ? 'pause' : 'play') + '"></i> ' + (g.is_active ? 'Nonaktifkan' : 'Aktifkan') + '</button>' +
@@ -8109,7 +8349,7 @@ Kisi-kisi harus:
                 });
                 tbody.innerHTML = html;
             } catch (e) {
-                document.getElementById('guruTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#fca5a5;">Error: ' + e.message + '</td></tr>';
+                document.getElementById('guruTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#fca5a5;">Error: ' + e.message + '</td></tr>';
             }
         }
 
