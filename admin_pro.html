@@ -13,22 +13,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- SweetAlert2 -->
+    <!-- SweetAlert2 (wajib sejak awal) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Library Supabase & Excel Parser (SheetJS) & Word Parser (Mammoth) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
     <!-- Admin Database Proxy (bypass RLS untuk delete/update/insert) -->
     <script src="js/admin-db.js"></script>
 
-    <!-- MathJax akan di-load secara conditional saat halaman bank-soal dibuka -->
+    <!-- ⚡ Library berat (Chart.js, Tone.js, docx) di-load LAZY saat dibutuhkan — lihat fungsi loadScript() -->
+    <!-- MathJax juga di-load secara conditional saat halaman bank-soal dibuka -->
 
 
     <style>
@@ -140,9 +138,7 @@
             display: flex;
             height: 100vh;
             background: var(--bg-color);
-            background-image:
-                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(59,130,246,0.07) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 50% at 80% 90%, rgba(139,92,246,0.05) 0%, transparent 60%);
+            /* ⚡ Hapus radial-gradient — menyebabkan repaint mahal di semua perangkat */
             color: var(--text-main);
             overflow: hidden;
         }
@@ -403,9 +399,10 @@
 
         .page-section.active { display: block; }
 
+        /* ⚡ Hapus filter:blur() dari keyframes — blur animasi trigger repaint berat */
         @keyframes pageSlideIn {
-            from { opacity: 0; transform: translateY(18px) scale(0.99); filter: blur(4px); }
-            to   { opacity: 1; transform: translateY(0)  scale(1);    filter: blur(0);  }
+            from { opacity: 0; transform: translateY(18px) scale(0.99); }
+            to   { opacity: 1; transform: translateY(0)  scale(1);    }
         }
 
         /* Kept as alias */
@@ -1396,16 +1393,15 @@
             animation: landingFadeRight 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
+        /* ⚡ Hapus filter:blur() dari keyframes landing — mahal di GPU */
         @keyframes landingFadeRight {
             from {
                 opacity: 0;
                 transform: translateX(-40px);
-                filter: blur(10px);
             }
             to {
                 opacity: 1;
                 transform: translateX(0);
-                filter: blur(0);
             }
         }
 
@@ -1572,16 +1568,15 @@
             animation: landingFadeLeft 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
+        /* ⚡ Hapus filter:blur() dari keyframes landing */
         @keyframes landingFadeLeft {
             from {
                 opacity: 0;
                 transform: translateX(40px);
-                filter: blur(10px);
             }
             to {
                 opacity: 1;
                 transform: translateX(0);
-                filter: blur(0);
             }
         }
 
@@ -2296,6 +2291,25 @@
             .grid-cards { gap: 12px; }
             .stat-card { padding: 16px; }
         }
+
+        /* ================================================================
+           GLOBAL PERFORMANCE TWEAKS (all devices)
+           Kurangi GPU/kompositor overhead tanpa mengubah tampilan drastis
+           ================================================================ */
+        /* Kurangi backdrop-filter blur agar kompositor lebih ringan */
+        .stat-card, .landing-card, .login-modal-glass,
+        header, .card-panel, .soal-item,
+        [class*="card"][style*="backdrop-filter"] {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+        }
+        /* Kurangi transisi complex jadi lebih sederhana */
+        .stat-card { transition: all 0.2s ease !important; }
+        .sidebar { transition: width 0.2s ease !important; }
+        .landing-orb { animation-duration: 30s !important; } /* Perlambat animasi orb */
+        /* Hapus decorative glow yang tidak kelihatan tapi mahal */
+        .stat-card::after { display: none; }
+        .landing-bottom-gradient { opacity: 0.5; } /* Transparan lebih rendah */
     </style>
 </head>
 
@@ -3720,6 +3734,17 @@
         const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
+        // ⚡ Lazy-load script helper — memuat library berat (Chart.js, Tone.js, docx) hanya saat dibutuhkan
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = () => reject(new Error('Gagal memuat: ' + src));
+                document.head.appendChild(s);
+            });
+        }
+
         // ==================== REALTIME — Live status guru ====================
         let realtimeChannel = null;
         function mulaiRealtimeGuru() {
@@ -5135,7 +5160,16 @@
             }
         }
 
-        function renderChart(skorArray) {
+        async function renderChart(skorArray) {
+            // ⚡ Lazy-load Chart.js hanya saat grafik pertama kali dibuat
+            if (typeof Chart === 'undefined') {
+                try {
+                    await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+                } catch (e) {
+                    console.error('❌ Gagal memuat Chart.js:', e);
+                    return;
+                }
+            }
             const ctx = document.getElementById('chartAnalisis').getContext('2d');
             const dist = [0, 0, 0, 0, 0];
             skorArray.forEach(s => {
@@ -5557,10 +5591,15 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
         });
 
         // --- 5B. LOGIC MEMBACA FILE WORD (.docx) VIA MAMMOTH ---
-        function downloadTemplateWord() {
+        async function downloadTemplateWord() {
+            // ⚡ Lazy-load docx library saat pertama kali dipakai
             if (!window.docx) {
-                Swal.fire('Error', 'Library pembuat Word belum termuat. Silakan refresh halaman.', 'error');
-                return;
+                try {
+                    await loadScript('https://unpkg.com/docx@7.8.2/build/index.js');
+                } catch (e) {
+                    Swal.fire('Error', 'Gagal memuat library Word. Periksa koneksi internet.', 'error');
+                    return;
+                }
             }
 
             const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
@@ -6002,9 +6041,14 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                 return showToast("Tidak ada soal untuk diekspor", "error");
             }
 
+            // ⚡ Lazy-load docx library saat pertama kali dipakai
             if (!window.docx) {
-                btn.innerHTML = originalHTML; btn.disabled = false;
-                return Swal.fire('Error', 'Library pembuat Word (.docx) belum termuat. Silakan refresh halaman.', 'error');
+                try {
+                    await loadScript('https://unpkg.com/docx@7.8.2/build/index.js');
+                } catch (e) {
+                    btn.innerHTML = originalHTML; btn.disabled = false;
+                    return Swal.fire('Error', 'Gagal memuat library Word. Periksa koneksi internet.', 'error');
+                }
             }
 
             const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell } = window.docx;
@@ -7437,7 +7481,8 @@ Kisi-kisi harus:
                 elTgl.innerText = now.toLocaleDateString('id-ID', options);
             }
         }
-        setInterval(updateJam, 1000);
+        // ⚡ Turunkan dari 1s → 30s — jam tidak perlu presensi detik untuk admin panel
+        setInterval(updateJam, 30000);
         updateJam();
 
         // --- 9. AUTO-DEACTIVATE JADWAL (GLOBAL — BERJALAN DI SEMUA TAB) ---
@@ -7525,7 +7570,7 @@ Kisi-kisi harus:
             }
         }
 
-        // Safety interval: setiap 3 detik cek cache lokal TANPA query DB
+        // Safety interval: setiap 10 detik cek cache lokal TANPA query DB
         // Sebagai fallback jika precision timer browser di-throttle (tab background)
         setInterval(() => {
             if (_watchedJadwal.length === 0) return;
@@ -7534,7 +7579,7 @@ Kisi-kisi harus:
                 console.log('[AutoDeactivate] Safety check: ada yang expired, trigger deactivate...');
                 scheduleNextAutoDeactivate();
             }
-        }, 3000);
+        }, 10000);
 
         // Supabase Realtime: dengarkan perubahan tabel jadwal_ujian secara langsung
         // Ini memastikan SEMUA tab admin langsung dapat notif tanpa polling
@@ -7770,6 +7815,15 @@ Kisi-kisi harus:
 
         async function playWelcomeSound() {
             console.log('🔊 Attempting to play welcome sound...');
+            // ⚡ Lazy-load Tone.js (500KB+) hanya saat suara welcome pertama kali diputar
+            if (typeof Tone === 'undefined') {
+                try {
+                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js');
+                } catch (e) {
+                    console.warn('🔊 Gagal memuat Tone.js, suara dilewati.');
+                    return;
+                }
+            }
             try {
                 await Tone.start();
                 console.log('✅ Tone.js AudioContext started:', Tone.context.state);
@@ -8669,26 +8723,11 @@ Kisi-kisi harus:
         })();
 
         // ============================================================
-        // MOBILE PERFORMANCE: Reduce setInterval intensity when hidden
+        // PERFORMANCE: Refresh UI saat tab kembali aktif
         // ============================================================
-        const _perfIntervals = [];
-
-        // Wrap setInterval to track and pause on mobile
-        const origSetInterval = window.setInterval;
-        window.setInterval = function(fn, delay, ...args) {
-            const id = origSetInterval(fn, delay, ...args);
-            if (delay >= 1000) {
-                _perfIntervals.push({ id, fn, delay });
-            }
-            return id;
-        };
-
-        // Pause heavy intervals when page hidden (mobile throttling)
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                // Browser auto-throttles setInterval when hidden, nothing extra needed
-            } else {
-                // Re-run expensive UI updates on return
+            if (!document.hidden) {
+                // Browser auto-throttles timers saat hidden; refresh state saat kembali
                 if (typeof updateJam === 'function') updateJam();
                 if (typeof updateDashboardStats === 'function') updateDashboardStats();
                 if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
@@ -8697,23 +8736,13 @@ Kisi-kisi harus:
             }
         });
 
-        // Patch animation-heavy landing page elements on touch devices
+        // Matikan animasi landing orb di perangkat touch (GPU mahal)
         if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-            // Pause CSS animations on landing orbs for touch devices immediately
             document.querySelectorAll('.landing-orb').forEach(el => {
                 el.style.animation = 'none';
                 el.style.opacity = '0.05';
             });
         }
-
-        // Debounce resize handler for better mobile performance
-        let _resizeTimer;
-        window.addEventListener('resize', () => {
-            clearTimeout(_resizeTimer);
-            _resizeTimer = setTimeout(() => {
-                // Only re-run layout-sensitive operations
-            }, 250);
-        });
 
     </script>
 </body>
