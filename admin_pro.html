@@ -3749,18 +3749,23 @@
         let realtimeChannel = null;
         function mulaiRealtimeGuru() {
             if (realtimeChannel) return;
-            realtimeChannel = db.channel('guru-live-status')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'guru' },
-                    () => {
-                        // Update tabel guru tanpa perlu refresh halaman
-                        const tb = document.getElementById('guruTableBody');
-                        if (tb && tb.offsetParent !== null) {
-                            loadGuruList();
+            try {
+                realtimeChannel = db.channel('guru-live-status')
+                    .on('postgres_changes',
+                        { event: '*', schema: 'public', table: 'guru' },
+                        () => {
+                            // Update tabel guru tanpa perlu refresh halaman
+                            const tb = document.getElementById('guruTableBody');
+                            if (tb && tb.offsetParent !== null) {
+                                loadGuruList();
+                            }
                         }
-                    }
-                )
-                .subscribe();
+                    )
+                    .subscribe();
+            } catch (e) {
+                console.warn('⚠️ Realtime guru gagal, melanjutkan tanpa realtime:', e);
+                realtimeChannel = null;
+            }
         }
         function hentikanRealtimeGuru() {
             if (realtimeChannel) {
@@ -7880,40 +7885,49 @@ Kisi-kisi harus:
             if (isEnteringDashboard) return;
             isEnteringDashboard = true;
 
-            // Ripple effect
-            if (btn) {
-                const ripple = document.createElement('span');
-                ripple.className = 'ripple';
-                ripple.style.width = ripple.style.height = '100px';
-                ripple.style.left = '50%';
-                ripple.style.top = '50%';
-                ripple.style.marginLeft = '-50px';
-                ripple.style.marginTop = '-50px';
-                btn.appendChild(ripple);
-                btn.classList.add('clicked');
-                setTimeout(() => ripple.remove(), 600);
-            }
-
-            // Pastikan greeting & navigasi tercetak
-            updateWelcomeGreeting();
-            pasangNavigasiRole();
-            // Aktifkan realtime untuk live status guru
-            mulaiRealtimeGuru();
-
-            // Play sound (async and non-blocking)
-            playWelcomeSound().catch(err => {
-                console.warn('🔊 Welcome sound failed to play:', err);
-            });
-
-            // Transition overlay immediately after ripple anim triggers (200ms delay)
+            // ⚡ LANDING OVERLAY: hide secepat mungkin — jangan ditunda!
             const overlay = document.getElementById('landingOverlay');
             if (overlay) {
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 200);
-                setTimeout(() => {
-                    overlay.remove();
-                }, 1100); // 800ms transition time + 200ms delay + 100ms buffer = 1100ms
+                // Immediate hide (fallback jika CSS transisi error/gagal)
+                overlay.style.display = 'none';
+                // Juga pakai class hidden untuk CSS transition smooth (non-blocking)
+                overlay.classList.add('hidden');
+                // Hapus dari DOM setelah transisi selesai
+                setTimeout(() => { try { overlay.remove(); } catch(_) {} }, 900);
+            }
+
+            // ⚡ Aktifkan halaman dashboard secara eksplisit
+            const dashboardBtn = document.querySelector('.nav-btn[onclick*="dashboard"]');
+            if (dashboardBtn) bukaHalaman('dashboard', dashboardBtn);
+
+            try {
+                // Ripple effect
+                if (btn) {
+                    const ripple = document.createElement('span');
+                    ripple.className = 'ripple';
+                    ripple.style.width = ripple.style.height = '100px';
+                    ripple.style.left = '50%';
+                    ripple.style.top = '50%';
+                    ripple.style.marginLeft = '-50px';
+                    ripple.style.marginTop = '-50px';
+                    btn.appendChild(ripple);
+                    btn.classList.add('clicked');
+                    setTimeout(() => ripple.remove(), 600);
+                }
+
+                // Pastikan greeting & navigasi tercetak
+                updateWelcomeGreeting();
+                pasangNavigasiRole();
+                // Aktifkan realtime untuk live status guru
+                mulaiRealtimeGuru();
+
+                // Play sound (async and non-blocking) — aman karena pakai .catch()
+                playWelcomeSound().catch(err => {
+                    console.warn('🔊 Welcome sound failed to play:', err);
+                });
+            } catch (e) {
+                console.warn('⚠️ enterDashboard non-critical error:', e);
+                // Overlay sudah di-hidden di atas, dashboard tetap tampil
             }
         }
 
@@ -8444,7 +8458,7 @@ Kisi-kisi harus:
                 // Terapkan visibility navigasi berdasarkan role
                 pasangNavigasiRole();
                 // Set online via RPC (bypass RLS) + mulai realtime + heartbeat
-                setGuruStatusOnline(sessionData.id);
+                setGuruStatusOnline(sessionData.id).catch(e => console.warn('Status online fail:', e));
                 mulaiHeartbeat(sessionData.id);
                 mulaiRealtimeGuru();
                 // Close modal and enter dashboard
