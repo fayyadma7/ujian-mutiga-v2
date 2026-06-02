@@ -3787,8 +3787,27 @@
                         keepalive: true
                     });
                 } catch (_) {}
+                // Juga via adminDb update sebagai backup
+                try {
+                    adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() }).catch(() => {});
+                } catch (_) {}
             }
         });
+
+        // ⚡ Polling periodik status guru (fallback jika Realtime tidak aktif)
+        let _guruPollTimer = null;
+        function mulaiPollingGuru() {
+            if (_guruPollTimer) clearInterval(_guruPollTimer);
+            _guruPollTimer = setInterval(() => {
+                const tb = document.getElementById('guruTableBody');
+                if (tb && tb.offsetParent !== null) {
+                    loadGuruList();
+                }
+            }, 15000); // Refresh setiap 15 detik saat tabel guru terlihat
+        }
+        function hentikanPollingGuru() {
+            if (_guruPollTimer) { clearInterval(_guruPollTimer); _guruPollTimer = null; }
+        }
 
         let globalDataJawaban = []; // Untuk menyimpan data yang sedang difilter
         let lastActivityId = null;
@@ -3949,6 +3968,9 @@
             if (idHalaman === 'akun-guru') {
                 mulaiRealtimeGuru();
                 loadDataGuru();
+                mulaiPollingGuru(); // ⚡ Fallback refresh periodik jika realtime tidak aktif
+            } else {
+                hentikanPollingGuru(); // Matikan polling saat pindah halaman lain
             }
 
             // Cek ulang jadwal kedaluwarsa setiap kali pindah tab
@@ -8499,23 +8521,21 @@ Kisi-kisi harus:
             });
         }
 
-        // ==================== STATUS ONLINE VIA RPC (bypass RLS) ====================
+        // ==================== STATUS ONLINE VIA ADMIN PROXY (bypass RLS) ====================
         async function setGuruStatusOnline(guruId) {
             try {
-                // Gunakan RPC guru_set_status — sama dengan yang dipakai beforeunload
-                const sesi = getGuruSession();
-                if (!sesi) return;
-                await fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-                    body: JSON.stringify({ p_guru_id: guruId, p_status: 'online' })
-                });
-                // Update last_seen juga via proxy sebagai backup
-                adminDb.update('guru', guruId, { last_seen: new Date().toISOString() }).catch(() => {});
+                // ⚡ Update via adminDb (Edge Function) sebagai metode utama — lebih andal
+                await adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() });
+                // Juga coba RPC guru_set_status sebagai backup
+                try {
+                    await fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+                        body: JSON.stringify({ p_guru_id: guruId, p_status: 'online' })
+                    });
+                } catch (_) {}
             } catch (e) {
                 console.warn('⏳ setGuruStatusOnline error:', e);
-                // Fallback: coba via admin proxy saja
-                adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() }).catch(() => {});
             }
         }
 
