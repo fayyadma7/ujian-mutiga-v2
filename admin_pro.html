@@ -28,14 +28,8 @@
     <!-- Admin Database Proxy (bypass RLS untuk delete/update/insert) -->
     <script src="js/admin-db.js"></script>
 
-    <!-- Library MathJax untuk merender rumus Matematika -->
-    <script>
-        window.MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] },
-            svg: { fontCache: 'global' }
-        };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- MathJax akan di-load secara conditional saat halaman bank-soal dibuka -->
+
 
     <style>
         /* ================================================================
@@ -1360,6 +1354,18 @@
             opacity: 0.1;
         }
 
+        /* Pause background animations when login modal is open — huge performance boost */
+        body:has(#loginModalOverlay.show) .landing-orb,
+        body:has(#loginModalOverlay.show) .live-dot,
+        body:has(#loginModalOverlay.show) .feature-slide,
+        body:has(#loginModalOverlay.show) .landing-brand {
+            animation-play-state: paused !important;
+        }
+        body:has(#loginModalOverlay.show) #landingOverlay {
+            filter: brightness(0.6);
+            transition: filter 0.3s ease;
+        }
+
         @keyframes landingFloat {
             0% {
                 transform: translate(0, 0) scale(1) rotate(0deg);
@@ -1903,14 +1909,12 @@
             position: fixed;
             inset: 0;
             z-index: 100000;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(0,0,0,0.8);
             display: none;
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: opacity 0.5s cubic-bezier(0.22,1,0.36,1), visibility 0.5s;
+            transition: opacity 0.3s cubic-bezier(0.22,1,0.36,1), visibility 0.3s;
             visibility: hidden;
             padding: 1.5rem;
         }
@@ -1923,16 +1927,14 @@
             position: relative;
             width: 100%;
             max-width: 420px;
-            background: rgba(15,23,42,0.65);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            background: rgba(12, 19, 38, 0.95);
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 28px;
             padding: 44px 36px 36px;
             box-shadow:
                 0 32px 80px rgba(0,0,0,0.6),
                 inset 0 1px 0 rgba(255,255,255,0.08);
-            animation: loginModalIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+            animation: loginModalIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
             overflow: hidden;
         }
         .login-modal-glass::before {
@@ -2042,8 +2044,9 @@
             font-weight: 500;
             color: #f1f5f9;
             outline: none;
-            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            contain: strict;
         }
         .login-glass-input:focus {
             border-color: rgba(59,130,246,0.5);
@@ -2066,7 +2069,7 @@
             background: linear-gradient(135deg, #2563eb, #7c3aed);
             color: white;
             box-shadow: 0 8px 28px rgba(59,130,246,0.3);
-            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2075,8 +2078,8 @@
             overflow: hidden;
         }
         .login-glass-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 36px rgba(59,130,246,0.45);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 30px rgba(59,130,246,0.4);
         }
         .login-glass-btn:active {
             transform: translateY(0) scale(0.98);
@@ -2126,6 +2129,172 @@
         }
         .swal-dark-popup .swal2-html-container {
             color: #e2e8f0;
+        }
+
+        /* ================================================================
+           MOBILE PERFORMANCE OVERRIDES
+           Disable GPU-heavy effects on low-power devices
+           ================================================================ */
+        @media (max-width: 768px) {
+            /* Kill backdrop-filter — #1 cause of mobile lag */
+            .stat-card, .card-panel, header, .landing-card, .login-modal-glass,
+            #landingOverlay, #modalConfirmAdmin, #modalGenerateAI, #modalEditSoal,
+            #modalDaftarGuru, #dashboard-welcome,
+            .soal-item, .login-glass-input,
+            [id^="mon-card-"], [id^="kisi-kisi-content"],
+            [class*="card"][style*="backdrop-filter"],
+            [style*="backdrop-filter"]:not([class*="csl"]):not(.csl-dropdown) {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+
+            /* Disable landing page orb animations — they burn GPU */
+            .landing-orb {
+                animation: none !important;
+                opacity: 0.08 !important;
+                display: none;
+            }
+
+            /* Simplify body background — single gradient, no radial */
+            body {
+                background: var(--bg-color);
+                background-image: none;
+            }
+
+            /* Disable stat card hover transforms and glow effects */
+            .stat-card:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            .stat-card::after { display: none; }
+
+            /* Simplify landing page animations */
+            .landing-brand {
+                animation: none !important;
+            }
+            .landing-panel-left,
+            .landing-panel-right {
+                animation: none !important;
+            }
+
+            /* Disable decorative glow gradient on sidebar */
+            .sidebar::before { display: none; }
+
+            /* Reduce glow + shadows on buttons */
+            .btn::after { display: none; }
+            .btn-primary, .btn-success, .btn-warning, .btn-purple {
+                box-shadow: none !important;
+            }
+            .btn-primary:hover, .btn-success:hover, .btn-warning:hover, .btn-purple:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Simplify icon-box hover */
+            .stat-card:hover .icon-box { transform: none !important; }
+
+            /* Disable feature slide transitions */
+            .feature-slide {
+                transition: opacity 0.3s ease !important;
+                filter: none !important;
+            }
+
+            /* Reduce sidebar transition */
+            .sidebar { transition: width 0.2s !important; }
+
+            /* Disable welcome sound auto-play warning noise */
+            #landingOverlay .landing-bg {
+                background-size: cover;
+                background-position: center;
+            }
+
+            /* Minimize live-dot intense glow */
+            .live-dot {
+                box-shadow: none !important;
+                animation: none !important;
+                opacity: 1 !important;
+            }
+
+            /* Simplify header glass */
+            header {
+                box-shadow: none !important;
+            }
+
+            /* Reduce page animation to simple fade */
+            .page-section.active {
+                animation: simpleFadeIn 0.2s ease both;
+            }
+            @keyframes simpleFadeIn {
+                from { opacity: 0; }
+                to   { opacity: 1; }
+            }
+
+            /* Landing page login modal dim — no filter */
+            body:has(#loginModalOverlay.show) #landingOverlay {
+                filter: none !important;
+            }
+
+            /* Remove landing-bottom-gradient on mobile (big perf cost) */
+            .landing-bottom-gradient { display: none; }
+
+            /* Disable nav link hover icon scale */
+            .nav-links a:hover i { transform: none !important; }
+
+            /* Reduce sidebar hover background */
+            .nav-links a:hover { background: transparent; }
+
+            /* Simpler active indicator */
+            .nav-links a::before { display: none; }
+            .nav-links a.active {
+                background: rgba(59, 130, 246, 0.12);
+                border: none;
+            }
+            .nav-links a.active i {
+                filter: none !important;
+            }
+
+            /* Disable stat card gradient accent line */
+            .stat-card::before { display: none; }
+
+            /* Reduce upload area hover */
+            .upload-area:hover { transform: none !important; }
+            .upload-area:hover i { transform: none !important; }
+
+            /* Simpler login modal animation */
+            .login-modal-glass {
+                animation: none !important;
+            }
+
+            /* Disable card-panel hover border */
+            .card-panel:hover { border-color: var(--border) !important; }
+
+            /* Reduce ambigram glow on login icon */
+            .login-modal-icon {
+                box-shadow: none !important;
+            }
+            .avatar {
+                box-shadow: none !important;
+            }
+
+            /* Sidebar brand shadow reduced */
+            .sidebar-brand img {
+                filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.3));
+            }
+            .sidebar-brand:hover img {
+                filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.3));
+            }
+        }
+
+        /* Extreme low-end mobile — kill even more */
+        @media (max-width: 480px) {
+            .landing-orb { display: none !important; }
+            .landing-dim { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+            .sidebar { width: 70px; }
+            .sidebar.collapsed { width: 0; overflow: hidden; }
+            .content-area { padding: 16px; }
+            header { padding: 0 16px; height: 60px; }
+            .grid-cards { gap: 12px; }
+            .stat-card { padding: 16px; }
         }
     </style>
 </head>
@@ -3421,12 +3590,12 @@
                             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                                 <thead>
                                     <tr>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">No</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">No</th>
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Nama</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Role</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Akun / Online</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Aksi</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Role</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Akun / Online</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="guruTableBody">
@@ -3443,11 +3612,11 @@
                             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                                 <thead>
                                     <tr>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">No</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">No</th>
                                         <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Nama</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Tgl Daftar</th>
-                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Aksi</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Tgl Daftar</th>
+                                        <th style="padding:12px 14px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pendingTableBody">
@@ -3732,7 +3901,10 @@
                 populateJadwalMapelDropdown();
                 loadJadwal();
             }
-            if (idHalaman === 'bank-soal') populatePreviewMapel();
+            if (idHalaman === 'bank-soal') {
+                populatePreviewMapel();
+                loadMathJax(); // Load MathJax hanya saat masuk bank soal
+            }
             if (idHalaman === 'analisis-soal-page') {
                 initCustomSelect('ana-filter-mapel');
                 initCustomSelect('ana-filter-kelas');
@@ -4150,6 +4322,23 @@
             input.setSelectionRange(newPos, newPos);
             window.updateSwalMathPreview(input.value);
         };
+
+        // Load MathJax secara dinamis — hanya dipanggil saat masuk bank-soal
+        let mathJaxLoaded = false;
+        function loadMathJax() {
+            if (mathJaxLoaded) return;
+            mathJaxLoaded = true;
+            window.MathJax = {
+                tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] },
+                svg: { fontCache: 'global' },
+                startup: { pageReady: () => {} } // Jangan scan otomatis, kita panggil manual
+            };
+            const script = document.createElement('script');
+            script.id = 'MathJax-script-dynamic';
+            script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+            script.async = true;
+            document.head.appendChild(script);
+        }
 
         let previewTimeout = null;
         window.updateSwalMathPreview = function(latex) {
@@ -6264,6 +6453,7 @@ Kisi-kisi harus:
         }
 
         async function editSatuSoal(id) {
+            loadMathJax(); // Pastikan MathJax terload untuk render rumus di edit modal
             const { data, error } = await db.from('bank_soal').select('*').eq('id', id).single();
             if (error || !data) return showToast('Gagal mengambil data soal', 'error');
 
@@ -8199,8 +8389,8 @@ Kisi-kisi harus:
                 if (elHeaderName) elHeaderName.textContent = namaLengkap;
                 // Terapkan visibility navigasi berdasarkan role
                 pasangNavigasiRole();
-                // Set online + mulai realtime + heartbeat
-                adminDb.update('guru', sessionData.id, { status: 'online', last_seen: new Date().toISOString() }).catch(() => {});
+                // Set online via RPC (bypass RLS) + mulai realtime + heartbeat
+                setGuruStatusOnline(sessionData.id);
                 mulaiHeartbeat(sessionData.id);
                 mulaiRealtimeGuru();
                 // Close modal and enter dashboard
@@ -8241,14 +8431,34 @@ Kisi-kisi harus:
             });
         }
 
-        // ==================== HEARTBEAT (last_seen) ====================
+        // ==================== STATUS ONLINE VIA RPC (bypass RLS) ====================
+        async function setGuruStatusOnline(guruId) {
+            try {
+                // Gunakan RPC guru_set_status — sama dengan yang dipakai beforeunload
+                const sesi = getGuruSession();
+                if (!sesi) return;
+                await fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+                    body: JSON.stringify({ p_guru_id: guruId, p_status: 'online' })
+                });
+                // Update last_seen juga via proxy sebagai backup
+                adminDb.update('guru', guruId, { last_seen: new Date().toISOString() }).catch(() => {});
+            } catch (e) {
+                console.warn('⏳ setGuruStatusOnline error:', e);
+                // Fallback: coba via admin proxy saja
+                adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() }).catch(() => {});
+            }
+        }
+
+        // ==================== HEARTBEAT (status + last_seen) ====================
         let heartbeatInterval = null;
         function mulaiHeartbeat(guruId) {
             if (heartbeatInterval) clearInterval(heartbeatInterval);
-            // Kirim ping setiap 60 detik agar status online tetap akurat
+            // Kirim ping setiap 30 detik agar status online tetap akurat
             heartbeatInterval = setInterval(() => {
-                adminDb.update('guru', guruId, { last_seen: new Date().toISOString() }).catch(() => {});
-            }, 60000);
+                setGuruStatusOnline(guruId);
+            }, 30000);
         }
 
         function bukaModalDaftarGuru() {
@@ -8340,15 +8550,15 @@ Kisi-kisi harus:
                 list.forEach((g, i) => {
                     const isGuruAdmin = (g.role === 'admin');
                     html += '<tr>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);">' + (i+1) + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><strong>' + g.nama + '</strong></td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;">' + g.username + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (isGuruAdmin ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)') + ';border:1px solid ' + (isGuruAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)') + ';color:' + (isGuruAdmin ? '#fbbf24' : '#93c5fd') + ';"><i class="fas fa-' + (isGuruAdmin ? 'crown' : 'user-graduate') + '"></i>' + (isGuruAdmin ? 'Admin' : 'Guru') + '</span></td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + g.nama + '</strong></td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + g.username + '</td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (isGuruAdmin ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)') + ';border:1px solid ' + (isGuruAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)') + ';color:' + (isGuruAdmin ? '#fbbf24' : '#93c5fd') + ';"><i class="fas fa-' + (isGuruAdmin ? 'crown' : 'user-graduate') + '"></i>' + (isGuruAdmin ? 'Admin' : 'Guru') + '</span></td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;flex-direction:column;gap:4px;align-items:center;">' +
                             '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (g.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)') + ';border:1px solid ' + (g.is_active ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)') + ';color:' + (g.is_active ? '#86efac' : '#fca5a5') + ';"><i class="fas fa-' + (g.is_active ? 'check-circle' : 'times-circle') + '"></i>' + (g.is_active ? 'Aktif' : 'Nonaktif') + '</span>' +
-                            badgeStatus(g.status, g.last_seen) +
+                            badgeStatus(isGuruAdmin ? 'online' : g.status, isGuruAdmin ? new Date().toISOString() : g.last_seen) +
                         '</div></td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:4px;">' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
                             '<button onclick="toggleGuruStatus(' + g.id + ',' + !g.is_active + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);font-family:\'Inter\',sans-serif;">' +
                                 '<i class="fas fa-' + (g.is_active ? 'pause' : 'play') + '"></i> ' + (g.is_active ? 'Nonaktifkan' : 'Aktifkan') + '</button>' +
                             '<button onclick="hapusGuruAkun(' + g.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:\'Inter\',sans-serif;">' +
@@ -8378,11 +8588,11 @@ Kisi-kisi harus:
                 list.forEach((p, i) => {
                     const tgl = p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
                     html += '<tr>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);">' + (i+1) + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><strong>' + p.nama + '</strong></td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;">' + p.username + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;">' + tgl + '</td>' +
-                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:4px;">' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + p.nama + '</strong></td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + p.username + '</td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + tgl + '</td>' +
+                        '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
                             '<button onclick="setujuiGuruAkun(' + p.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(34,197,94,0.25);background:rgba(34,197,94,0.1);color:#86efac;font-family:\'Inter\',sans-serif;">' +
                                 '<i class="fas fa-check"></i> Setujui</button>' +
                             '<button onclick="tolakGuruAkun(' + p.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:\'Inter\',sans-serif;">' +
@@ -8457,6 +8667,53 @@ Kisi-kisi harus:
         (async () => {
             try { await upgradeSession(); } catch (_) {}
         })();
+
+        // ============================================================
+        // MOBILE PERFORMANCE: Reduce setInterval intensity when hidden
+        // ============================================================
+        const _perfIntervals = [];
+
+        // Wrap setInterval to track and pause on mobile
+        const origSetInterval = window.setInterval;
+        window.setInterval = function(fn, delay, ...args) {
+            const id = origSetInterval(fn, delay, ...args);
+            if (delay >= 1000) {
+                _perfIntervals.push({ id, fn, delay });
+            }
+            return id;
+        };
+
+        // Pause heavy intervals when page hidden (mobile throttling)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Browser auto-throttles setInterval when hidden, nothing extra needed
+            } else {
+                // Re-run expensive UI updates on return
+                if (typeof updateJam === 'function') updateJam();
+                if (typeof updateDashboardStats === 'function') updateDashboardStats();
+                if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
+                if (typeof loadRecentActivity === 'function') loadRecentActivity();
+                if (typeof scheduleNextAutoDeactivate === 'function') scheduleNextAutoDeactivate();
+            }
+        });
+
+        // Patch animation-heavy landing page elements on touch devices
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            // Pause CSS animations on landing orbs for touch devices immediately
+            document.querySelectorAll('.landing-orb').forEach(el => {
+                el.style.animation = 'none';
+                el.style.opacity = '0.05';
+            });
+        }
+
+        // Debounce resize handler for better mobile performance
+        let _resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(_resizeTimer);
+            _resizeTimer = setTimeout(() => {
+                // Only re-run layout-sensitive operations
+            }, 250);
+        });
 
     </script>
 </body>
