@@ -3986,22 +3986,27 @@
 
             const filterMapel = selectMapel ? selectMapel.value : '';
             const filterKelas = selectKelas ? selectKelas.value : '';
+            const searchNameLap = document.getElementById('search-nama-laporan')?.value.toLowerCase() || '';
+            const filterTglAwalLap = document.getElementById('filter-tgl-awal-laporan')?.value || '';
+            const filterTglAkhirLap = document.getElementById('filter-tgl-akhir-laporan')?.value || '';
 
             tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</td></tr>';
 
-            // Ambil semua data untuk mengekstrak dropdown filter yang tersedia
-            const { data: allData, error } = await db.from('jawaban_ujian').select('*').order('created_at', { ascending: false });
+            // ✅ OPTIMASI: Ambil hanya untuk keperluan dropdown (mapel + kelas unik)
+            const { data: filterData, error: filterErr } = await db.from('jawaban_ujian')
+                .select('mapel, kelas')
+                .order('created_at', { ascending: false });
 
-            if (error) {
+            if (filterErr) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Gagal mengambil data database!</td></tr>';
                 return;
             }
 
-            // Update dropdown filters options
+            // Update dropdown filters dari data ringan (hanya mapel + kelas)
             if (selectMapel && selectKelas) {
                 const mapelSet = new Set();
                 const kelasSet = new Set();
-                allData.forEach(d => {
+                (filterData || []).forEach(d => {
                     if (d.kelas) {
                         d.kelas.split(',').forEach(k => {
                             if (k.trim()) kelasSet.add(k.trim());
@@ -4029,58 +4034,54 @@
                 syncCustomSelect('filter-kelas-laporan');
             }
 
-            const searchNameLap = document.getElementById('search-nama-laporan')?.value.toLowerCase() || '';
-            const filterTglAwalLap = document.getElementById('filter-tgl-awal-laporan')?.value || '';
-            const filterTglAkhirLap = document.getElementById('filter-tgl-akhir-laporan')?.value || '';
+            // ✅ OPTIMASI: Filter & pagination di SQL, bukan JavaScript
+            let query = db.from('jawaban_ujian').select('*', { count: 'exact' });
 
-            // Filter data berdasarkan dropdown dan pencarian
-            const filteredData = allData.filter(s => {
-                const matchMapel = !filterMapel || (s.mapel && s.mapel.trim() === filterMapel);
-                const matchKelas = !filterKelas || (s.kelas && s.kelas.trim() === filterKelas);
-                const matchName = !searchNameLap || (s.nama && s.nama.toLowerCase().includes(searchNameLap));
-                // Filter tanggal
-                let matchTanggal = true;
-                if (filterTglAwalLap || filterTglAkhirLap) {
-                    const tglSiswa = s.created_at ? new Date(s.created_at) : null;
-                    if (tglSiswa && !isNaN(tglSiswa.getTime())) {
-                        if (filterTglAwalLap) {
-                            const awal = new Date(filterTglAwalLap + 'T00:00:00');
-                            if (tglSiswa < awal) matchTanggal = false;
-                        }
-                        if (filterTglAkhirLap) {
-                            const akhir = new Date(filterTglAkhirLap + 'T23:59:59');
-                            if (tglSiswa > akhir) matchTanggal = false;
-                        }
-                    }
-                }
-                return matchMapel && matchKelas && matchName && matchTanggal;
-            });
-            globalDataJawaban = filteredData; // Simpan ke global agar bisa dianalisis
+            if (filterMapel) query = query.eq('mapel', filterMapel);
+            if (filterKelas) query = query.eq('kelas', filterKelas);
+            if (searchNameLap) query = query.ilike('nama', `%${searchNameLap}%`);
+            if (filterTglAwalLap) query = query.gte('created_at', filterTglAwalLap + 'T00:00:00');
+            if (filterTglAkhirLap) query = query.lte('created_at', filterTglAkhirLap + 'T23:59:59');
 
-            // Apply Sorting
-            tempLaporanData = filteredData;
-            const sortedData = sortLaporanData(filteredData);
+            const totalItems = 0;
+            const totalPages = 1;
+            let currentPage = currentLapPage || 1;
+            const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
 
-            // 2. Pagination Logic
-            const totalItems = sortedData.length;
-            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-            if (currentLapPage > totalPages) currentLapPage = totalPages;
+            const { data: allData, count: totalCount, error } = await query
+                .order('created_at', { ascending: false })
+                .range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
 
-            const startIdx = (currentLapPage - 1) * ITEMS_PER_PAGE;
-            const paginatedData = sortedData.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+            if (error) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Gagal mengambil data!</td></tr>';
+                return;
+            }
+
+            const finalTotal = totalCount || allData.length;
+            const finalPages = Math.ceil(finalTotal / ITEMS_PER_PAGE) || 1;
+            if (currentPage > finalPages) currentPage = finalPages;
+
+            // Simpan ke global (untuk analisis) — hanya data yang tampil
+            globalDataJawaban = allData || [];
+            tempLaporanData = allData || [];
 
             const pageInfo = document.getElementById('lap-page-info');
-            if (pageInfo) pageInfo.innerText = `Menampilkan ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalItems)} dari ${totalItems} siswa`;
+            if (pageInfo) {
+                const start = startIdx + 1;
+                const end = Math.min(startIdx + ITEMS_PER_PAGE, finalTotal);
+                pageInfo.innerText = `Menampilkan ${start}-${end} dari ${finalTotal} siswa`;
+            }
 
             tbody.innerHTML = '';
 
-            if (paginatedData.length === 0) {
+            if (!allData || allData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color:var(--text-muted);">Data tidak ditemukan.</td></tr>';
+                return;
             }
 
             const highlight = (text, q) => q ? text.replace(new RegExp(q, 'gi'), match => `<mark style="background-color: yellow; padding: 0;">${match}</mark>`) : text;
 
-            paginatedData.forEach((siswa, index) => {
+            allData.forEach((siswa, index) => {
                 const displayNama = highlight(siswa.nama, searchNameLap);
                 tbody.innerHTML += `
                     <tr>
@@ -7508,8 +7509,7 @@ Kisi-kisi harus:
                 elTgl.innerText = now.toLocaleDateString('id-ID', options);
             }
         }
-        // ⚡ Turunkan dari 1s → 30s — jam tidak perlu presensi detik untuk admin panel
-        setInterval(updateJam, 30000);
+        setInterval(updateJam, 1000);
         updateJam();
 
         // --- 9. AUTO-DEACTIVATE JADWAL (GLOBAL — BERJALAN DI SEMUA TAB) ---
@@ -7903,9 +7903,35 @@ Kisi-kisi harus:
         }
 
         let isEnteringDashboard = false;
+        function validasiSession() {
+            try {
+                const raw = localStorage.getItem('guru_session');
+                if (!raw) return false;
+                const s = JSON.parse(raw);
+                // Validasi field wajib — cegah session tiruan/manipulasi
+                if (!s.id || !s.nama || !s.username) return false;
+                // Validasi bahwa role adalah nilai yang dikenal
+                if (s.role && !['admin', 'guru', 'superadmin'].includes(s.role)) return false;
+                // Session harus sudah di-upgrade (punya role dari server)
+                if (!s.role) return false;
+                // Optional: cek created_at tidak di masa depan
+                if (s.created_at && new Date(s.created_at) > new Date()) return false;
+                return true;
+            } catch { return false; }
+        }
+
         function enterDashboard(btn) {
             if (isEnteringDashboard) return;
             isEnteringDashboard = true;
+
+            // 🔒 Validasi session sebelum masuk dashboard
+            if (!validasiSession()) {
+                isEnteringDashboard = false;
+                // Session tidak valid — redirect ke landing
+                localStorage.removeItem('guru_session');
+                Swal.fire({ icon:'error', title:'Sesi Tidak Valid', text:'Session Anda telah kedaluwarsa atau dimanipulasi. Silakan login ulang.', background:'rgba(15,23,42,0.95)', color:'#f1f5f9', confirmButtonColor:'#3b82f6' });
+                return;
+            }
 
             // ⚡ LANDING OVERLAY: hide secepat mungkin — jangan ditunda!
             const overlay = document.getElementById('landingOverlay');
@@ -8470,6 +8496,8 @@ Kisi-kisi harus:
                 sessionData.role = sessionData.role || 'guru';
                 sessionData.isAdmin = (sessionData.role === 'admin');
                 localStorage.setItem('guru_session', JSON.stringify(sessionData));
+                // 🔒 Backup sessionStorage untuk deteksi cloning antar tab
+                sessionStorage.setItem('guru_session_backup', JSON.stringify(sessionData));
                 document.getElementById('guruNamaHeader').innerHTML = '<i class="fas fa-user-check"></i> ' + (sessionData.nama || sessionData.username);
                 // Isi welcome greeting dan header
                 const namaLengkap = sessionData.nama || sessionData.username;
@@ -8761,6 +8789,24 @@ Kisi-kisi harus:
         // ============================================================
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
+                // 🔒 Validasi session saat tab kembali aktif
+                try {
+                    const ls = localStorage.getItem('guru_session');
+                    const ss = sessionStorage.getItem('guru_session_backup');
+                    if (ls && ss && ls !== ss) {
+                        // Session di localStorage berbeda dengan backup — cloning detected!
+                        localStorage.removeItem('guru_session');
+                        sessionStorage.removeItem('guru_session_backup');
+                        window.location.reload();
+                        return;
+                    }
+                    if (ls && !validasiSession()) {
+                        localStorage.removeItem('guru_session');
+                        sessionStorage.removeItem('guru_session_backup');
+                        window.location.reload();
+                        return;
+                    }
+                } catch (_) {}
                 // Browser auto-throttles timers saat hidden; refresh state saat kembali
                 if (typeof updateJam === 'function') updateJam();
                 if (typeof updateDashboardStats === 'function') updateDashboardStats();

@@ -3824,7 +3824,7 @@
                     btnMulai.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="margin-right: 6px;"></i> Mengulang (${attemptGet}/${maxAttemptsGet})...`;
                 }
 
-                db.from('bank_soal').select('id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, tipe_soal').eq('mapel', m).order('id', { ascending: true })
+                db.from('bank_soal_siswa').select('id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, tipe_soal').eq('mapel', m).order('id', { ascending: true })
                     .then(({ data, error }) => {
                         if (error) throw error;
                         let formattedData = data.map((row) => [

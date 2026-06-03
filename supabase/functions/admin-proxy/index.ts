@@ -2,9 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Restrict CORS to known origins
+// ⚠️ HAPUS 'null' dari daftar — mencegah eksploitasi via data: URI / file:// / sandboxed iframe
 const ALLOWED_ORIGINS = [
-  'null',
   'https://bkecjfrwqocguyvjymkn.supabase.co',
   'http://127.0.0.1:3000',
   'http://localhost:3000',
@@ -13,12 +12,14 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') || '';
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : 'null';
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
+  // Hanya set Access-Control-Allow-Origin jika origin ada di daftar aman
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-guru-id, x-guru-username, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
+  if (allowOrigin) headers['Access-Control-Allow-Origin'] = allowOrigin;
+  return headers;
 }
 
 serve(async (req: Request) => {
