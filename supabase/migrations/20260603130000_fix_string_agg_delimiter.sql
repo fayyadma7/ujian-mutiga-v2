@@ -1,10 +1,12 @@
 -- ============================================================
--- Migration 8: Fix N+1 query in koreksi_dan_submit
--- 
--- Sebelum: LOOP per item jawaban → SELECT per soal ke bank_soal
---          (N query untuk N soal = N+1 problem)
--- Sesudah: 3 query JOIN bulk menggantikan loop
---          (constant 3 query berapapun jumlah soalnya)
+-- Migration 11: Fix string_agg delimiter bug in koreksi_dan_submit
+--
+-- Bug: string_agg() dipanggil tanpa delimiter — arg ',' malah
+--      masuk ke ORDER BY clause. PostgreSQL cari fungsi
+--      string_agg(text) yang gak ada → error.
+--
+-- Fix: pindahin ',' ke posisi delimiter sebelum ORDER BY
+--      string_agg(expr, ',' ORDER BY ...)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION koreksi_dan_submit(
