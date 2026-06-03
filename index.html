@@ -3816,7 +3816,7 @@
 
             // === AMBIL SOAL (idRowUjian sudah pasti ada di sini) ===
             let attemptGet = 0;
-            const maxAttemptsGet = 5;
+            const maxAttemptsGet = 2;
 
             const sendGetRequest = () => {
                 attemptGet++;
@@ -3846,7 +3846,7 @@
                     })
                     .catch(err => {
                         if (attemptGet < maxAttemptsGet) {
-                            setTimeout(sendGetRequest, 2500);
+                            setTimeout(sendGetRequest, 1500 + Math.random() * 2000); // Jitter 1.5-3.5s
                         } else {
                             tutupModal();
                             tampilkanErrorJaringan("Gagal memuat soal: " + err.message);
@@ -4568,20 +4568,26 @@
 
         function startPeriodicTokenCheck() {
             stopPeriodicTokenCheck();
-            _tokenCheckInterval = setInterval(async () => {
-                if (!window.idRowUjian || !ujianSedangBerlangsung()) return;
-                const myToken = localStorage.getItem("device_token_" + getQueueUserId());
-                if (!myToken) return;
-                try {
-                    const { data: tk } = await dbWithTimeout(
-                        db.from('jawaban_ujian').select('device_token').eq('id', window.idRowUjian).maybeSingle()
-                    );
-                    if (tk && tk.device_token !== myToken) {
-                        stopPeriodicTokenCheck();
-                        showSesiDiambilAlih();
-                    }
-                } catch (e) { /* skip */ }
-            }, 30000);
+            const scheduleNext = () => {
+                // Jitter 45-75 detik agar semua siswa tidak request bersamaan
+                const delayMs = 45000 + Math.random() * 30000;
+                _tokenCheckInterval = setTimeout(async () => {
+                    if (!window.idRowUjian || !ujianSedangBerlangsung()) return;
+                    const myToken = localStorage.getItem("device_token_" + getQueueUserId());
+                    if (!myToken) return;
+                    try {
+                        const { data: tk } = await dbWithTimeout(
+                            db.from('jawaban_ujian').select('device_token').eq('id', window.idRowUjian).maybeSingle()
+                        );
+                        if (tk && tk.device_token !== myToken) {
+                            stopPeriodicTokenCheck();
+                            showSesiDiambilAlih();
+                        }
+                    } catch (e) { /* skip */ }
+                    scheduleNext(); // Jadwalkan ulang dengan jitter baru
+                }, delayMs);
+            };
+            scheduleNext();
         }
 
         function stopPeriodicTokenCheck() {
@@ -4714,7 +4720,7 @@ ${JSON.stringify(payloadJawaban)}`;
             };
 
             let attemptSubmit = 0;
-            const maxAttemptsSubmit = 5;
+            const maxAttemptsSubmit = 3;
 
             const sendSubmitRequest = async () => {
                 attemptSubmit++;
