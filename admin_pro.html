@@ -5470,7 +5470,6 @@ Buatkan soal-soal tersebut dalam format JSON Array mentah, tanpa markdown (\`\`\
   }
 ]
 Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit ditebak. Berikan kunci jawaban yang akurat. Output HARUS valid JSON mentah.`;
-
             try {
                 const { data, error: aiError } = await db.functions.invoke('gemini-proxy', {
                     body: {
@@ -5481,11 +5480,24 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                 });
 
                 if (aiError) {
-                    // Try to extract useful error message from proxy
-                    if (aiError['context'] && aiError['context'].status === 429) {
-                        throw new Error('Batas request tercapai (429). Mohon tunggu 1-2 menit lalu coba lagi.');
+                    let detailedMsg = aiError.message;
+                    // Coba ekstrak body error dari respons proxy jika ada
+                    if (aiError.context && typeof aiError.context.json === 'function') {
+                        try {
+                            const errBody = await aiError.context.clone().json();
+                            detailedMsg = errBody.error?.message || errBody.error || errBody.message || detailedMsg;
+                        } catch (e) {
+                            try {
+                                const errText = await aiError.context.clone().text();
+                                if (errText) detailedMsg = errText;
+                            } catch (e2) {}
+                        }
                     }
-                    throw aiError;
+
+                    if (aiError.context && aiError.context.status === 429) {
+                        throw new Error('Batas request API Gemini tercapai (429). Mohon tunggu 1-2 menit lalu coba lagi.');
+                    }
+                    throw new Error(`Proxy AI Error: ${detailedMsg}`);
                 }
 
                 if (!data || !data.candidates) throw new Error("Gagal menerima respons dari AI");
