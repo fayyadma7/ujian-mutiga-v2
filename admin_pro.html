@@ -5492,14 +5492,46 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                 let jsonStr = data.candidates[0].content.parts[0].text;
                 jsonStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-                // Pra-proses: double-escape backslash yang bukan merupakan escape character JSON valid (seperti \" atau \n)
-                // Ini mencegah error "Bad escaped character in JSON" ketika AI mengembalikan unescaped LaTeX seperti \( atau \lim atau \to
-                // Menggunakan regex yang mencocokkan double-backslash (agar dilewati) dan single-backslash (untuk di-double-escape)
                 jsonStr = jsonStr.replace(/\\\\|\\(?!["\\/n])/g, '\\\\');
 
                 let soalArray = JSON.parse(jsonStr);
 
                 if (!Array.isArray(soalArray) || soalArray.length === 0) throw new Error("Format balasan AI tidak valid atau kosong.");
+
+                // NORMALIZE KEYS AND VALUES TO PREVENT DATABASE TRIGGER ERRORS
+                soalArray = soalArray.map(s => {
+                    let tipe = s.tipe_soal || s.tipeSoal || s.tipe || "PG";
+                    tipe = tipe.toString().toUpperCase().trim();
+                    
+                    let jawaban = s.kunci_jawaban || s.kunci || s.jawaban || s.kunciJawaban || "";
+                    jawaban = jawaban.toString().toUpperCase().trim();
+                    
+                    // If AI accidentally swapped tipe_soal and kunci_jawaban
+                    if (["A","B","C","D","E"].includes(tipe) && !["A","B","C","D","E"].includes(jawaban)) {
+                        jawaban = tipe;
+                        tipe = "PG";
+                    } else if (tipe !== "PG" && tipe !== "ESSAY") {
+                        tipe = jawaban ? "PG" : "ESSAY";
+                    }
+
+                    // For PG, ensure we only take the first letter if AI returned something like "A. Opsi A"
+                    if (tipe === "PG" && jawaban.length > 1 && ["A","B","C","D","E"].includes(jawaban.charAt(0))) {
+                        jawaban = jawaban.charAt(0);
+                    }
+
+                    return {
+                        mapel: s.mapel || mapel,
+                        pertanyaan: s.pertanyaan || "",
+                        opsi_a: s.opsi_a || s.opsiA || "",
+                        opsi_b: s.opsi_b || s.opsiB || "",
+                        opsi_c: s.opsi_c || s.opsiC || "",
+                        opsi_d: s.opsi_d || s.opsiD || "",
+                        opsi_e: s.opsi_e || s.opsiE || "",
+                        kunci_jawaban: jawaban,
+                        kunci: jawaban, // Populasikan juga 'kunci' in case DB trigger expects it
+                        tipe_soal: tipe
+                    };
+                });
 
                 // Pastikan jumlah yang diambil persis sesuai yang diminta, potong kelebihannya
                 const totalDiminta = jmlPg + jmlEssay;
@@ -5581,7 +5613,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
             const reader = new FileReader();
             reader.onload = async function (e) {
                 try {
-                    const dataArray = new Uint8Array(e.target.result);
+const dataArray = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(dataArray, { type: 'array' });
                     const namaSheetPertama = workbook.SheetNames[0];
                     const isiExcel = XLSX.utils.sheet_to_json(workbook.Sheets[namaSheetPertama]);
@@ -5598,6 +5630,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         opsi_d: row["Opsi D"] || "",
                         opsi_e: row["Opsi E"] || "",
                         kunci_jawaban: row["Kunci Jawaban"] || "",
+                        kunci: row["Kunci Jawaban"] || "", // Populasikan juga 'kunci'
                         tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG"
                     }));
 
@@ -5863,7 +5896,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                                 if (currentSoal) soalArray.push(currentSoal);
                                 currentSoal = {
                                     mapel: mapel, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '',
-                                    kunci_jawaban: '', tipe_soal: 'PG'
+                                    kunci_jawaban: '', kunci: '', tipe_soal: 'PG'
                                 };
                                 currentMode = 'Q';
                                 currentQuestionNumber = num;
@@ -5910,7 +5943,9 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                                     currentSoal.opsi_e += c.outerHTML; 
                                 }
                                 else if (isKunci) {
-                                    currentSoal.kunci_jawaban = textMatch.replace(/^Kunci\s*:\s*/i, '').trim().toUpperCase().charAt(0); // Ambil huruf pertama saja (A/B/C/D/E)
+                                    let kunciVal = textMatch.replace(/^Kunci\s*:\s*/i, '').trim().toUpperCase().charAt(0);
+                                    currentSoal.kunci_jawaban = kunciVal; // Ambil huruf pertama saja (A/B/C/D/E)
+                                    currentSoal.kunci = kunciVal;
                                     currentMode = null;
                                 }
                                 else if (isTipe) {
