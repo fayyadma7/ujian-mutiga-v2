@@ -5540,7 +5540,6 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         opsi_d: s.opsi_d || s.opsiD || "",
                         opsi_e: s.opsi_e || s.opsiE || "",
                         kunci_jawaban: jawaban,
-                        kunci: jawaban, // Populasikan juga 'kunci' in case DB trigger expects it
                         tipe_soal: tipe
                     };
                 });
@@ -5625,7 +5624,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
             const reader = new FileReader();
             reader.onload = async function (e) {
                 try {
-const dataArray = new Uint8Array(e.target.result);
+                    const dataArray = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(dataArray, { type: 'array' });
                     const namaSheetPertama = workbook.SheetNames[0];
                     const isiExcel = XLSX.utils.sheet_to_json(workbook.Sheets[namaSheetPertama]);
@@ -5642,7 +5641,6 @@ const dataArray = new Uint8Array(e.target.result);
                         opsi_d: row["Opsi D"] || "",
                         opsi_e: row["Opsi E"] || "",
                         kunci_jawaban: row["Kunci Jawaban"] || "",
-                        kunci: row["Kunci Jawaban"] || "", // Populasikan juga 'kunci'
                         tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG"
                     }));
 
@@ -5908,7 +5906,7 @@ const dataArray = new Uint8Array(e.target.result);
                                 if (currentSoal) soalArray.push(currentSoal);
                                 currentSoal = {
                                     mapel: mapel, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '',
-                                    kunci_jawaban: '', kunci: '', tipe_soal: 'PG'
+                                    kunci_jawaban: '', tipe_soal: 'PG'
                                 };
                                 currentMode = 'Q';
                                 currentQuestionNumber = num;
@@ -5957,7 +5955,6 @@ const dataArray = new Uint8Array(e.target.result);
                                 else if (isKunci) {
                                     let kunciVal = textMatch.replace(/^Kunci\s*:\s*/i, '').trim().toUpperCase().charAt(0);
                                     currentSoal.kunci_jawaban = kunciVal; // Ambil huruf pertama saja (A/B/C/D/E)
-                                    currentSoal.kunci = kunciVal;
                                     currentMode = null;
                                 }
                                 else if (isTipe) {
