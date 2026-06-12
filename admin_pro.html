@@ -11,7 +11,7 @@
 
     <!-- Font Inter & FontAwesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
     <!-- SweetAlert2 (wajib sejak awal) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -3745,6 +3745,18 @@
             });
         }
 
+        // ==================== CHUNKED INSERT (untuk array besar) ====================
+        async function chunkedInsert(table, rows, chunkSize = 50) {
+            const results = [];
+            for (let i = 0; i < rows.length; i += chunkSize) {
+                const chunk = rows.slice(i, i + chunkSize);
+                const { data, error } = await adminDb.insert(table, chunk);
+                if (error) return { error };
+                results.push(data);
+            }
+            return { data: results };
+        }
+
         // ==================== REALTIME — Live status guru ====================
         let realtimeChannel = null;
         function mulaiRealtimeGuru() {
@@ -4263,7 +4275,7 @@
             } else {
                 const undoFunc = async () => {
                     if (backupSoal && backupSoal.length > 0) {
-                        await adminDb.insert('bank_soal', backupSoal);
+                        await chunkedInsert('bank_soal', backupSoal);
                         populatePreviewMapel();
                         showToast(`Soal mapel "${mapel}" berhasil di-restore`, 'success');
                     }
@@ -4314,7 +4326,7 @@
                 else {
                     const undoFunc = async () => {
                         if (backupData && backupData.length > 0) {
-                            await adminDb.insert('bank_soal', backupData);
+                            await chunkedInsert('bank_soal', backupData);
                             populatePreviewMapel();
                             showToast(`${mapels.length} mata pelajaran berhasil di-restore`, 'success');
                         }
@@ -4882,7 +4894,7 @@
 
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await adminDb.insert('jawaban_ujian', backupData);
+                        await chunkedInsert('jawaban_ujian', backupData);
                         loadMonitoring();
                         showToast(`${ids.length} data siswa berhasil di-restore`, 'success');
                     }
@@ -4913,7 +4925,7 @@
 
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await adminDb.insert('jadwal_ujian', backupData);
+                        await chunkedInsert('jadwal_ujian', backupData);
                         loadJadwal();
                         showToast(`${ids.length} jadwal berhasil di-restore`, 'success');
                     }
@@ -4951,7 +4963,7 @@
 
                 const undoFunc = async () => {
                     if (backupData && backupData.length > 0) {
-                        await adminDb.insert('bank_soal', backupData);
+                        await chunkedInsert('bank_soal', backupData);
                         loadPreviewSoal();
                         showToast(`${ids.length} soal berhasil di-restore`, 'success');
                     }
@@ -5010,7 +5022,7 @@
                             return rest;
                         });
 
-                        const { error: insertErr } = await adminDb.insert('bank_soal', newSoalArray);
+                        const { error: insertErr } = await chunkedInsert('bank_soal', newSoalArray);
                         if (insertErr) {
                             Swal.fire('Gagal!', insertErr.message, 'error');
                         } else {
@@ -5056,7 +5068,7 @@
 
             const undoFunc = async () => {
                 if (backupData && backupData.length > 0) {
-                    await adminDb.insert('jawaban_ujian', backupData);
+                    await chunkedInsert('jawaban_ujian', backupData);
                     loadNilaiSiswa();
                     showToast(`${ids.length} data nilai berhasil di-restore`, 'success');
                 }
@@ -5552,7 +5564,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
 
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Menyimpan...';
 
-                const { error: insertError } = await adminDb.insert('bank_soal', soalArray);
+                const { error: insertError } = await chunkedInsert('bank_soal', soalArray);
                 if (insertError) throw insertError;
 
                 document.getElementById('ai-materi').value = '';
@@ -5644,7 +5656,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG"
                     }));
 
-                    const { error } = await adminDb.insert('bank_soal', dataSoalSupabase);
+                    const { error } = await chunkedInsert('bank_soal', dataSoalSupabase);
 
                     if (error) throw error;
 
@@ -5983,7 +5995,7 @@ Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit di
                         status.innerHTML = `<span style="color: var(--primary);"><i class="fas fa-spinner fa-spin"></i> Menyimpan ${soalArray.length} soal (termasuk gambar) ke database...</span>`;
 
                         // Insert ke Supabase
-                        const { error } = await adminDb.insert('bank_soal', soalArray);
+                        const { error } = await chunkedInsert('bank_soal', soalArray);
 
                         if (error) throw error;
 
@@ -7404,12 +7416,26 @@ Kisi-kisi harus:
             const { data: jadwalAktif } = await db.from('jadwal_ujian').select('id').eq('is_aktif', true);
             const adaUjianAktif = jadwalAktif && jadwalAktif.length > 0;
 
-            // Fetch up to 2000 records to prevent memory issues while covering full sessions
-            let query = db.from('jawaban_ujian').select('*').order('created_at', { ascending: false }).limit(2000);
+            // --- Bangun query dengan SQL-level filters ---
+            let query = db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false });
             if (filterKelas) query = query.eq('kelas', filterKelas);
             if (filterMapel) query = query.eq('mapel', filterMapel);
+            if (searchName) query = query.ilike('nama', '%' + searchName + '%');
+            if (filterTglAwal) query = query.gte('created_at', filterTglAwal + 'T00:00:00');
+            if (filterTglAkhir) query = query.lte('created_at', filterTglAkhir + 'T23:59:59');
+            if (currentMonStatus === 'AKTIF') query = query.not().like('status', 'SELESAI%');
+            else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
+            else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
 
-            const { data, error } = await query;
+            // Hitung total dulu (tanpa range) untuk pagination akurat
+            const { count: totalItemsCount } = await query;
+            const totalItems = totalItemsCount || 0;
+            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+            if (currentMonPage > totalPages) currentMonPage = totalPages;
+            const startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
+
+            // Query data dengan range
+            const { data, error } = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
 
             if (error || !data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada siswa yang mengerjakan ujian.</td></tr>';
@@ -7425,66 +7451,40 @@ Kisi-kisi harus:
                 return;
             }
 
+            // Hitung counts dari query terpisah dengan filter mapel/kelas (sama seperti aslinya, tanpa search/tgl/status)
             let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
+            try {
+                const buildBaseCount = () => {
+                    let q = db.from('jawaban_ujian').select('id', { count: 'exact', head: true });
+                    if (filterKelas) q = q.eq('kelas', filterKelas);
+                    if (filterMapel) q = q.eq('mapel', filterMapel);
+                    return q;
+                };
+                const [countSelesai, countPlg] = await Promise.all([
+                    buildBaseCount().like('status', 'SELESAI%').then(r => r.count || 0).catch(() => 0),
+                    buildBaseCount().gt('pelanggaran', 0).then(r => r.count || 0).catch(() => 0)
+                ]);
+                cntSelesai = countSelesai;
+                cntPelanggaran = countPlg;
+                cntAktif = (totalItems || 0) - cntSelesai;
+                if (cntAktif < 0) cntAktif = 0;
+            } catch (_) {}
 
-            // 1. Calculate overall counts & Filter client-side
-            const filteredData = data.filter(s => {
-                const isSelesai = String(s.status).startsWith('SELESAI');
-                const isPlg = parseInt(s.pelanggaran) > 0;
-
-                // Calculate global counts (ignoring search & status filter)
-                if (isSelesai) cntSelesai++;
-                else cntAktif++;
-                if (isPlg) cntPelanggaran++;
-
-                // Apply Status Filter
-                if (currentMonStatus === 'AKTIF' && isSelesai) return false;
-                if (currentMonStatus === 'SELESAI' && !isSelesai) return false;
-                if (currentMonStatus === 'PELANGGARAN' && !isPlg) return false;
-
-                // Apply Name Search
-                if (searchName && !String(s.nama).toLowerCase().includes(searchName)) return false;
-
-                // Apply Date Filter (berdasarkan created_at)
-                if (filterTglAwal || filterTglAkhir) {
-                    const tgl = new Date(s.created_at);
-                    tgl.setHours(0, 0, 0, 0); // Normalisasi ke awal hari
-                    if (filterTglAwal) {
-                        const tglAwal = new Date(filterTglAwal + 'T00:00:00');
-                        if (tgl < tglAwal) return false;
-                    }
-                    if (filterTglAkhir) {
-                        const tglAkhir = new Date(filterTglAkhir + 'T23:59:59');
-                        if (tgl > tglAkhir) return false;
-                    }
-                }
-
-                return true;
-            });
-
-            // 1.5 Apply Sorting
-            tempMonitoringData = filteredData;
-            const sortedData = sortMonitoringData(filteredData);
-
-            // 2. Pagination Logic
-            const totalItems = sortedData.length;
-            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-            if (currentMonPage > totalPages) currentMonPage = totalPages;
-
-            const startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
-            const paginatedData = sortedData.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+            // 1.5 Apply Sorting (client-side untuk data halaman ini)
+            tempMonitoringData = data;
+            const sortedData = sortMonitoringData(data);
 
             document.getElementById('mon-page-info').innerText = `Menampilkan ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalItems)} dari ${totalItems} siswa`;
 
             tbody.innerHTML = '';
 
-            if (paginatedData.length === 0) {
+            if (sortedData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Data tidak ditemukan sesuai filter/pencarian.</td></tr>';
             }
 
             const highlight = (text, q) => q ? text.replace(new RegExp(q, 'gi'), match => `<mark style="background-color: yellow; padding: 0;">${match}</mark>`) : text;
 
-            paginatedData.forEach((s, i) => {
+            sortedData.forEach((s, i) => {
                 const isSelesai = String(s.status).startsWith('SELESAI');
                 const isPlg = parseInt(s.pelanggaran) > 0;
 
@@ -7553,7 +7553,7 @@ Kisi-kisi harus:
                 elTgl.innerText = now.toLocaleDateString('id-ID', options);
             }
         }
-        setInterval(updateJam, 1000);
+        let _updateJamIntervalId = setInterval(updateJam, 1000);
         updateJam();
 
         // --- 9. AUTO-DEACTIVATE JADWAL (GLOBAL — BERJALAN DI SEMUA TAB) ---
@@ -7643,7 +7643,7 @@ Kisi-kisi harus:
 
         // Safety interval: setiap 10 detik cek cache lokal TANPA query DB
         // Sebagai fallback jika precision timer browser di-throttle (tab background)
-        setInterval(() => {
+        let _safetyCheckIntervalId = setInterval(() => {
             if (_watchedJadwal.length === 0) return;
             const now = Date.now();
             if (_watchedJadwal.some(j => now >= j.endTime)) {
@@ -7751,11 +7751,8 @@ Kisi-kisi harus:
         scheduleNextAutoDeactivate();
 
         // Fallback: re-check saat tab browser kembali ke foreground
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                scheduleNextAutoDeactivate();
-            }
-        });
+        // NOTE: handler utama udah di Promise.all() di bawah (session validation) — biarkan ini jalan duluan
+
 
         // Load data pertama kali aplikasi dibuka
         loadNilaiSiswa();
@@ -8582,10 +8579,15 @@ Kisi-kisi harus:
                             await adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() });
                         } catch (_) {}
                     }
-                    if (heartbeatInterval) {
-                        clearInterval(heartbeatInterval);
-                        heartbeatInterval = null;
-                    }
+                    // Cleanup semua realtime channels & interval sebelum logout
+                    if (monitoringChannel) { db.removeChannel(monitoringChannel); monitoringChannel = null; }
+                    if (_jadwalRealtimeChannel) { db.removeChannel(_jadwalRealtimeChannel); _jadwalRealtimeChannel = null; }
+                    if (_soalRealtimeChannel) { db.removeChannel(_soalRealtimeChannel); _soalRealtimeChannel = null; }
+                    if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+                    if (_updateJamIntervalId) { clearInterval(_updateJamIntervalId); _updateJamIntervalId = null; }
+                    if (_safetyCheckIntervalId) { clearInterval(_safetyCheckIntervalId); _safetyCheckIntervalId = null; }
+                    if (_autoDeactivateTimer) { clearTimeout(_autoDeactivateTimer); _autoDeactivateTimer = null; }
+                    if (window._monDebounce) { clearTimeout(window._monDebounce); window._monDebounce = null; }
                     hentikanRealtimeGuru();
                     localStorage.removeItem('guru_session');
                     location.reload();
@@ -8851,12 +8853,14 @@ Kisi-kisi harus:
                         return;
                     }
                 } catch (_) {}
-                // Browser auto-throttles timers saat hidden; refresh state saat kembali
-                if (typeof updateJam === 'function') updateJam();
-                if (typeof updateDashboardStats === 'function') updateDashboardStats();
-                if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
-                if (typeof loadRecentActivity === 'function') loadRecentActivity();
-                if (typeof scheduleNextAutoDeactivate === 'function') scheduleNextAutoDeactivate();
+                // Batch semua query ke Supabase dalam Promise.all
+                Promise.all([
+                    typeof updateJam === 'function' ? Promise.resolve(updateJam()) : Promise.resolve(),
+                    typeof updateDashboardStats === 'function' ? updateDashboardStats() : Promise.resolve(),
+                    typeof loadDashboardJadwalAktif === 'function' ? loadDashboardJadwalAktif() : Promise.resolve(),
+                    typeof loadRecentActivity === 'function' ? loadRecentActivity() : Promise.resolve(),
+                    typeof scheduleNextAutoDeactivate === 'function' ? scheduleNextAutoDeactivate() : Promise.resolve()
+                ]).catch(err => console.warn('visibilitychange refresh warning:', err));
             }
         });
 
