@@ -1,0 +1,145 @@
+/* ================================================================
+   ADMIN PANEL — PAGE-SPECIFIC STYLES & ANIMATIONS
+   SMK Muhammadiyah 3 Purbalingga - Ujian Pro
+   Extracted from admin_pro.html <style> block
+   ================================================================ */
+
+/* ================================================================
+   1. PAGE-SPECIFIC SELECTORS
+   Source: lines 996-1002, 1152-1160
+   ================================================================ */
+
+/* Sticky table header for scrollable mapel table */
+#panel-daftar-mapel thead th {
+    position: sticky;
+    top: 0;
+    background: #080e1d;
+    z-index: 2;
+}
+
+/* Tabel Jadwal — responsive & fleksibel */
+#panel-jadwal table th,
+#panel-jadwal table td {
+    padding: 12px 14px;
+    vertical-align: middle;
+}
+#panel-jadwal table tbody tr:hover {
+    background: rgba(59,130,246,0.04);
+}
+
+/* ================================================================
+   2. PAGE-SPECIFIC MOBILE OVERRIDES
+   (from 768px media query — page-specific ID selectors only)
+   Source: lines 2133-2144 (page-specific subset)
+   ================================================================ */
+@media (max-width: 768px) {
+    #modalGenerateAI,
+    #modalEditSoal,
+    #modalDaftarGuru,
+    #dashboard-welcome,
+    [id^="mon-card-"],
+    [id^="kisi-kisi-content"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+/* ================================================================
+   3. ALL ANIMATION KEYFRAMES
+   Source: lines 403-412, 1142-1150, 1366-1373, 1397-1406,
+           1451-1458, 1572-1581, 1629-1640, 1947-1950, 2222-2225
+   ================================================================ */
+
+/* Page section slide-in */
+@keyframes pageSlideIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.99); }
+    to   { opacity: 1; transform: translateY(0)  scale(1);    }
+}
+
+/* Fade-in alias */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Toast progress bar shrink */
+@keyframes toastBarShrink {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}
+
+/* Pulse animation (generic) */
+@keyframes pulse {
+    0%, 100% { opacity: 1 }
+    50% { opacity: .5 }
+}
+
+/* Landing page floating orb */
+@keyframes landingFloat {
+    0% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    100% {
+        transform: translate(-4%, 6%) scale(1.15) rotate(15deg);
+    }
+}
+
+/* Landing left panel entrance */
+@keyframes landingFadeRight {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Landing brand logo float */
+@keyframes landingLogoFloat {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-6px) scale(1.02);
+    }
+}
+
+/* Landing right panel entrance */
+@keyframes landingFadeLeft {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Live dot neon pulse */
+@keyframes neonPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 4px #10b981, 0 0 10px #10b981;
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.3);
+        box-shadow: 0 0 8px #10b981, 0 0 16px #10b981, 0 0 24px #10b981;
+        opacity: 1;
+    }
+}
+
+/* Login modal entrance */
+@keyframes loginModalIn {
+    from { opacity: 0; transform: translateY(24px) scale(0.96); filter: blur(8px); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0);  }
+}
+
+/* Simple fade in for mobile (performance) */
+@keyframes simpleFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
