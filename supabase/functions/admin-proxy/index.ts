@@ -8,6 +8,7 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   'https://fayyadma7.github.io',
+  'https://ujian-mutiga-v2.vercel.app',
 ];
 
 function getCorsHeaders(req: Request) {
