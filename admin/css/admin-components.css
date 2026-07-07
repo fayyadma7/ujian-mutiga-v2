@@ -794,7 +794,7 @@ select.csl-native { display: none; }
 .landing-bg {
     position: fixed;
     inset: 0;
-    background: url('assets/background-landingpage.png') center/cover no-repeat;
+    background: url('../../assets/background-landingpage.png') center/cover no-repeat;
     z-index: 0;
 }
 

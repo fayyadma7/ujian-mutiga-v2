@@ -331,7 +331,7 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
 
   // --- RTL DETECTION ---
   _applyRTL(container) {
-    container.querySelectorAll('.soal-text, .opsi-text, [class*="soal"], [class*="opsi"]').forEach(el => {
+    container.querySelectorAll('.teks-pertanyaan, .opsi-text, ul li div').forEach(el => {
       if (/[\u0600-\u06FF\u0750-\u077F]/.test(el.textContent)) {
         el.classList.add('rtl');
       }
