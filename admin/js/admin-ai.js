@@ -294,19 +294,43 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
     if (!Array.isArray(soalArray)) throw new Error('AI tidak mengembalikan array JSON');
     if (soalArray.length === 0) throw new Error('AI mengembalikan array kosong');
 
+    // Post-processing helpers
+    const stripOptions = (text, hasOpsi) => {
+      if (!hasOpsi || !text) return text;
+      return text
+        .replace(/\n?\s*[A-E][\.\)]\s*.{0,200}/g, '')
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+    };
+    const toSuperscript = (text) => text ? text.replace(/\^(\d+)/g, '<sup>$1</sup>') : '';
+    const collapseNewlines = (text) => text ? text.replace(/\n{3,}/g, '<br><br>') : '';
+
     return soalArray.map(s => {
       let tipe = (s.tipe_soal || s.tipeSoal || s.tipe || 'PG').toString().toUpperCase().trim();
       let jawaban = (s.kunci_jawaban || s.kunci || s.jawaban || s.kunciJawaban || '').toString().toUpperCase().trim();
       if (tipe !== 'PG' && tipe !== 'ESSAY') tipe = jawaban ? 'PG' : 'ESSAY';
       if (tipe === 'PG' && jawaban.length > 1 && 'ABCDE'.includes(jawaban.charAt(0))) jawaban = jawaban.charAt(0);
+
+      let pertanyaan = s.pertanyaan || '';
+      const opsiA = s.opsi_a || s.opsiA || '';
+      const opsiB = s.opsi_b || s.opsiB || '';
+      const opsiC = s.opsi_c || s.opsiC || '';
+      const opsiD = s.opsi_d || s.opsiD || '';
+      const opsiE = s.opsi_e || s.opsiE || '';
+      const hasOpsi = !!(opsiA || opsiB || opsiC || opsiD || opsiE);
+
+      pertanyaan = stripOptions(pertanyaan, hasOpsi);
+      pertanyaan = toSuperscript(pertanyaan);
+      pertanyaan = collapseNewlines(pertanyaan);
+
       return {
         mapel: s.mapel || mapel,
-        pertanyaan: s.pertanyaan || '',
-        opsi_a: s.opsi_a || s.opsiA || '',
-        opsi_b: s.opsi_b || s.opsiB || '',
-        opsi_c: s.opsi_c || s.opsiC || '',
-        opsi_d: s.opsi_d || s.opsiD || '',
-        opsi_e: s.opsi_e || s.opsiE || '',
+        pertanyaan,
+        opsi_a: toSuperscript(opsiA),
+        opsi_b: toSuperscript(opsiB),
+        opsi_c: toSuperscript(opsiC),
+        opsi_d: toSuperscript(opsiD),
+        opsi_e: toSuperscript(opsiE),
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
