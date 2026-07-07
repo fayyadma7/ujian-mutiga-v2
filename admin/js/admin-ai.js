@@ -17,7 +17,14 @@ const AIGenerator = {
 
   init() { if (!document.getElementById('ai-generator-modal')) this._buildModal(); },
 
-  openModal() { this.init(); this.modalEl.style.display = 'flex'; },
+  openModal() {
+    this.init();
+    this.modalEl.style.display = 'flex';
+    const statusEl = document.getElementById('ai-status');
+    if (statusEl) statusEl.innerHTML = '';
+    const btn = document.getElementById('ai-generate-btn');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Generate Soal'; }
+  },
   closeModal() { if (this.modalEl) this.modalEl.style.display = 'none'; },
 
   // --- WEIGHTED RANDOM PROVIDER SELECTOR ---
