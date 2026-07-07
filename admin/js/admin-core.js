@@ -524,6 +524,10 @@ function initPage(idHalaman) {
     if (idHalaman === 'bank-soal') {
         if (typeof populatePreviewMapel === 'function') populatePreviewMapel();
         if (typeof loadMathJax === 'function') loadMathJax();
+        // Load AI generator module
+        if (typeof AIGenerator === 'undefined') {
+            loadScript('admin/js/admin-ai.js');
+        }
     }
     if (idHalaman === 'analisis-soal-page') {
         if (typeof initCustomSelect === 'function') {

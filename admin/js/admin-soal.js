@@ -5,12 +5,12 @@
 //            resetFormManual, populatePreviewMapel, populateManualMapel,
 //            editSatuSoal, simpanEditSoal, hapusSatuSoal, hapusSatuMapel,
 //            bulkActionSoal, bulkActionMapel, filterMapel, filterPreviewSoal,
-//            generateSoalAI, generateKisiKisi, exportSoalWord, downloadTemplate,
+//            exportSoalWord, downloadTemplate,
 //            downloadTemplateWord, tambahOpsiManual, kurangOpsiManual,
 //            toggleManualOpsi, insertImageToEditor, formatManualText,
 //            formatEditText, openVisualMathEditor, insertMathFormulaToFocused,
 //            insertMathFormulaToEditFocused, loadMathJax, openManualInputPanel,
-//            togglePanelManual, handleMapelConflict, analisisSoal
+//            togglePanelManual, analisisSoal
 //            (Word import, Excel import event listeners)
 // ============================================================
 
@@ -177,6 +177,10 @@ async function loadPreviewSoal() {
 
     container.innerHTML = html;
     if (container) container.scrollTop = currentScrollTop;
+    // KaTeX render untuk $$...$$ (prioritas) lalu MathJax fallback
+    if (typeof AIGenerator !== 'undefined' && AIGenerator._renderMathInContainer) {
+        AIGenerator._renderMathInContainer(container);
+    }
     if (window.MathJax) {
         MathJax.typesetClear([container]);
         MathJax.typesetPromise([container]).catch(err => console.error(err));
@@ -769,244 +773,6 @@ async function simpanEditSoal() {
 
 async function editSoal(id) { return editSatuSoal(id); }
 async function simpanEditSoal(id) { return simpanEditSoal(); }
-
-// --- AI GENERATE ---
-async function handleMapelConflict(mapel, statusEl) {
-    const { count, error } = await db.from('bank_soal').select('*', { count: 'exact', head: true }).eq('mapel', mapel);
-    if (error) return 'error';
-    if (count > 0) {
-        const result = await Swal.fire({
-            title: 'Mapel Sudah Ada',
-            html: `Mata Pelajaran <b>${mapel}</b> sudah memiliki <b>${count}</b> soal.<br>Apa yang ingin Anda lakukan?`,
-            icon: 'question', showDenyButton: true, showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-plus"></i> Tambahkan Saja', confirmButtonColor: '#10b981',
-            denyButtonText: '<i class="fas fa-trash-alt"></i> Timpa Soal Lama', denyButtonColor: '#ef4444',
-            cancelButtonText: 'Batal'
-        });
-        if (result.isConfirmed) return 'append';
-        else if (result.isDenied) {
-            statusEl.innerHTML = `<span style="color: var(--primary);"><i class="fas fa-spinner fa-spin"></i> Menghapus soal lama...</span>`;
-            const { data: oldIds } = await db.from('bank_soal').select('id').eq('mapel', mapel);
-            if (oldIds && oldIds.length > 0) await adminDb.batchDelete('bank_soal', oldIds.map(i => i.id));
-            return 'overwrite';
-        } else return 'cancel';
-    }
-    return 'proceed';
-}
-
-async function generateSoalAI() {
-    const mapel = document.getElementById('ai-mapel').value.trim();
-    const materi = document.getElementById('ai-materi').value.trim();
-    const jmlPg = parseInt(document.getElementById('ai-jml-pg').value) || 0;
-    const jmlEssay = parseInt(document.getElementById('ai-jml-essay').value) || 0;
-    const statusEl = document.getElementById('ai-status');
-    const btn = document.getElementById('btn-generate-ai');
-
-    if (!mapel || !materi || (jmlPg === 0 && jmlEssay === 0)) return showToast('Mapel, Materi, dan Jumlah soal wajib diisi!', 'error');
-    if (jmlPg + jmlEssay > 30) return showToast('Maksimal total 30 soal dalam sekali generate!', 'error');
-
-    statusEl.innerHTML = `<span style="color: #0d9488;"><i class="fas fa-spinner fa-spin"></i> Mengecek status Mapel...</span>`;
-    const action = await handleMapelConflict(mapel, statusEl);
-    if (action === 'cancel' || action === 'error') {
-        if (action === 'cancel') statusEl.innerHTML = '';
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Membuat Soal...';
-    statusEl.innerHTML = '';
-
-    const guru = document.getElementById('ai-guru').value.trim();
-    const jurusan = document.getElementById('ai-jurusan').value.trim();
-    const fase = document.getElementById('ai-fase').value;
-    const kelas = document.getElementById('ai-kelas').value.trim();
-    const diff = document.getElementById('ai-diff').value;
-    const keterangan = document.getElementById('ai-keterangan').value.trim();
-
-    const promptText = `Anda adalah ahli pembuat soal ujian profesional dan guru di Indonesia. Buatkan soal untuk spesifikasi berikut:
-Mata Pelajaran: ${mapel}
-Materi Pokok: ${materi}
-${guru ? 'Nama Guru: ' + guru : ''}
-${jurusan ? 'Jurusan: ' + jurusan : ''}
-Tingkat Pendidikan: ${fase} ${kelas ? 'Kelas ' + kelas : ''}
-Tingkat Kesulitan: ${diff} dari 10 (1=Sangat Mudah/LOTS, 10=Sangat Sulit/HOTS).
-${keterangan ? 'Keterangan Tambahan / Gaya Soal: ' + keterangan : ''}
-
-TARGET JUMLAH SOAL (WAJIB DITEPATI):
-- ${jmlPg} soal Pilihan Ganda
-- ${jmlEssay} soal Essay
-PENTING: TOTAL SOAL YANG ANDA HASILKAN HARUS TEPAT ${jmlPg + jmlEssay} SOAL. JANGAN KURANG DAN JANGAN LEBIH! SETIAP SOAL HARUS UNIK.
-ATURAN FORMATTING TEKS: 
-1. Jika pertanyaan membutuhkan tabel, HARUS gunakan tag HTML standar (<table border="1" style="border-collapse:collapse; width:100%;"><tr><th>...</th></tr>...</table>).
-2. Jika ada baris baru, gunakan tag <br>. 
-3. Jika ada teks tebal atau miring, gunakan tag <b> atau <i>. 
-4. JANGAN PERNAH menggunakan Markdown (seperti **teks**, *teks*, atau | tabel |)!
-5. Jika terdapat rumus matematika atau simbol matematika, WAJIB menggunakan format LaTeX inline dengan pembungkus \\( ... \\) (contoh: \\( \\lim_{x \\to 0} f(x) \\) atau \\( x^2 \\)). Jangan gunakan $$ atau [].
-
-Buatkan soal-soal tersebut dalam format JSON Array mentah, tanpa markdown (\`\`\`json) atau teks pengantar apa pun. Array harus berisi objek dengan struktur persis seperti ini:
-[
-  {
-    "mapel": "${mapel}",
-    "pertanyaan": "Teks pertanyaan di sini...",
-    "opsi_a": "Teks opsi A (kosongkan jika essay)",
-    "opsi_b": "Teks opsi B (kosongkan jika essay)",
-    "opsi_c": "Teks opsi C (kosongkan jika essay)",
-    "opsi_d": "Teks opsi D (kosongkan jika essay)",
-    "opsi_e": "Teks opsi E (kosongkan jika essay)",
-    "kunci_jawaban": "A/B/C/D/E (kosongkan jika essay)",
-    "tipe_soal": "PG atau ESSAY"
-  }
-]
-Pastikan pengecoh (distractor) pada pilihan ganda sangat masuk akal dan sulit ditebak. Berikan kunci jawaban yang akurat. Output HARUS valid JSON mentah.`;
-
-    try {
-        const { data, error: aiError } = await db.functions.invoke('gemini-proxy', {
-            body: { promptText: promptText, temperature: 0.7, responseMimeType: "application/json" }
-        });
-
-        if (aiError) throw new Error(`Proxy AI Error: ${aiError.message}`);
-        if (!data || !data.candidates) throw new Error("Gagal menerima respons dari AI");
-
-        let jsonStr = data.candidates[0].content.parts[0].text;
-        jsonStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
-        let soalArray = JSON.parse(jsonStr);
-        if (!Array.isArray(soalArray) || soalArray.length === 0) throw new Error("Format balasan AI tidak valid atau kosong.");
-
-        soalArray = soalArray.map(s => {
-            let tipe = s.tipe_soal || s.tipeSoal || s.tipe || "PG";
-            tipe = tipe.toString().toUpperCase().trim();
-            let jawaban = s.kunci_jawaban || s.kunci || s.jawaban || s.kunciJawaban || "";
-            jawaban = jawaban.toString().toUpperCase().trim();
-            if (["A","B","C","D","E"].includes(tipe) && !["A","B","C","D","E"].includes(jawaban)) {
-                jawaban = tipe; tipe = "PG";
-            } else if (tipe !== "PG" && tipe !== "ESSAY") {
-                tipe = jawaban ? "PG" : "ESSAY";
-            }
-            if (tipe === "PG" && jawaban.length > 1 && ["A","B","C","D","E"].includes(jawaban.charAt(0))) {
-                jawaban = jawaban.charAt(0);
-            }
-            return {
-                mapel: s.mapel || mapel,
-                pertanyaan: s.pertanyaan || "",
-                opsi_a: s.opsi_a || s.opsiA || "",
-                opsi_b: s.opsi_b || s.opsiB || "",
-                opsi_c: s.opsi_c || s.opsiC || "",
-                opsi_d: s.opsi_d || s.opsiD || "",
-                opsi_e: s.opsi_e || s.opsiE || "",
-                kunci_jawaban: jawaban,
-                tipe_soal: tipe
-            };
-        });
-
-        const totalDiminta = jmlPg + jmlEssay;
-        if (soalArray.length > totalDiminta) soalArray = soalArray.slice(0, totalDiminta);
-
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Menyimpan...';
-        const { error: insertError } = await chunkedInsert('bank_soal', soalArray);
-        if (insertError) throw insertError;
-
-        document.getElementById('ai-materi').value = '';
-        document.getElementById('ai-jml-pg').value = '';
-        document.getElementById('ai-jml-essay').value = '';
-        document.getElementById('modalGenerateAI').style.display = 'none';
-
-        let modalTitle = 'Berhasil Generate Soal!';
-        let modalText = `${soalArray.length} soal untuk ${mapel} telah berhasil dibuat oleh AI dan disimpan.`;
-        if (soalArray.length < totalDiminta) {
-            modalTitle = 'Selesai dengan Catatan';
-            modalText = `Anda meminta ${totalDiminta} soal, namun AI hanya merespon dengan ${soalArray.length} soal. Hal ini sering terjadi jika instruksi/materi terlalu spesifik. Soal yang ada telah disimpan.`;
-        }
-
-        await Swal.fire({ icon: soalArray.length < totalDiminta ? 'info' : 'success', title: modalTitle, text: modalText, confirmButtonColor: '#10b981' });
-        await populatePreviewMapel();
-        const optMapel = document.getElementById('preview-mapel');
-        if (optMapel) {
-            optMapel.value = mapel;
-            document.getElementById('panel-daftar-mapel').style.display = 'none';
-            document.getElementById('panel-detail-soal').style.display = 'block';
-            document.getElementById('detail-mapel-title').innerText = "Mata Pelajaran: " + mapel;
-            await loadPreviewSoal();
-        }
-    } catch (err) {
-        console.error(err);
-        statusEl.innerHTML = `<span style="color: red;"><i class="fas fa-exclamation-triangle"></i> Gagal: ${err.message}</span>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-robot"></i> Mulai Generate Soal';
-    }
-}
-
-async function generateKisiKisi() {
-    const mapel = document.getElementById('preview-mapel').value;
-    if (!mapel) return showToast("Mata pelajaran belum dipilih", "error");
-
-    const btn = document.getElementById('btn-kisi-kisi');
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI Menganalisis...';
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
-    btn.style.pointerEvents = 'none';
-
-    try {
-        const { data, error } = await db.from('bank_soal').select('pertanyaan, kunci_jawaban, tipe_soal').eq('mapel', mapel);
-        if (error || !data || data.length === 0) throw new Error("Tidak ada soal untuk dianalisis");
-
-        const dataString = JSON.stringify(data.map((s, i) => ({ Pertanyaan: s.pertanyaan.replace(/<[^>]+>/g, '') })));
-
-        const promptText = `Saya memiliki daftar soal ujian untuk mata pelajaran ${mapel}.
-Berikut adalah daftar pertanyaannya:
-${dataString}
-
-Tugas Anda: Buatkan kisi-kisi penulisan soal yang sangat ringkas dan profesional berdasarkan daftar pertanyaan di atas. 
-Kisi-kisi harus:
-1. Ditulis dalam format HTML Murni berupa Tabel.
-   - Gunakan format tag ini: <table border="1" cellpadding="8" style="border-collapse: collapse; width: 100%; text-align: left; margin-bottom: 20px;">
-   - Kolom tabel HANYA ADA DUA: "Materi Pokok" dan "Indikator Soal". (TIDAK PERLU KOLOM NOMOR).
-2. "Indikator Soal" berisi penjelasan ringkas tentang apa kemampuan/konsep yang diuji pada soal tersebut (misal: "Siswa dapat menganalisis...").
-3. Anda sangat dianjurkan mengelompokkan beberapa soal yang mirip/serupa ke dalam satu materi pokok & indikator yang sama (tidak perlu 1 baris untuk 1 soal).
-4. JANGAN gunakan Markdown sama sekali (jangan pakai karakter backtick atau \`\`\`html). Langsung kembalikan kode HTML tabel tersebut.`;
-
-        const { data: resData, error: aiError } = await db.functions.invoke('gemini-proxy', {
-            body: { promptText: promptText, temperature: 0.4 }
-        });
-
-        if (aiError) throw aiError;
-        if (!resData || !resData.candidates) throw new Error("Gagal menerima respons dari AI");
-        let resultHtml = resData.candidates[0].content.parts[0].text;
-        resultHtml = resultHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
-
-        Swal.fire({
-            title: `Kisi-kisi: ${mapel}`,
-            html: `<div id="kisi-kisi-content" style="text-align:left;font-size:14px;line-height:1.6;max-height:60vh;overflow-y:auto;padding:10px;">
-                <h2 style="text-align:center;font-size:18px;margin-bottom:15px;color:#e2e8f0;">KISI-KISI SOAL UJIAN - ${mapel.toUpperCase()}</h2>
-                ${resultHtml}
-            </div>`,
-            width: 800, background: 'rgba(15,23,42,0.95)', color: '#e2e8f0', backdrop: 'rgba(0,0,0,0.7)',
-            showCancelButton: true, confirmButtonText: '<i class="fas fa-copy"></i> Copy Kisi-kisi',
-            cancelButtonText: 'Tutup', confirmButtonColor: '#059669', cancelButtonColor: '#475569'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const div = document.getElementById('kisi-kisi-content');
-                const range = document.createRange();
-                range.selectNodeContents(div);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-                document.execCommand('copy');
-                selection.removeAllRanges();
-                showToast("Kisi-kisi berhasil disalin ke Clipboard!", "success");
-            }
-        });
-    } catch (err) {
-        console.error(err);
-        Swal.fire('Gagal', err.message, 'error');
-    } finally {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.pointerEvents = 'auto';
-    }
-}
 
 // --- EXPORT WORD ---
 async function exportSoalWord(btn) {

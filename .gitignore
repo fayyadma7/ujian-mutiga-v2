@@ -1,3 +1,10 @@
 ﻿.opencode/
 .ui-ux-pro-max-skill/
 opencode.json
+
+# Keamanan — jangan commit API key atau secrets
+.env
+.env.*
+supabase/.temp/
+*.pem
+*.key

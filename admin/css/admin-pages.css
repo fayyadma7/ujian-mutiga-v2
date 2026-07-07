@@ -143,3 +143,32 @@
     from { opacity: 0; }
     to   { opacity: 1; }
 }
+
+/* ================================================================
+   4. KATEX & RTL SUPPORT
+   ================================================================ */
+
+/* RTL text direction (Arabic, etc.) */
+.rtl {
+    direction: rtl;
+    unicode-bidi: embed;
+    text-align: right;
+}
+
+/* KaTeX display math wrapper */
+.math-block {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.math-block .katex {
+    font-size: 1.15em;
+}
+
+/* KaTeX inline math */
+.katex {
+    font-size: 1.05em;
+}

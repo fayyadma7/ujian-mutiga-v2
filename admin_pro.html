@@ -27,6 +27,9 @@
     <!-- ⚡ Library berat (Chart.js, Tone.js, docx) di-load LAZY saat dibutuhkan — lihat fungsi loadScript() -->
     <!-- MathJax juga di-load secara conditional saat halaman bank-soal dibuka -->
 
+    <!-- KaTeX untuk rendering rumus $$...$$ -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
     <link rel="stylesheet" href="admin/css/admin-base.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=2">
@@ -110,10 +113,6 @@
                             <p class="slide-desc">Sistem otomatis mencatat dan memberikan peringatan jika siswa mencoba membuka tab atau aplikasi lain.</p>
                         </div>
                         <div class="feature-slide">
-                            <h4 class="slide-title">Generator Soal AI (Gemini)</h4>
-                            <p class="slide-desc">Buat bank soal berkualitas tinggi berbasis analisis HOTS secara instan dalam hitungan detik menggunakan kecerdasan buatan.</p>
-                        </div>
-                        <div class="feature-slide">
                             <h4 class="slide-title">Auto-Save & Enkripsi Aman</h4>
                             <p class="slide-desc">Jawaban siswa tersimpan aman di cloud server setiap detik, meminimalkan risiko kehilangan data karena masalah teknis.</p>
                         </div>
@@ -122,7 +121,6 @@
                         <span class="dot active" onclick="setSlide(0)"></span>
                         <span class="dot" onclick="setSlide(1)"></span>
                         <span class="dot" onclick="setSlide(2)"></span>
-                        <span class="dot" onclick="setSlide(3)"></span>
                     </div>
                 </div>
             </div>
@@ -179,83 +177,6 @@
 
     <!-- Toast notifikasi real-time -->
     <div id="toast-container"></div>
-
-    <!-- Modal Generate Soal AI -->
-    <div id="modalGenerateAI"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(4, 8, 18, 0.8); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:1050; justify-content:center; align-items:center;">
-        <div
-            style="background:rgba(12, 19, 38, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); padding:28px; border-radius:24px; width:90%; max-width:800px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.5); border-top: 4px solid var(--accent); color: var(--text-main);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:14px;">
-                <h3 style="color: var(--text-main); margin:0; font-size:1.15rem; font-weight:700;"><i class="fas fa-magic" style="color:var(--accent);"></i> ✨ Generate Soal via AI (Gemini)</h3>
-                <button onclick="document.getElementById('modalGenerateAI').style.display='none'"
-                    style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--danger); opacity:0.8; transition:opacity 0.2s;"
-                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">&times;</button>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label style="color: var(--text-subtle);">Nama Guru (Opsional)</label>
-                    <input type="text" id="ai-guru" class="form-control" placeholder="Contoh: Budi Santoso, S.Pd">
-                </div>
-                <div class="form-group">
-                    <label style="color: var(--text-subtle);">Jurusan / Peminatan</label>
-                    <input type="text" id="ai-jurusan" class="form-control" placeholder="Contoh: MIPA / IPS / TKJ">
-                </div>
-                <div class="form-group" style="grid-column: span 2;">
-                    <label style="color: var(--text-subtle);">Mata Pelajaran (Wajib)</label>
-                    <input type="text" id="ai-mapel" class="form-control" placeholder="Contoh: Sejarah Indonesia">
-                </div>
-                <div class="form-group" style="grid-column: span 2;">
-                    <label style="color: var(--text-subtle);">Fase & Kelas</label>
-                    <div style="display: flex; gap: 10px;">
-                        <select id="ai-fase" class="form-control" style="width: 40%;">
-                            <option value="Fase F">Fase F</option>
-                            <option value="Fase E">Fase E</option>
-                            <option value="Fase D (SMP)">Fase D (SMP)</option>
-                            <option value="Fase A/B/C (SD)">SD</option>
-                        </select>
-                        <input type="text" id="ai-kelas" class="form-control" style="flex: 1;"
-                            placeholder="Kelas (Contoh: 11)">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="color: var(--text-subtle);">Materi Pokok / Topik Pembahasan (Wajib)</label>
-                <textarea id="ai-materi" class="form-control" rows="3"
-                    placeholder="Contoh: Peristiwa Proklamasi Kemerdekaan RI, Rengasdengklok, dan Sidang PPKI. Buat soal analisis HOTS."></textarea>
-            </div>
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="color: var(--text-subtle);">Keterangan Tambahan (Opsional)</label>
-                <textarea id="ai-keterangan" class="form-control" rows="2"
-                    placeholder="Contoh: Gunakan pendekatan logika studi kasus, hindari pertanyaan teori menghafal."></textarea>
-            </div>
-
-            <div
-                style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; align-items: end;">
-                <div class="form-group">
-                    <label style="color: var(--text-subtle);">Tingkat Kesulitan: <span id="ai-diff-val"
-                            style="font-weight:bold; color:var(--accent);">Sedang (5)</span></label>
-                    <input type="range" id="ai-diff" min="1" max="10" value="5" class="form-control"
-                        style="padding:0; height:auto; cursor:pointer;"
-                        oninput="document.getElementById('ai-diff-val').innerText = (this.value < 4 ? 'Mudah' : this.value > 7 ? 'Sulit (HOTS)' : 'Sedang') + ' (' + this.value + ')'">
-                </div>
-                <div class="form-group">
-                    <label style="color: var(--text-subtle);">Jumlah Soal</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="number" id="ai-jml-pg" class="form-control" placeholder="Jml PG (Max 30)">
-                        <input type="number" id="ai-jml-essay" class="form-control" placeholder="Jml Essay (Max 10)">
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn btn-purple" id="btn-generate-ai" onclick="generateSoalAI()"
-                style="width: 100%; justify-content: center; font-size:16px;">
-                <i class="fas fa-robot"></i> Mulai Generate Soal
-            </button>
-            <div id="ai-status" style="margin-top: 15px; font-weight: 500; text-align: center;"></div>
-        </div>
-    </div>
 
     <!-- Modal Edit Soal -->
     <div id="modalEditSoal"
@@ -594,11 +515,11 @@
 
                         <!-- Generate AI -->
                         <div class="upload-area ai"
-                            onclick="document.getElementById('modalGenerateAI').style.display='flex'">
+                            onclick="AIGenerator.openModal()">
                             <i class="fas fa-magic"></i>
                             <h3>Generate via AI</h3>
                             <p style="color: var(--text-muted); margin-top: 8px; font-size:13px;">Buat soal otomatis
-                                dengan Gemini AI</p>
+                                dengan Google AI</p>
                         </div>
 
                         <!-- Input Manual -->
@@ -829,8 +750,9 @@
                             </button>
                             <button class="btn btn-outline" id="btn-kisi-kisi"
                                 style="color:#34d399; border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.05); padding:6px 12px; font-size:13px;"
-                                onclick="generateKisiKisi()" title="Buat Kisi-Kisi / Ringkasan dari Soal via AI">
-                                <i class="fas fa-magic"></i> Generate Kisi-Kisi
+                                onclick="AIGenerator.generateKisiKisi()"
+                                title="Buat Kisi-Kisi / Ringkasan dari Soal via AI">
+                                <i class="fas fa-magic"></i> Kisi-Kisi
                             </button>
                             <button class="btn btn-outline"
                                 style="color:#38bdf8; border-color:rgba(14,165,233,0.3); background:rgba(14,165,233,0.05); padding:6px 12px; font-size:13px;"
