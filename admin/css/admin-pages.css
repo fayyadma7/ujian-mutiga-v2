@@ -160,7 +160,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 8px 0;
+    padding: 4px 0;
     overflow-x: auto;
     overflow-y: hidden;
 }
@@ -170,5 +170,19 @@
 
 /* KaTeX inline math */
 .katex {
+    font-size: 1.05em;
+}
+
+/* Compact KaTeX in soal preview — remove excess vertical spacing */
+#preview-container .katex-display {
+    margin: 4px 0 !important;
+}
+#preview-container ul {
+    margin-bottom: 4px !important;
+}
+#preview-container ul li {
+    padding: 3px 0 !important;
+}
+#preview-container .katex-display > .katex {
     font-size: 1.05em;
 }
