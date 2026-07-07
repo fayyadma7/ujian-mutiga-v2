@@ -340,23 +340,25 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
   // --- KATEX RENDER ---
   _renderMathInContainer(container) {
     if (typeof katex === 'undefined') return;
-    const walker = document.createTreeWalker(container, 4, null, false);
-    const nodesToReplace = [];
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (node.textContent.includes('$$')) nodesToReplace.push(node);
-    }
-    nodesToReplace.forEach(textNode => {
-      const parent = textNode.parentNode;
-      if (!parent) return;
-      const html = textNode.textContent.replace(/\$\$(.+?)\$\$/gs, (_, formula) => {
-        try {
-          return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
-        } catch { return `<code>$$${formula}$$</code>`; }
-      });
-      const span = document.createElement('span');
-      span.innerHTML = html;
-      parent.replaceChild(span, textNode);
+    // Render display math: $$...$$
+    container.querySelectorAll('.teks-pertanyaan, .opsi-text, ul li div').forEach(el => {
+      if (!el.dataset.mathRendered && el.textContent.includes('$$')) {
+        el.innerHTML = el.innerHTML.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => {
+          try { return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false }); }
+          catch { return `<code>$$${formula}$$</code>`; }
+        });
+        el.dataset.mathRendered = '1';
+      }
+    });
+    // Render inline math: $...$  (hanya di teks pertanyaan)
+    container.querySelectorAll('.teks-pertanyaan').forEach(el => {
+      if (!el.dataset.inlineMathDone && el.textContent.includes('$')) {
+        el.innerHTML = el.innerHTML.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, formula) => {
+          try { return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false }); }
+          catch { return `<code>$${formula}$</code>`; }
+        });
+        el.dataset.inlineMathDone = '1';
+      }
     });
   },
 

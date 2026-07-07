@@ -175,14 +175,18 @@
 
 /* Compact KaTeX in soal preview — remove excess vertical spacing */
 #preview-container .katex-display {
-    margin: 4px 0 !important;
+    margin: 2px 0 !important;
 }
 #preview-container ul {
     margin-bottom: 4px !important;
 }
 #preview-container ul li {
-    padding: 3px 0 !important;
+    padding: 2px 0 !important;
 }
 #preview-container .katex-display > .katex {
     font-size: 1.05em;
+}
+#preview-container .soal-item {
+    padding: 12px !important;
+    margin-bottom: 10px !important;
 }
