@@ -302,8 +302,8 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
         .replace(/\n{2,}/g, '\n')
         .trim();
     };
-    const toSuperscript = (text) => text ? text.replace(/\^(\d+)/g, '<sup>$1</sup>') : '';
     const collapseNewlines = (text) => text ? text.replace(/\n{3,}/g, '<br><br>') : '';
+    const smartTrim = (text) => text ? text.replace(/^[\s\n]+|[\s\n]+$/g, '').replace(/\n{3,}/g, '<br><br>') : '';
 
     return soalArray.map(s => {
       let tipe = (s.tipe_soal || s.tipeSoal || s.tipe || 'PG').toString().toUpperCase().trim();
@@ -320,17 +320,16 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
       const hasOpsi = !!(opsiA || opsiB || opsiC || opsiD || opsiE);
 
       pertanyaan = stripOptions(pertanyaan, hasOpsi);
-      pertanyaan = toSuperscript(pertanyaan);
       pertanyaan = collapseNewlines(pertanyaan);
 
       return {
         mapel: s.mapel || mapel,
         pertanyaan,
-        opsi_a: toSuperscript(opsiA),
-        opsi_b: toSuperscript(opsiB),
-        opsi_c: toSuperscript(opsiC),
-        opsi_d: toSuperscript(opsiD),
-        opsi_e: toSuperscript(opsiE),
+        opsi_a: opsiA,
+        opsi_b: opsiB,
+        opsi_c: opsiC,
+        opsi_d: opsiD,
+        opsi_e: opsiE,
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
@@ -340,9 +339,10 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
   // --- KATEX RENDER ---
   _renderMathInContainer(container) {
     if (typeof katex === 'undefined') return;
-    // Render display math: $$...$$
-    container.querySelectorAll('.teks-pertanyaan, .opsi-text, ul li div').forEach(el => {
-      if (!el.dataset.mathRendered && el.textContent.includes('$$')) {
+    const selectors = '.teks-pertanyaan, .opsi-text, ul li div';
+    // Step 1: Render KaTeX $$...$$ first
+    container.querySelectorAll(selectors).forEach(el => {
+      if (!el.dataset.mathRendered && el.innerHTML.includes('$$')) {
         el.innerHTML = el.innerHTML.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => {
           try { return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false }); }
           catch { return `<code>$$${formula}$$</code>`; }
@@ -350,14 +350,15 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
         el.dataset.mathRendered = '1';
       }
     });
-    // Render inline math: $...$  (hanya di teks pertanyaan)
-    container.querySelectorAll('.teks-pertanyaan').forEach(el => {
-      if (!el.dataset.inlineMathDone && el.textContent.includes('$')) {
-        el.innerHTML = el.innerHTML.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, formula) => {
-          try { return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false }); }
-          catch { return `<code>$${formula}$</code>`; }
+    // Step 2: Convert remaining ^N superscript in plain text only (skip KaTeX-rendered elements)
+    container.querySelectorAll(selectors).forEach(el => {
+      if (!el.dataset.supDone) {
+        el.querySelectorAll('span:not(.katex):not(.katex-mathml), div:not(.katex-display)').forEach(node => {
+          if (!node.closest('.katex') && !node.classList.contains('katex')) {
+            node.innerHTML = node.innerHTML.replace(/\^(\d+)/g, '<sup>$1</sup>');
+          }
         });
-        el.dataset.inlineMathDone = '1';
+        el.dataset.supDone = '1';
       }
     });
   },
