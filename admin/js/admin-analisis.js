@@ -11,8 +11,26 @@ let myChart = null;
 async function populateAnalisisFilters() {
     const selectMapel = document.getElementById('ana-filter-mapel');
     const selectKelas = document.getElementById('ana-filter-kelas');
+    const sesi = getGuruSession();
+    const isAdmin = sesi && sesi.isAdmin === true;
+    const guruId = sesi ? sesi.id : null;
 
-    const { data } = await db.from('jawaban_ujian').select('mapel, kelas');
+    let mapelFilter = null;
+    if (!isAdmin && guruId) {
+        const { data: mySoal } = await db.from('bank_soal').select('mapel').eq('created_by', guruId);
+        if (mySoal) mapelFilter = [...new Set(mySoal.map(d => d.mapel))];
+    }
+
+    let data;
+    if (mapelFilter && mapelFilter.length > 0) {
+        const { data: d } = await db.from('jawaban_ujian').select('mapel, kelas').in('mapel', mapelFilter);
+        data = d;
+    } else if (!mapelFilter) {
+        const { data: d } = await db.from('jawaban_ujian').select('mapel, kelas');
+        data = d;
+    } else {
+        data = [];
+    }
     if (!data) return;
 
     const mapels = [...new Set(data.map(d => d.mapel))].sort();
@@ -47,8 +65,24 @@ async function loadAnalisisSoal() { return loadAnalisisData(); }
 async function loadAnalisisData() {
     const mapel = document.getElementById('ana-filter-mapel').value;
     const kelas = document.getElementById('ana-filter-kelas').value;
+    const sesi = getGuruSession();
+    const isAdmin = sesi && sesi.isAdmin === true;
 
     if (!mapel) return;
+
+    // Guru: hanya bisa analisis mapel miliknya
+    if (!isAdmin) {
+        const { data: cek } = await db.from('bank_soal').select('id').eq('mapel', mapel).eq('created_by', sesi.id).limit(1);
+        if (!cek || cek.length === 0) {
+            document.getElementById('ana-rata').innerText = '-';
+            document.getElementById('ana-tinggi').innerText = '-';
+            document.getElementById('ana-rendah').innerText = '-';
+            if (myChart) myChart.destroy();
+            document.getElementById('tabel-analisis-soal').innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;">Anda hanya bisa menganalisis mapel yang Anda buat.</td></tr>';
+            document.getElementById('ana-total-soal').innerText = 'Total: 0 Soal';
+            return;
+        }
+    }
 
     // 1. Statistik Nilai
     let queryNilai = db.from('jawaban_ujian').select('*').eq('mapel', mapel);

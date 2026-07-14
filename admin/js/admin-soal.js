@@ -36,23 +36,36 @@ function loadMathJax() {
 async function populatePreviewMapel() {
     const tbody = document.getElementById('tabel-daftar-mapel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>';
+    const _sSesi = getGuruSession();
+    const _sIsAdmin = _sSesi && _sSesi.isAdmin === true;
+    const _sGuruId = _sSesi ? _sSesi.id : null;
 
-    const { data, error } = await db.from('bank_soal').select('mapel');
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>`;
+
+    // Admin: join guru untuk "Dibuat Oleh"; Guru: filter created_by
+    let query = _sIsAdmin
+        ? db.from('bank_soal').select('mapel, guru:created_by(nama)')
+        : db.from('bank_soal').select('mapel, guru:created_by(nama)').eq('created_by', _sGuruId);
+
+    const { data, error } = await query;
     if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Gagal memuat data: ${error?.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Gagal memuat data: ${error?.message}</td></tr>`;
         return;
     }
 
-    const mapelCounts = {};
+    // Group by mapel, collect count + unique creator names
+    const mapelInfo = {};
     data.forEach(row => {
-        if (row.mapel) mapelCounts[row.mapel] = (mapelCounts[row.mapel] || 0) + 1;
+        if (!row.mapel) return;
+        if (!mapelInfo[row.mapel]) mapelInfo[row.mapel] = { count: 0, creators: new Set() };
+        mapelInfo[row.mapel].count++;
+        if (row.guru && row.guru.nama) mapelInfo[row.mapel].creators.add(row.guru.nama);
     });
 
-    const uniqueMapels = Object.keys(mapelCounts).sort();
+    const uniqueMapels = Object.keys(mapelInfo).sort();
 
     if (uniqueMapels.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Belum ada bank soal. Silakan upload soal via Excel atau Word.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Belum ada bank soal. Silakan upload soal via Excel atau Word.</td></tr>';
         const optMapel = document.getElementById('jadwal-mapel');
         if (optMapel) optMapel.innerHTML = '<option value="">— Belum ada Mapel di Bank Soal —</option>';
         return;
@@ -61,12 +74,16 @@ async function populatePreviewMapel() {
     let html = '';
     let optHtml = '<option value="">— Pilih Mapel dari Bank Soal —</option>';
     uniqueMapels.forEach(mapel => {
-        const count = mapelCounts[mapel];
+        const info = mapelInfo[mapel];
+        const creatorLabel = _sIsAdmin
+            ? [...info.creators].join(', ')
+            : '<span style="color:var(--text-muted);font-size:11px;">Milik Saya</span>';
         html += `
             <tr>
                 <td style="text-align:center;"><input type="checkbox" class="cb-mapel" value="${mapel}"></td>
                 <td style="font-weight:600; color:var(--text-main); text-align:left; padding-left:15px;">${mapel}</td>
-                <td style="text-align:center;"><span class="badge" style="background:rgba(99, 102, 241, 0.1); color:var(--primary); border:1px solid rgba(99, 102, 241, 0.2);">${count} Soal</span></td>
+                <td style="text-align:center;"><span class="badge" style="background:rgba(99, 102, 241, 0.1); color:var(--primary); border:1px solid rgba(99, 102, 241, 0.2);">${info.count} Soal</span></td>
+                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorLabel}</td>
                 <td style="text-align:center;">
                     <div class="action-buttons" style="display:flex; justify-content:center; gap:8px;">
                         <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="bukaDetailSoal('${mapel}')">
@@ -111,6 +128,10 @@ function tutupDetailSoal() {
 async function loadPreviewSoal() {
     const mapel = document.getElementById('preview-mapel').value;
     const container = document.getElementById('preview-container');
+    const _psSesi = getGuruSession();
+    const _psIsAdmin = _psSesi && _psSesi.isAdmin === true;
+    const _psGuruId = _psSesi ? _psSesi.id : null;
+
     if (!mapel) {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);">Pilih Mata Pelajaran di atas untuk melihat preview soal.</div>';
         return;
@@ -122,7 +143,9 @@ async function loadPreviewSoal() {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Memuat soal...</div>';
     }
 
-    const { data, error } = await db.from('bank_soal').select('*').eq('mapel', mapel).order('id', { ascending: true });
+    let query = db.from('bank_soal').select('*, guru:created_by(nama)').eq('mapel', mapel).order('id', { ascending: true });
+    if (!_psIsAdmin && _psGuruId) query = query.eq('created_by', _psGuruId);
+    const { data, error } = await query;
 
     if (error || !data || data.length === 0) {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--danger);"><i class="fas fa-exclamation-circle"></i> Tidak ada soal ditemukan untuk mapel ini.</div>';
@@ -131,12 +154,17 @@ async function loadPreviewSoal() {
 
     let html = '';
     data.forEach((s, idx) => {
+        const creatorName = _psIsAdmin && s.guru ? s.guru.nama : null;
+        const creatorBadge = creatorName
+            ? `<span style="font-size:10px; color:var(--text-muted); margin-left:8px;"><i class="fas fa-user"></i> ${creatorName}</span>`
+            : '';
         html += `
             <div class="soal-item" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; backdrop-filter: blur(5px); transition: border-color 0.2s;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <input type="checkbox" class="cb-soal" value="${s.id}">
                         <strong style="color:var(--text-main);">Soal No. ${idx + 1}</strong>
+                        ${creatorBadge}
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <span class="badge" style="background:${s.tipe_soal === 'ESSAY' ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.1)'}; color:${s.tipe_soal === 'ESSAY' ? '#a5b4fc' : '#34d399'}; border:1px solid ${s.tipe_soal === 'ESSAY' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}; margin-right:10px;">${s.tipe_soal || 'PG'}</span>
@@ -444,7 +472,13 @@ function removeManualOpsi() { if (manualOpsiCount > 2) { manualOpsiCount--; upda
 async function populateManualMapel() {
     const dl = document.getElementById('manual-mapel-list');
     if (!dl) return;
-    const { data } = await db.from('bank_soal').select('mapel').order('mapel', { ascending: true });
+    const _pmSesi = getGuruSession();
+    const _pmIsAdmin = _pmSesi && _pmSesi.isAdmin === true;
+    const _pmGuruId = _pmSesi ? _pmSesi.id : null;
+
+    let query = db.from('bank_soal').select('mapel').order('mapel', { ascending: true });
+    if (!_pmIsAdmin && _pmGuruId) query = query.eq('created_by', _pmGuruId);
+    const { data } = await query;
     if (!data) return;
     const mapels = [...new Set(data.map(r => r.mapel))];
     dl.innerHTML = '';

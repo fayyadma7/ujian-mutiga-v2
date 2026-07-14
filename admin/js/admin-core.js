@@ -43,7 +43,7 @@ function upgradeSession() {
     if (!raw) return;
     try {
         const sesi = JSON.parse(raw);
-        if (sesi && sesi.id && (!sesi.role || sesi.role === 'guru' && sesi.username === 'admin')) {
+        if (sesi && sesi.id) {
             db.from('guru').select('role').eq('id', sesi.id).maybeSingle().then(({ data: guruData }) => {
                 if (guruData && guruData.role) {
                     sesi.role = guruData.role;

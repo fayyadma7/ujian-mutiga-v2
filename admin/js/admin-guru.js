@@ -8,6 +8,8 @@
 // ============================================================
 
 function bukaModalDaftarGuru() {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     document.getElementById('daftarNama').value = '';
     document.getElementById('daftarUsername').value = '';
     document.getElementById('daftarPassword').value = '';
@@ -82,6 +84,8 @@ async function loadDataGuru() {
 }
 
 async function loadGuruList() {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) return;
     try {
         const { data, error } = await db.rpc('guru_list');
         const tbody = document.getElementById('guruTableBody');
@@ -121,6 +125,8 @@ async function loadGuruList() {
 }
 
 async function loadPendingList() {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) return;
     try {
         const { data, error } = await db.rpc('guru_list_pending');
         const tbody = document.getElementById('pendingTableBody');
@@ -153,6 +159,8 @@ async function loadPendingList() {
 }
 
 async function setujuiGuruAkun(id) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     try {
         const { data, error } = await db.rpc('guru_setujui', { p_registrasi_id: id });
         if (error || !data || !data.success) { Swal.fire({ icon: 'error', title: 'Gagal', text: error ? error.message : (data && data.error ? data.error : 'Error'), background: 'rgba(15,23,42,0.95)', color: '#f1f5f9', confirmButtonColor: '#3B82F6' }); return; }
@@ -162,6 +170,8 @@ async function setujuiGuruAkun(id) {
 }
 
 async function tolakGuruAkun(id) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     try {
         const { data, error } = await db.rpc('guru_tolak', { p_registrasi_id: id });
         if (error || !data || !data.success) { Swal.fire({ icon: 'error', title: 'Gagal', text: error ? error.message : (data && data.error ? data.error : 'Error'), background: 'rgba(15,23,42,0.95)', color: '#f1f5f9', confirmButtonColor: '#3B82F6' }); return; }
@@ -171,6 +181,8 @@ async function tolakGuruAkun(id) {
 }
 
 async function toggleGuruStatus(id, active) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     try {
         const { data, error } = await db.rpc('guru_toggle_active', { p_guru_id: id, p_active: active });
         if (error || !data || !data.success) { Swal.fire({ icon: 'error', title: 'Gagal', text: error ? error.message : (data && data.error ? data.error : 'Error'), background: 'rgba(15,23,42,0.95)', color: '#f1f5f9', confirmButtonColor: '#3B82F6' }); return; }
@@ -179,6 +191,8 @@ async function toggleGuruStatus(id, active) {
 }
 
 async function hapusGuruAkun(id) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     Swal.fire({
         title: 'Hapus Guru?', text: 'Data guru akan dihapus permanen',
         icon: 'warning', showCancelButton: true, confirmButtonColor: '#EF4444', cancelButtonColor: '#6B7280',

@@ -48,13 +48,34 @@ serve(async (req: Request) => {
       });
     }
 
-    // ========== EXECUTE OPERATION ==========
+    const isAdmin = guru.role === 'admin';
+    const OWNED_TABLES = ['bank_soal', 'jadwal_ujian'];
+    const ADMIN_TABLES = ['guru', 'registrasi_guru'];
+
+    // ========== RBAC ==========
     const { action, table, data, filter, id } = await req.json();
+
+    // Blokir guru dari akses tabel admin
+    if (!isAdmin && ADMIN_TABLES.includes(table)) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin only' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Blokir guru dari hapus data siswa
+    if (!isAdmin && table === 'jawaban_ujian' && (action === 'delete' || action === 'batch-delete')) {
+      return new Response(JSON.stringify({ error: 'Forbidden: hanya admin bisa menghapus data siswa' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     let result;
 
     switch (action) {
       case 'delete':
-        if (id) {
+        if (!isAdmin && OWNED_TABLES.includes(table)) {
+          result = await supabase.from(table).delete().eq('id', id).eq('created_by', guru.id);
+        } else if (id) {
           result = await supabase.from(table).delete().eq('id', id);
         } else if (filter) {
           result = await supabase.from(table).delete().match(filter);
@@ -62,11 +83,21 @@ serve(async (req: Request) => {
         break;
 
       case 'batch-delete':
-        result = await supabase.from(table).delete().in('id', data.ids);
+        if (!isAdmin && OWNED_TABLES.includes(table)) {
+          result = await supabase.from(table).delete().in('id', data.ids).eq('created_by', guru.id);
+        } else {
+          result = await supabase.from(table).delete().in('id', data.ids);
+        }
         break;
 
       case 'update':
-        if (id) {
+        if (!isAdmin && OWNED_TABLES.includes(table)) {
+          if (id) {
+            result = await supabase.from(table).update(data.set).eq('id', id).eq('created_by', guru.id);
+          } else if (filter) {
+            result = await supabase.from(table).update(data.set).match({ ...filter, created_by: guru.id });
+          }
+        } else if (id) {
           result = await supabase.from(table).update(data.set).eq('id', id);
         } else if (filter) {
           result = await supabase.from(table).update(data.set).match(filter);
@@ -74,7 +105,14 @@ serve(async (req: Request) => {
         break;
 
       case 'insert':
-        result = await supabase.from(table).insert(data);
+        if (!isAdmin && OWNED_TABLES.includes(table)) {
+          const withOwner = Array.isArray(data)
+            ? data.map(row => ({ ...row, created_by: guru.id }))
+            : { ...data, created_by: guru.id };
+          result = await supabase.from(table).insert(withOwner);
+        } else {
+          result = await supabase.from(table).insert(data);
+        }
         break;
 
       case 'rpc':

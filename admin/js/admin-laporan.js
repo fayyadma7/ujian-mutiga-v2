@@ -69,6 +69,9 @@ async function loadNilaiSiswa() {
     const tbody = document.getElementById('tabel-data-nilai');
     const selectMapel = document.getElementById('filter-mapel-laporan');
     const selectKelas = document.getElementById('filter-kelas-laporan');
+    const _lapSesi = getGuruSession();
+    const _lapIsAdmin = _lapSesi && _lapSesi.isAdmin === true;
+    const _lapGuruId = _lapSesi ? _lapSesi.id : null;
 
     const filterMapel = selectMapel ? selectMapel.value : '';
     const filterKelas = selectKelas ? selectKelas.value : '';
@@ -78,13 +81,35 @@ async function loadNilaiSiswa() {
 
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</td></tr>';
 
-    const { data: filterData, error: filterErr } = await db.from('jawaban_ujian')
-        .select('mapel, kelas')
-        .order('created_at', { ascending: false });
+    // Guru: ambil daftar mapel miliknya untuk filter
+    let allowedMapels = null;
+    if (!_lapIsAdmin && _lapGuruId) {
+        const { data: mySoal } = await db.from('bank_soal').select('mapel').eq('created_by', _lapGuruId);
+        if (mySoal) allowedMapels = [...new Set(mySoal.map(d => d.mapel))];
+    }
 
-    if (filterErr) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data database!</td></tr>';
-        return;
+    let filterData;
+    if (allowedMapels && allowedMapels.length > 0) {
+        const { data: d, error: filterErr } = await db.from('jawaban_ujian')
+            .select('mapel, kelas')
+            .in('mapel', allowedMapels)
+            .order('created_at', { ascending: false });
+        filterData = d;
+        if (filterErr) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data database!</td></tr>';
+            return;
+        }
+    } else if (!allowedMapels) {
+        const { data: d, error: filterErr } = await db.from('jawaban_ujian')
+            .select('mapel, kelas')
+            .order('created_at', { ascending: false });
+        filterData = d;
+        if (filterErr) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data database!</td></tr>';
+            return;
+        }
+    } else {
+        filterData = [];
     }
 
     if (selectMapel && selectKelas) {
@@ -109,6 +134,7 @@ async function loadNilaiSiswa() {
 
     let query = db.from('jawaban_ujian').select('*', { count: 'exact' });
     if (filterMapel) query = query.eq('mapel', filterMapel);
+    else if (allowedMapels && allowedMapels.length > 0) query = query.in('mapel', allowedMapels);
     if (filterKelas) query = query.eq('kelas', filterKelas);
     if (searchNameLap) query = query.ilike('nama', `%${searchNameLap}%`);
     if (filterTglAwalLap) query = query.gte('created_at', filterTglAwalLap + 'T00:00:00');
@@ -153,6 +179,11 @@ async function loadNilaiSiswa() {
 
     sortedData.forEach((siswa, index) => {
         const displayNama = highlight(siswa.nama, searchNameLap);
+        const hapusBtn = _lapIsAdmin
+            ? `<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="hapusDataNilai(${siswa.id}, '${siswa.nama}')">
+                    <i class="fas fa-trash"></i>
+               </button>`
+            : '';
         tbody.innerHTML += `
             <tr>
                 <td style="text-align:center;"><input type="checkbox" class="cb-laporan" value="${siswa.id}"></td>
@@ -172,11 +203,7 @@ async function loadNilaiSiswa() {
                         ${siswa.status || 'SELESAI'}
                     </span>
                 </td>
-                <td style="text-align:center;">
-                    <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="hapusDataNilai(${siswa.id}, '${siswa.nama}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
+                <td style="text-align:center;">${hapusBtn}</td>
             </tr>
         `;
     });
@@ -240,6 +267,8 @@ function clearSortLaporan() {
 
 // --- BULK ACTIONS ---
 async function bulkActionNilai(action) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     const ids = Array.from(document.querySelectorAll('.cb-laporan:checked')).map(cb => cb.value);
     if (ids.length === 0) return showToast("Pilih minimal satu data!", 'info');
     const confirmed = await asyncConfirm(`Hapus <b>${ids.length} data nilai</b> terpilih?`, "Hapus Nilai Siswa?");

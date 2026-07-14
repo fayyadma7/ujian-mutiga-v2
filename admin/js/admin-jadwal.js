@@ -11,7 +11,13 @@ let editingJadwalId = null;
 
 async function populateJadwalMapelDropdown() {
     const select = document.getElementById('jadwal-mapel');
-    const { data, error } = await db.from('bank_soal').select('mapel');
+    const _jmSesi = getGuruSession();
+    const _jmIsAdmin = _jmSesi && _jmSesi.isAdmin === true;
+    const _jmGuruId = _jmSesi ? _jmSesi.id : null;
+
+    let query = db.from('bank_soal').select('mapel');
+    if (!_jmIsAdmin && _jmGuruId) query = query.eq('created_by', _jmGuruId);
+    const { data, error } = await query;
     if (error || !data) return;
     const mapelSet = new Set();
     data.forEach(d => { if (d.mapel) mapelSet.add(d.mapel.trim()); });
@@ -93,15 +99,21 @@ async function simpanJadwal() {
 
 async function loadJadwal() {
     const tbody = document.getElementById('tabel-jadwal');
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat data jadwal...</td></tr>';
+    const _jSesi = getGuruSession();
+    const _jIsAdmin = _jSesi && _jSesi.isAdmin === true;
+    const _jGuruId = _jSesi ? _jSesi.id : null;
 
-    const { data, error } = await db.from('jadwal_ujian').select('*').order('id', { ascending: false });
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat data jadwal...</td></tr>';
+
+    let query = db.from('jadwal_ujian').select('*, guru:created_by(id, nama)').order('id', { ascending: false });
+    if (!_jIsAdmin && _jGuruId) query = query.eq('created_by', _jGuruId);
+    const { data, error } = await query;
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:16px; color:red;">Gagal memuat: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:16px; color:red;">Gagal memuat: ${error.message}</td></tr>`;
         return;
     }
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:16px; color:var(--text-muted);">Belum ada jadwal. Silakan buat jadwal baru di sebelah kiri.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:16px; color:var(--text-muted);">Belum ada jadwal. Silakan buat jadwal baru di sebelah kiri.</td></tr>';
         return;
     }
 
@@ -113,6 +125,7 @@ async function loadJadwal() {
     data.forEach(j => {
         const isAktif = j.is_aktif === true;
         const checked = isAktif ? 'checked' : '';
+        const creatorName = j.guru ? j.guru.nama : (j.created_by ? 'Tidak diketahui' : '<span style="color:var(--text-muted);font-size:11px;">—</span>');
 
         let kelasLabel = "";
         if (!j.kelas) {
@@ -138,7 +151,7 @@ async function loadJadwal() {
         let tSelesai = j.waktu_selesai ? new Date(j.waktu_selesai) : null;
 
         if (!tMulai || isNaN(tMulai.getTime())) {
-            tbody.innerHTML += `<tr><td colspan="8" style="color:red; text-align:center;">Data jadwal ID ${j.id} tidak valid (Waktu Mulai kosong)</td></tr>`;
+            tbody.innerHTML += `<tr><td colspan="9" style="color:red; text-align:center;">Data jadwal ID ${j.id} tidak valid (Waktu Mulai kosong)</td></tr>`;
             return;
         }
         if (!tSelesai || isNaN(tSelesai.getTime())) {
@@ -185,6 +198,7 @@ async function loadJadwal() {
                         <span class="toggle-slider"></span>
                     </label>
                 </td>
+                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorName}</td>
                 <td style="text-align:center;">
                     <div style="display:flex; gap:5px; justify-content:center;">
                         <button class="btn btn-primary" style="padding:6px 8px; font-size:11px; background:var(--primary);" onclick="mulaiEditJadwal(${j.id})" title="Edit Jadwal"><i class="fas fa-edit"></i></button>

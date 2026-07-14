@@ -180,6 +180,8 @@ async function loadMonitoring() {
 
     tempMonitoringData = data;
     const sortedData = typeof sortMonitoringData === 'function' ? sortMonitoringData(data) : data;
+    const _monSesi = getGuruSession();
+    const _monIsAdmin = _monSesi && _monSesi.isAdmin === true;
 
     document.getElementById('mon-page-info').innerText = `Menampilkan ${startIdx + 1}-${Math.min(startIdx + ITEMS_PER_PAGE, totalItems)} dari ${totalItems} siswa`;
     tbody.innerHTML = '';
@@ -210,6 +212,12 @@ async function loadMonitoring() {
         const waktu = s.created_at ? new Date(s.created_at).toLocaleTimeString('id-ID') : '-';
         const displayNama = highlight(s.nama, searchName);
 
+        const hapusBtn = _monIsAdmin
+            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${s.id}, '${s.nama}')" title="Hapus Data Siswa">
+                    <i class="fas fa-trash"></i> Hapus
+               </button>`
+            : '';
+
         tbody.innerHTML += `
             <tr style="${!isSelesai ? 'background:rgba(250,204,21,0.06);' : ''}">
                 <td style="text-align:center;"><input type="checkbox" class="cb-monitoring" value="${s.id}"></td>
@@ -222,11 +230,7 @@ async function loadMonitoring() {
                 <td style="text-align:center;">${statusBadge}</td>
                 <td style="text-align:center;">${plgBadge}</td>
                 <td style="text-align:center; font-size:12px; color:var(--text-muted);">${waktu}</td>
-                <td style="text-align:center;">
-                    <button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${s.id}, '${s.nama}')" title="Hapus Data Siswa">
-                        <i class="fas fa-trash"></i> Hapus
-                    </button>
-                </td>
+                <td style="text-align:center;">${hapusBtn}</td>
             </tr>`;
     });
 
@@ -380,6 +384,8 @@ function resetMonitoringFilter() { return clearFilterMonitoring(); }
 
 // --- BULK ACTIONS ---
 async function bulkActionMonitoring(action) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     const ids = Array.from(document.querySelectorAll('.cb-monitoring:checked')).map(cb => cb.value);
     if (ids.length === 0) return showToast("Pilih minimal satu siswa!", 'info');
     if (action === 'delete') {
@@ -397,6 +403,8 @@ async function bulkActionMonitoring(action) {
 }
 
 async function hapusDataNilai(id, nama) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     if (!await asyncConfirm(`Hapus data sesi/jawaban siswa "${nama}"?<br>Anda akan memiliki waktu untuk membatalkan tindakan ini.`, "Hapus Data Siswa?")) return;
     const { data: savedData } = await db.from('jawaban_ujian').select('*').eq('id', id).single();
     const { error } = await adminDb.delete('jawaban_ujian', id);
