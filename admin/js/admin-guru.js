@@ -2,53 +2,13 @@
 // ============================================================
 // admin-guru.js — Akun Guru Section
 // Functions: loadDataGuru, loadGuruList, loadPendingList,
-//            daftarGuruAdmin, hapusGuruAkun, setujuiGuruAkun,
-//            tolakGuruAkun, toggleGuruStatus, bukaModalDaftarGuru,
-//            tutupModalDaftarGuru, waktuRelatif, badgeStatus
+//            hapusGuruAkun, setujuiGuruAkun,
+//            tolakGuruAkun, toggleGuruStatus, waktuRelatif, badgeStatus
+//
+// NOTE: bukaModalDaftarGuru, tutupModalDaftarGuru, daftarGuruAdmin
+// ada di admin-core.js (di-load eager agar tombol registrasi
+// di landing page bisa berfungsi sebelum lazy-load)
 // ============================================================
-
-function bukaModalDaftarGuru() {
-    document.getElementById('daftarNama').value = '';
-    document.getElementById('daftarUsername').value = '';
-    document.getElementById('daftarPassword').value = '';
-    document.getElementById('daftarStatus').textContent = '';
-    document.getElementById('modalDaftarGuru').style.display = 'flex';
-}
-
-function tutupModalDaftarGuru() {
-    document.getElementById('modalDaftarGuru').style.display = 'none';
-}
-
-async function daftarGuruAdmin() {
-    const nama = document.getElementById('daftarNama').value.trim();
-    const username = document.getElementById('daftarUsername').value.trim();
-    const password = document.getElementById('daftarPassword').value;
-    const statusEl = document.getElementById('daftarStatus');
-
-    if (!nama || !username || !password) { statusEl.innerHTML = '<span style="color:#fca5a5;">Harap isi semua field</span>'; return; }
-    if (username.length < 3) { statusEl.innerHTML = '<span style="color:#fca5a5;">Username minimal 3 karakter</span>'; return; }
-    if (password.length < 6) { statusEl.innerHTML = '<span style="color:#fca5a5;">Password minimal 6 karakter</span>'; return; }
-
-    const btn = document.querySelector('#modalDaftarGuru button');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
-    statusEl.innerHTML = '';
-
-    try {
-        const { data, error } = await db.rpc('guru_daftar', { p_username: username, p_password: password, p_nama: nama });
-        if (error || !data || !data.success) {
-            statusEl.innerHTML = '<span style="color:#fca5a5;">' + ((error ? error.message : (data && data.error ? data.error : 'Pendaftaran gagal'))) + '</span>';
-            btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
-            return;
-        }
-        statusEl.innerHTML = '<span style="color:#86efac;font-weight:600;">' + data.message + '</span>';
-        btn.innerHTML = '<i class="fas fa-check"></i> Terkirim!';
-        btn.disabled = false;
-        setTimeout(() => { document.getElementById('modalDaftarGuru').style.display = 'none'; }, 3000);
-    } catch (e) {
-        statusEl.innerHTML = '<span style="color:#fca5a5;">' + (e.message || 'Terjadi kesalahan') + '</span>';
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
-    }
-}
 
 function waktuRelatif(tgl) {
     if (!tgl) return '';
