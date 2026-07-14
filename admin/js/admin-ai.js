@@ -254,9 +254,10 @@ Target:
 ${referensi ? `Referensi Materi (gunakan sebagai acuan utama):\n${referensi}\n` : ''}
 Aturan format:
 1. Gunakan <br> untuk baris baru, <b>/<i> untuk teks tebal/miring
-2. Rumus matematika gunakan format $$...$$ (contoh: $$Q_d = a - bP$$, $$\\frac{1}{2}$$)
-3. Tabel gunakan <table> HTML standar
-4. JANGAN gunakan Markdown
+2. Rumus matematika sesungguhnya (persamaan, pecahan, integral) gunakan format $$...$$ (contoh: $$Q_d = a - bP$$, $$\\frac{1}{2}$$)
+3. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $$...$$. Contoh yang BENAR: Rp 10.000.000, 1.500.000, 200.000. Contoh yang SALAH: $$10.000.000$$, $$200.000$$
+4. Tabel gunakan <table> HTML standar
+5. JANGAN gunakan Markdown
 
 Output HARUS JSON Array dengan struktur:
 [
@@ -304,6 +305,19 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
     };
     const collapseNewlines = (text) => text ? text.replace(/\n{3,}/g, '<br><br>') : '';
     const smartTrim = (text) => text ? text.replace(/^[\s\n]+|[\s\n]+$/g, '').replace(/\n{3,}/g, '<br><br>') : '';
+    // Unwrap angka sederhana dari $$...$$ agar KaTeX/MathJax tidak merender sebagai display block
+    const unwrapPlainNumbers = (text) => {
+      if (!text) return text;
+      return text.replace(/\$\$([^$]*?)\$\$/g, (match, inner) => {
+        const trimmed = inner.trim();
+        // Jika hanya berisi angka, titik, koma, spasi, Rp, atau simbol mata uang → unwrap
+        if (/^[\d.,\s Rp\$%\-()+]*$/.test(trimmed) && !/[a-zA-Z]/.test(trimmed.replace(/Rp/gi, ''))) {
+          return trimmed;
+        }
+        // Jika ada operator matematika atau variabel → tetap $$...$$
+        return match;
+      });
+    };
 
     return soalArray.map(s => {
       let tipe = (s.tipe_soal || s.tipeSoal || s.tipe || 'PG').toString().toUpperCase().trim();
@@ -321,15 +335,16 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
 
       pertanyaan = stripOptions(pertanyaan, hasOpsi);
       pertanyaan = collapseNewlines(pertanyaan);
+      pertanyaan = unwrapPlainNumbers(pertanyaan);
 
       return {
         mapel: s.mapel || mapel,
         pertanyaan,
-        opsi_a: opsiA,
-        opsi_b: opsiB,
-        opsi_c: opsiC,
-        opsi_d: opsiD,
-        opsi_e: opsiE,
+        opsi_a: unwrapPlainNumbers(opsiA),
+        opsi_b: unwrapPlainNumbers(opsiB),
+        opsi_c: unwrapPlainNumbers(opsiC),
+        opsi_d: unwrapPlainNumbers(opsiD),
+        opsi_e: unwrapPlainNumbers(opsiE),
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
