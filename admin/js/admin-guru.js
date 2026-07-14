@@ -8,8 +8,6 @@
 // ============================================================
 
 function bukaModalDaftarGuru() {
-    const s = getGuruSession();
-    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     document.getElementById('daftarNama').value = '';
     document.getElementById('daftarUsername').value = '';
     document.getElementById('daftarPassword').value = '';
