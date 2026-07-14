@@ -541,6 +541,7 @@ function initPage(idHalaman) {
             initCustomSelect('filter-mapel-monitoring');
             initCustomSelect('filter-kelas-monitoring');
         }
+        if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
         if (typeof populateFilterKelas === 'function') populateFilterKelas().then(() => {
             if (typeof loadMonitoring === 'function') loadMonitoring();
         });

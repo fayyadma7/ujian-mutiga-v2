@@ -42,6 +42,7 @@ function startRealtimeMonitoring() {
                         violationTracker.set(s.id, currentPlg);
                     }
                     if ((s.status || '').startsWith('SELESAI')) {
+                        if (!document.hidden) showToast(`${s.nama} (${s.kelas}) — Selesai!`, 'selesai');
                         if (typeof loadRecentActivity === 'function') loadRecentActivity();
                         seenIds.delete(s.id); violationTracker.delete(s.id);
                     }
@@ -62,7 +63,7 @@ function startRealtimeMonitoring() {
                 }
                 if (perluReload && document.getElementById('monitoring').classList.contains('active')) {
                     if (window._monDebounce) clearTimeout(window._monDebounce);
-                    window._monDebounce = setTimeout(() => { loadMonitoring(); }, 3000);
+                    window._monDebounce = setTimeout(() => { loadMonitoring(); }, 1000);
                 }
             }
         )

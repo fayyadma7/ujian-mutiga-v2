@@ -30,13 +30,6 @@ npx serve . -p 3000         # server statis apa saja — tanpa build step
 - **Guru/Admin**: Auth kustom via tabel `guru` (bcrypt). Session di `localStorage` sebagai `guru_session` dengan `{ id, username, role, nama }`. Tanpa httpOnly cookies, tanpa refresh token.
 - `upgradeSession()` di `admin-core.js` mengambil role terbaru dari DB saat load.
 
-## Whitelist CORS Admin-proxy
-
-Didefinisikan di `supabase/functions/admin-proxy/index.ts:6-12`:
-- `https://bkecjfrwqocguyvjymkn.supabase.co`
-- `http://127.0.0.1:3000`, `http://localhost:3000`
-- `https://fayyadma7.github.io`, `https://ujian-mutiga-v2.vercel.app`
-
 ## Gemini-proxy (`functions/gemini-proxy/index.ts`)
 
 Proxy AI multi-provider. Body request: `{ provider?, promptText, temperature? }`. Provider: `gemini` (default, model `gemini-2.5-flash-lite`), `cerebras`, `groq`, `mistral`. Rotasi antar env var `GEMINI_API_KEY` / `_1` / `_2` / `_3`.
