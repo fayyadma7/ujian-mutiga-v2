@@ -778,8 +778,12 @@ async function daftarGuruAdmin() {
 
     try {
         const { data, error } = await db.rpc('guru_daftar', { p_username: username, p_password: password, p_nama: nama });
-        if (error || !data || !data.success) {
-            statusEl.innerHTML = '<span style="color:#fca5a5;">' + ((error ? error.message : (data && data.error ? data.error : 'Pendaftaran gagal'))) + '</span>';
+            if (error || !data || !data.success) {
+            let errMsg = error ? error.message : (data && data.error ? data.error : 'Pendaftaran gagal');
+            if (errMsg.includes('duplicate key') || errMsg.includes('unique constraint') || errMsg.includes('registrasi_guru_username_key')) {
+                errMsg = 'Username sudah pernah didaftarkan sebelumnya. Silakan gunakan username lain.';
+            }
+            statusEl.innerHTML = '<span style="color:#fca5a5;">' + errMsg + '</span>';
             btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
             return;
         }
