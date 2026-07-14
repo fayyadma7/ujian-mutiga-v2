@@ -4365,8 +4365,28 @@
                     }
                 });
             } else if (urutanAda) {
-                // Format lama (string array) hanya aman jika urutan_soal konsisten
-                console.log("Restore: Format jawaban_pg lama, skip restore (butuh urutan_soal).");
+                // Format lama (string array) — restore berdasarkan index urutan
+                jwbBackup.forEach((jawaban, i) => {
+                    if (!jawaban || i >= s_data.length) return;
+                    const el = document.getElementsByName('q' + i);
+                    if (!el || !el[0]) return;
+                    if (el[0].type === 'radio') {
+                        const sudahTerisi = Array.from(el).find(r => r.checked);
+                        if (!sudahTerisi) {
+                            const target = Array.from(el).find(r => r.value === jawaban);
+                            if (target) {
+                                target.checked = true;
+                                pilihjawaban(i, jawaban);
+                            }
+                        }
+                    } else {
+                        if (!el[0].value.trim()) {
+                            el[0].value = jawaban;
+                            const event = new Event('input', { bubbles: true });
+                            el[0].dispatchEvent(event);
+                        }
+                    }
+                });
             }
 
             // === Restore ESSAY hanya jika urutan_soal ada (konsistensi index terjamin) ===
@@ -4658,7 +4678,8 @@ ${JSON.stringify(payloadJawaban)}`;
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
             } catch (e) { }
-            
+            if (window._submitting) return;
+            window._submitting = true;
             let jwb = jwbParam || [];
             if (!jwbParam) {
                 s_data.forEach((_, i) => {
@@ -4685,6 +4706,7 @@ ${JSON.stringify(payloadJawaban)}`;
             const dur = Math.floor((new Date() - t_start) / 60000) + " menit";
 
             const successHandler = () => {
+                window._submitting = false;
                 const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
                 localStorage.removeItem("sesi_aktif_" + idUser);
                 localStorage.removeItem("asas_" + idUser);
@@ -4748,8 +4770,7 @@ ${JSON.stringify(payloadJawaban)}`;
                 const statusSelesai = "SELESAI - " + new Date().toLocaleTimeString('id-ID');
 
                 // 2. PANGGIL FUNGSI KOREKSI DI DALAM DATABASE (SUPABASE RPC)
-                // Dengan exponential backoff: retry setiap 1s → 2s → 4s → 8s → 16s
-                // Tambah timeout 30 detik per attempt agar tidak hang forever
+                // Timeout 15 detik per attempt, maks 2 retry
                 try {
                     const submitPromise = safeDbCall(() => {
                         // Race against timeout untuk mencegah request menggantung
@@ -4764,12 +4785,14 @@ ${JSON.stringify(payloadJawaban)}`;
                             p_status: statusSelesai
                         });
                         const timeoutPromise = new Promise((_, reject) =>
-                            setTimeout(() => reject(new Error('Waktu tunggu habis (30 detik)')), 30000)
+                            setTimeout(() => reject(new Error('Waktu tunggu habis (15 detik)')), 15000)
                         );
                         return Promise.race([rpcPromise, timeoutPromise]);
-                    }, maxAttemptsSubmit);
-                    const { error } = await submitPromise;
-                    if (error) throw error;
+                    }, 2);
+                    const result = await submitPromise;
+                    if (result?.error || !result?.data?.success) {
+                        throw new Error(result?.data?.error || result?.error?.message || 'Gagal menyimpan jawaban');
+                    }
                     successHandler();
                 } catch (err) {
                     // Cek apakah masih ada koneksi internet sebelum menampilkan error
@@ -4777,6 +4800,7 @@ ${JSON.stringify(payloadJawaban)}`;
                     const msg = isOnline
                         ? "Gagal menyimpan jawaban setelah beberapa kali percobaan. Silakan cek koneksi server."
                         : "Tidak ada koneksi internet. Gunakan tombol Download Backup untuk menyimpan jawaban.";
+                    window._submitting = false;
                     tampilkanErrorJaringan(msg + " " + err.message);
                     document.getElementById('overlaySubmit').style.display = 'none';
                     btnSelesai.disabled = false;
