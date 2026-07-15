@@ -254,10 +254,11 @@ Target:
 ${referensi ? `Referensi Materi (gunakan sebagai acuan utama):\n${referensi}\n` : ''}
 Aturan format:
 1. Gunakan <br> untuk baris baru, <b>/<i> untuk teks tebal/miring
-2. Rumus matematika sesungguhnya (persamaan, pecahan, integral) gunakan format $$...$$ (contoh: $$Q_d = a - bP$$, $$\\frac{1}{2}$$)
-3. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $$...$$. Contoh yang BENAR: Rp 10.000.000, 1.500.000, 200.000. Contoh yang SALAH: $$10.000.000$$, $$200.000$$
-4. Tabel gunakan <table> HTML standar
-5. JANGAN gunakan Markdown
+2. Rumus matematika inline (dalam kalimat atau opsi jawaban) gunakan $...$ (contoh: $f(x) = 2\sin x$, $\sqrt{7}$, $\frac{1}{2}$)
+3. Rumus matematika display (berdiri sendiri di baris terpisah) gunakan $$...$$ (contoh: $$\int_0^1 x^2 dx$$)
+4. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $$...$$ atau $...$. Contoh BENAR: Rp 10.000.000, 1.500.000. Contoh SALAH: $$10.000.000$$, $200.000$
+5. Tabel gunakan <table> HTML standar
+6. JANGAN gunakan Markdown
 
 Output HARUS JSON Array dengan struktur:
 [
@@ -305,16 +306,24 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
     };
     const collapseNewlines = (text) => text ? text.replace(/\n{3,}/g, '<br><br>') : '';
     const smartTrim = (text) => text ? text.replace(/^[\s\n]+|[\s\n]+$/g, '').replace(/\n{3,}/g, '<br><br>') : '';
-    // Unwrap angka sederhana dari $$...$$ agar KaTeX/MathJax tidak merender sebagai display block
-    const unwrapPlainNumbers = (text) => {
+    // Normalisasi rumus: angka sederhana → unwrap, formula pendek → inline $...$, formula panjang → display $$...$$
+    const normalizeMath = (text, forceInline) => {
       if (!text) return text;
-      return text.replace(/\$\$([^$]*?)\$\$/g, (match, inner) => {
+      return text.replace(/\$\$([\s\S]+?)\$\$/g, (match, inner) => {
         const trimmed = inner.trim();
-        // Jika hanya berisi angka, titik, koma, spasi, Rp, atau simbol mata uang → unwrap
+        // 1. Angka sederhana → unwrap langsung
         if (/^[\d.,\s Rp\$%\-()+]*$/.test(trimmed) && !/[a-zA-Z]/.test(trimmed.replace(/Rp/gi, ''))) {
           return trimmed;
         }
-        // Jika ada operator matematika atau variabel → tetap $$...$$
+        // 2. Force inline (opsi jawaban) → $...$
+        if (forceInline) {
+          return '$' + trimmed + '$';
+        }
+        // 3. Formula pendek (< 60 char) dan tanpa \\ (linebreak) → inline $...$
+        if (trimmed.length < 60 && !/\\\\/.test(trimmed) && !/\n/.test(trimmed)) {
+          return '$' + trimmed + '$';
+        }
+        // 4. Formula panjang/complex → tetap $$...$$ (display)
         return match;
       });
     };
@@ -335,16 +344,16 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
 
       pertanyaan = stripOptions(pertanyaan, hasOpsi);
       pertanyaan = collapseNewlines(pertanyaan);
-      pertanyaan = unwrapPlainNumbers(pertanyaan);
+      pertanyaan = normalizeMath(pertanyaan, false);
 
       return {
         mapel: s.mapel || mapel,
         pertanyaan,
-        opsi_a: unwrapPlainNumbers(opsiA),
-        opsi_b: unwrapPlainNumbers(opsiB),
-        opsi_c: unwrapPlainNumbers(opsiC),
-        opsi_d: unwrapPlainNumbers(opsiD),
-        opsi_e: unwrapPlainNumbers(opsiE),
+        opsi_a: normalizeMath(opsiA, true),
+        opsi_b: normalizeMath(opsiB, true),
+        opsi_c: normalizeMath(opsiC, true),
+        opsi_d: normalizeMath(opsiD, true),
+        opsi_e: normalizeMath(opsiE, true),
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
@@ -355,7 +364,7 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
   _renderMathInContainer(container) {
     if (typeof katex === 'undefined') return;
     const selectors = '.teks-pertanyaan, .opsi-text, ul li div';
-    // Step 1: Render KaTeX $$...$$ first
+    // Step 1: Render KaTeX $$...$$ (display mode)
     container.querySelectorAll(selectors).forEach(el => {
       if (!el.dataset.mathRendered && el.innerHTML.includes('$$')) {
         el.innerHTML = el.innerHTML.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => {
@@ -365,7 +374,17 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
         el.dataset.mathRendered = '1';
       }
     });
-    // Step 2: Convert remaining ^N superscript in plain text only (skip KaTeX-rendered elements)
+    // Step 2: Render KaTeX $...$ (inline mode)
+    container.querySelectorAll(selectors).forEach(el => {
+      if (!el.dataset.mathInlineDone && el.innerHTML.includes('$')) {
+        el.innerHTML = el.innerHTML.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, (_, formula) => {
+          try { return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false }); }
+          catch { return `<code>$${formula}$</code>`; }
+        });
+        el.dataset.mathInlineDone = '1';
+      }
+    });
+    // Step 3: Convert remaining ^N superscript in plain text only (skip KaTeX-rendered elements)
     container.querySelectorAll(selectors).forEach(el => {
       if (!el.dataset.supDone) {
         el.querySelectorAll('span:not(.katex):not(.katex-mathml), div:not(.katex-display)').forEach(node => {
