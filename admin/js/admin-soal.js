@@ -186,7 +186,7 @@ async function loadPreviewSoal() {
                 const val = s[`opsi_${o}`];
                 if (val) {
                     html += `
-                        <li style="display:flex; align-items:flex-start; padding:6px 0; ${s.kunci_jawaban === o.toUpperCase() ? 'font-weight:bold; color:var(--success);' : ''}">
+                        <li style="display:flex; align-items:flex-start; padding:10px 0; ${s.kunci_jawaban === o.toUpperCase() ? 'font-weight:bold; color:var(--success);' : ''}">
                             <strong style="margin-right:8px; flex-shrink:0;">${o.toUpperCase()}.</strong> 
                             <div style="flex-grow:1; overflow-x:auto; overflow-y:hidden; line-height:1.5; margin-top:-2px;">${val}</div>
                         </li>`;

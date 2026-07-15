@@ -256,9 +256,10 @@ Aturan format:
 1. Gunakan <br> untuk baris baru, <b>/<i> untuk teks tebal/miring
 2. Rumus matematika inline (dalam kalimat atau opsi jawaban) gunakan $...$ (contoh: $f(x) = 2\sin x$, $\sqrt{7}$, $\frac{1}{2}$)
 3. Rumus matematika display (berdiri sendiri di baris terpisah) gunakan $$...$$ (contoh: $$\int_0^1 x^2 dx$$)
-4. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $$...$$ atau $...$. Contoh BENAR: Rp 10.000.000, 1.500.000. Contoh SALAH: $$10.000.000$$, $200.000$
-5. Tabel gunakan <table> HTML standar
-6. JANGAN gunakan Markdown
+4. SEMUA LaTeX command WAJIB dibungkus $...$ atau $$...$$. JANGAN pernah output LaTeX mentah tanpa bungkus. Contoh SALAH: 0^\circ \le x < 360^\circ. Contoh BENAR: $0^\circ \le x < 360^\circ$
+5. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $...$ atau $$...$$. Contoh BENAR: Rp 10.000.000, 1.500.000. Contoh SALAH: $$10.000.000$$, $200.000$
+6. Tabel gunakan <table> HTML standar
+7. JANGAN gunakan Markdown
 
 Output HARUS JSON Array dengan struktur:
 [
@@ -327,6 +328,38 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
         return match;
       });
     };
+    // Deteksi LaTeX mentah yang tidak terbungkus $...$ lalu bungkus otomatis
+    const wrapBareLatex = (text) => {
+      if (!text) return text;
+      // Decode HTML entities yang mungkin muncul dari AI
+      let t = text
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+        .replace(/&le;/g, '\\le').replace(/&ge;/g, '\\ge');
+      // Pola LaTeX: \command, ^{...}, _{...}, ^\circ, dll
+      const hasLatex = /\\[a-zA-Z]+|[\\^]_\{|\\frac|\\sqrt|\\sin|\\cos|\\tan|\\le|\\ge|\\leq|\\geq|\\times|\\div|\\pi|\\theta|\\alpha|\\beta|\\gamma|\\circ|\^[\\{a-zA-Z]|_[\\{a-zA-Z]/.test(t);
+      if (!hasLatex) return text;
+      // Pisah menjadi segmen: di dalam $...$ atau $$...$$ vs di luar
+      const segments = [];
+      let pos = 0;
+      const mathRe = /\$\$[\s\S]+?\$\$|\$[^$]+?\$/g;
+      let m;
+      while ((m = mathRe.exec(t)) !== null) {
+        if (m.index > pos) segments.push({ text: t.slice(pos, m.index), isMath: false });
+        segments.push({ text: m[0], isMath: true });
+        pos = m.index + m[0].length;
+      }
+      if (pos < t.length) segments.push({ text: t.slice(pos), isMath: false });
+      // Di segmen non-math, bungkus LaTeX mentah dalam $...$
+      return segments.map(seg => {
+        if (seg.isMath) return seg.text;
+        let s = seg.text;
+        // Wrap \frac{...}{...}, \sqrt{...} sebagai display $$...$$
+        s = s.replace(/(\\(?:frac\{[^}]*\}\{[^}]*\}|sqrt\{[^}]*\}))/g, '$$$1$$');
+        // Wrap semua LaTeX command lain dan ^/_ patterns sebagai inline $...$
+        s = s.replace(/(\\[a-zA-Z]+(?:\{[^}]*\})?(?:\^\{[^}]*\})?(?:_\{[^}]*\})?|\^\{[^}]*\}|_\{[^}]*\}|\^[a-zA-Z0-9]|_[a-zA-Z0-9])/g, '$$$1$');
+        return s;
+      }).join('');
+    };
 
     return soalArray.map(s => {
       let tipe = (s.tipe_soal || s.tipeSoal || s.tipe || 'PG').toString().toUpperCase().trim();
@@ -345,15 +378,16 @@ Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown,
       pertanyaan = stripOptions(pertanyaan, hasOpsi);
       pertanyaan = collapseNewlines(pertanyaan);
       pertanyaan = normalizeMath(pertanyaan, false);
+      pertanyaan = wrapBareLatex(pertanyaan);
 
       return {
         mapel: s.mapel || mapel,
         pertanyaan,
-        opsi_a: normalizeMath(opsiA, true),
-        opsi_b: normalizeMath(opsiB, true),
-        opsi_c: normalizeMath(opsiC, true),
-        opsi_d: normalizeMath(opsiD, true),
-        opsi_e: normalizeMath(opsiE, true),
+        opsi_a: wrapBareLatex(normalizeMath(opsiA, true)),
+        opsi_b: wrapBareLatex(normalizeMath(opsiB, true)),
+        opsi_c: wrapBareLatex(normalizeMath(opsiC, true)),
+        opsi_d: wrapBareLatex(normalizeMath(opsiD, true)),
+        opsi_e: wrapBareLatex(normalizeMath(opsiE, true)),
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
