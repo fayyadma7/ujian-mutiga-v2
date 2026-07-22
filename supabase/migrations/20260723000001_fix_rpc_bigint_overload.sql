@@ -1,16 +1,11 @@
 -- ============================================================
--- Migration: Fix pelanggaran overwrite in koreksi_dan_submit
+-- Migration: Fix koreksi_dan_submit overload clash (integer vs bigint)
 --
--- Bug 1: Saat submit dari device yang berbeda, jumlah pelanggaran
---         ter-reset menjadi 0 karena payload p_pelanggaran me-replace
---         nilai pelanggaran di database.
--- Fix 1: Menggunakan GREATEST(pelanggaran, p_pelanggaran) agar
---         nilai pelanggaran tidak berkurang dari yang sudah ada.
---
--- Bug 2: p_id_row bertipe integer tapi kolom id jawaban_ujian
---         bertipe bigint — menyebabkan PostgREST 400 karena
---         overload fungsi bentrok.
--- Fix 2: Drop semua overload lama, buat ulang dengan p_id_row bigint.
+-- Bug: p_id_row bertipe integer tapi kolom jawaban_ujian.id
+--      bertipe bigint — menyebabkan PostgREST 400 karena
+--      function overload bentrok.
+-- Fix: Drop semua overload lama, buat ulang dengan p_id_row bigint
+--      dan GREATEST untuk pelanggaran.
 -- ============================================================
 
 -- Drop semua overload yang mungkin ada (integer dan bigint)

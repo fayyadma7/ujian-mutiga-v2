@@ -3721,7 +3721,7 @@
             // Ini memastikan window.idRowUjian selalu ada sebelum exam dimulai
             const { data: existing } = await safeDbCall(() => 
                 db.from('jawaban_ujian')
-                    .select('id, status').eq('nama', n).eq('kelas', k).eq('mapel', m)
+                    .select('id, status, pelanggaran').eq('nama', n).eq('kelas', k).eq('mapel', m)
                     .or('status.is.null,status.not.like.SELESAI%').maybeSingle()
             );
 
@@ -3759,6 +3759,12 @@
                             localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                             localStorage.setItem("device_token_" + idUserLocal, newToken);
                             await db.from('jawaban_ujian').update({ device_token: newToken }).eq('id', existing.id);
+                            // Restore pelanggaran dari DB agar konsisten antar device
+                            const dbPlg = parseInt(existing.pelanggaran) || 0;
+                            if (dbPlg > p_count) {
+                                p_count = dbPlg;
+                                localStorage.setItem("pelanggaran_" + idUserLocal, p_count);
+                            }
                             // Ambil urutan soal dari Supabase agar konsisten
                             const { data: urutData } = await db.from('jawaban_ujian').select('urutan_soal').eq('id', existing.id).maybeSingle();
                             if (urutData && urutData.urutan_soal) {
@@ -3783,6 +3789,12 @@
                 localStorage.setItem("device_token_" + idUserLocal, existingToken);
                 safeDbCall(() => db.from('jawaban_ujian').update({ device_token: existingToken }).eq('id', existing.id));
                 aktifSignalSent = true;
+                // Restore pelanggaran dari DB agar konsisten antar device
+                const dbPlgExisting = parseInt(existing.pelanggaran) || 0;
+                if (dbPlgExisting > p_count) {
+                    p_count = dbPlgExisting;
+                    localStorage.setItem("pelanggaran_" + idUserLocal, p_count);
+                }
                 // Restore urutan soal dari Supabase untuk konsistensi antar device
                 try {
                     const { data: urutData } = await db.from('jawaban_ujian').select('urutan_soal').eq('id', existing.id).maybeSingle();
