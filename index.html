@@ -3886,6 +3886,11 @@
             let t_left = durasiUjianDetik - selisihDetik;
 
             const timerBox = document.getElementById('timer-box');
+            // Jika elemen tidak ada (sudah submit/takeover), hentikan interval
+            if (!timerBox) {
+                clearInterval(timerInterval);
+                return;
+            }
             if (t_left <= 0) {
                 clearInterval(timerInterval);
                 timerBox.innerText = "00:00";
