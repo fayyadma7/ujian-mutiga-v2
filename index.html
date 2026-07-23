@@ -3721,7 +3721,7 @@
             // Ini memastikan window.idRowUjian selalu ada sebelum exam dimulai
             const { data: existing } = await safeDbCall(() => 
                 db.from('jawaban_ujian')
-                    .select('id, status, pelanggaran').eq('nama', n).eq('kelas', k).eq('mapel', m)
+                    .select('id, status, pelanggaran, created_at').eq('nama', n).eq('kelas', k).eq('mapel', m)
                     .or('status.is.null,status.not.like.SELESAI%').maybeSingle()
             );
 
@@ -3770,6 +3770,10 @@
                             if (urutData && urutData.urutan_soal) {
                                 localStorage.setItem(keyUrutan, urutData.urutan_soal);
                             }
+                            // Sinkronkan waktu mulai dari database agar sisa waktu konsisten antar device
+                            if (existing.created_at) {
+                                localStorage.setItem(keyWaktu, new Date(existing.created_at).toISOString());
+                            }
                             // Reset disabled state tombol agar mulaiUjian() tidak langsung return
                             const btnTaken = document.querySelector("#modalPeringatan .btn-modal-confirm");
                             if (btnTaken) btnTaken.disabled = false;
@@ -3803,6 +3807,10 @@
                     }
                 } catch (e) {
                     console.warn("Gagal restore urutan soal:", e);
+                }
+                // Sinkronkan waktu mulai dari database agar sisa waktu konsisten antar device (untuk refresh di device yang sama tanpa lewat swal)
+                if (existing.created_at) {
+                    localStorage.setItem(keyWaktu, new Date(existing.created_at).toISOString());
                 }
 
             } else {
