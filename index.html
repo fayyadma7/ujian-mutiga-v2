@@ -4686,7 +4686,7 @@ ${JSON.stringify(payloadJawaban)}`;
             document.getElementById('modalKonfirmasiSubmit').style.display = 'none';
             const elem = document.documentElement;
             try {
-                if (elem.requestFullscreen) elem.requestFullscreen();
+                if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
             } catch (e) { }
@@ -4803,7 +4803,8 @@ ${JSON.stringify(payloadJawaban)}`;
                     }, 2);
                     const result = await submitPromise;
                     if (result?.error || !result?.data?.success) {
-                        throw new Error(result?.data?.error || result?.error?.message || 'Gagal menyimpan jawaban');
+                        console.error("DEBUG SUBMIT ERROR:", result); // Added for debugging
+                        throw new Error(result?.data?.error || result?.error?.message || result?.error?.details || 'Gagal menyimpan jawaban');
                     }
                     successHandler();
                 } catch (err) {
