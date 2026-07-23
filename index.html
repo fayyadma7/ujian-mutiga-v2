@@ -4431,6 +4431,31 @@
                 });
             }
 
+            // === Restore RAGU-RAGU dari Supabase ===
+            // HARUS sebelum early-return essay agar selalu dijalankan
+            try {
+                const { data: raguData } = await dbWithTimeout(
+                    db.from('jawaban_ujian').select('ragu_soal').eq('id', window.idRowUjian).maybeSingle()
+                );
+                if (raguData && raguData.ragu_soal) {
+                    let raguArr;
+                    try { raguArr = JSON.parse(raguData.ragu_soal); } catch (e) { raguArr = null; }
+                    if (Array.isArray(raguArr) && raguArr.length > 0) {
+                        while (raguArr.length < s_data.length) raguArr.push(false);
+                        window.stateRagu = raguArr;
+                        const n = document.getElementById('nama').value;
+                        const m = document.getElementById('mapel').value;
+                        const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
+                        localStorage.setItem("ragu_" + idUser, JSON.stringify(window.stateRagu));
+                        console.log('[Ragu] State ragu dipulihkan dari Supabase:', raguArr.filter(Boolean).length, 'soal');
+                        // Update visual semua btn-ragu di DOM
+                        updateProgressBar();
+                    }
+                }
+            } catch (e) {
+                console.warn('[Ragu] Gagal restore ragu dari Supabase:', e);
+            }
+
             // === Restore ESSAY hanya jika urutan_soal ada (konsistensi index terjamin) ===
             if (!urutanAda) return;
             try {
@@ -4460,47 +4485,7 @@
                 console.warn("Restore essay gagal:", e);
             }
 
-            // === Restore RAGU-RAGU dari Supabase ===
-            try {
-                const { data: raguData } = await dbWithTimeout(
-                    db.from('jawaban_ujian').select('ragu_soal').eq('id', window.idRowUjian).maybeSingle()
-                );
-                if (raguData && raguData.ragu_soal) {
-                    let raguArr;
-                    try { raguArr = JSON.parse(raguData.ragu_soal); } catch (e) { raguArr = null; }
-                    if (Array.isArray(raguArr) && raguArr.length > 0) {
-                        // Pastikan panjang array sesuai jumlah soal
-                        while (raguArr.length < s_data.length) raguArr.push(false);
-                        window.stateRagu = raguArr;
-                        // Sinkronkan juga ke localStorage
-                        const n = document.getElementById('nama').value;
-                        const m = document.getElementById('mapel').value;
-                        const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
-                        localStorage.setItem("ragu_" + idUser, JSON.stringify(window.stateRagu));
-                        console.log('[Ragu] State ragu dipulihkan dari Supabase:', raguArr.filter(Boolean).length, 'soal');
-                    }
-                }
-            } catch (e) {
-                console.warn('[Ragu] Gagal restore ragu dari Supabase:', e);
-            }
-
             updateProgressBar();
-
-            // Re-render button ragu untuk soal yang sedang ditampilkan
-            // (btn-ragu-{i} hanya ada di DOM untuk soal aktif — pagination satu-per-satu)
-            const curIdx = window.currentSoalIndex || 0;
-            const btnRaguAktif = document.getElementById('btn-ragu-' + curIdx);
-            if (btnRaguAktif) {
-                const isRaguAktif = window.stateRagu && window.stateRagu[curIdx];
-                const icon = btnRaguAktif.querySelector('i');
-                if (isRaguAktif) {
-                    btnRaguAktif.classList.add('ragu-active');
-                    if (icon) icon.className = 'fas fa-bookmark';
-                } else {
-                    btnRaguAktif.classList.remove('ragu-active');
-                    if (icon) icon.className = 'far fa-bookmark';
-                }
-            }
         }
 
         // Kirim sinyal ke Supabase (langsung → Realtime ke admin monitoring)
