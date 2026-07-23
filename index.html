@@ -3604,6 +3604,14 @@
                     while (window.stateRagu.length < data.length) {
                         window.stateRagu.push(false);
                     }
+                    // Backfill ke Supabase agar device lain bisa restore tanda ragu
+                    if (window.idRowUjian && window.stateRagu.some(Boolean)) {
+                        db.from('jawaban_ujian')
+                            .update({ ragu_soal: JSON.stringify(window.stateRagu) })
+                            .eq('id', window.idRowUjian)
+                            .then(() => console.log('[Ragu] Backfill ke Supabase berhasil'))
+                            .catch(e => console.warn('[Ragu] Backfill gagal:', e));
+                    }
                 } else {
                     window.stateRagu = new Array(data.length).fill(false);
                 }
@@ -4477,6 +4485,22 @@
             }
 
             updateProgressBar();
+
+            // Re-render button ragu untuk soal yang sedang ditampilkan
+            // (btn-ragu-{i} hanya ada di DOM untuk soal aktif — pagination satu-per-satu)
+            const curIdx = window.currentSoalIndex || 0;
+            const btnRaguAktif = document.getElementById('btn-ragu-' + curIdx);
+            if (btnRaguAktif) {
+                const isRaguAktif = window.stateRagu && window.stateRagu[curIdx];
+                const icon = btnRaguAktif.querySelector('i');
+                if (isRaguAktif) {
+                    btnRaguAktif.classList.add('ragu-active');
+                    if (icon) icon.className = 'fas fa-bookmark';
+                } else {
+                    btnRaguAktif.classList.remove('ragu-active');
+                    if (icon) icon.className = 'far fa-bookmark';
+                }
+            }
         }
 
         // Kirim sinyal ke Supabase (langsung → Realtime ke admin monitoring)
