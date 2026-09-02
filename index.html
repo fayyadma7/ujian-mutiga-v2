@@ -4,7 +4,10 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
+    <meta name="screen-orientation" content="portrait">
+    <meta name="orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link
@@ -100,6 +103,11 @@
             padding: 0;
         }
 
+        html {
+            height: 100%;
+            /* paksa portrait di browser yang support */
+            -webkit-text-size-adjust: 100%;
+        }
         html,
         body {
             background: var(--navy) !important;
@@ -110,11 +118,33 @@
             background: var(--navy) !important;
             overflow-x: hidden;
             min-height: 100vh;
-            /* Anti Copy-Paste CSS */
+            min-height: 100dvh;
+            min-height: -webkit-fill-available;
+            /* Anti Copy-Paste CSS - tapi izinkan input tetap bisa diketik */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+        /* FIX KEYBOARD BUG: izinkan select & touch pada form agar keyboard tidak ngebug (foto: bar autofill menutup input) */
+        input, textarea, select, [contenteditable] {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            user-select: text !important;
+            -webkit-touch-callout: default !important;
+        }
+        /* cegah autofill bar chrome menutupi layout - paksa autocomplete styling */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px rgba(255,255,255,0.07) inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+        html[data-theme="light"] input:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 1000px #F8FAFC inset !important;
+            -webkit-text-fill-color: #0F172A !important;
         }
 
         @media print {
@@ -2802,11 +2832,60 @@
 
         @media (max-width:600px){.theme-switcher{flex-direction:column;align-items:stretch;padding:12px 16px}.theme-pill{justify-content:center}.theme-btn{flex:1;justify-content:center;padding:8px 10px;font-size:11px}}
 
+        /* ===================== FIX: PORTRAIT LOCK + KEYBOARD BUG (HP) ===================== */
+        /* paksa portrait: jika landscape di HP, tampilkan warning suruh putar */
+        #rotate-warning{
+            display:none;position:fixed;inset:0;z-index:999998;background:#0B1D3A;
+            flex-direction:column;align-items:center;justify-content:center;text-align:center;
+            padding:32px;color:white;
+        }
+        #rotate-warning i{font-size:48px;color:#FCD34D;margin-bottom:20px;animation:spin 2s linear infinite}
+        #rotate-warning h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px}
+        #rotate-warning p{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.6}
+        @media (orientation: landscape) and (max-height: 500px){
+            #rotate-warning{display:flex !important}
+        }
+        /* FIX KEYBOARD: jangan pakai 100vh fix di mobile, pakai dvh + scrollable */
+        @supports (height: 100dvh){
+            #landing-page{min-height:100dvh}
+            #app-section{min-height:100dvh}
+        }
+        @media (max-width: 768px){
+            /* identitas harus scrollable saat keyboard muncul - jangan fixed */
+            #app-section{padding-bottom: env(safe-area-inset-bottom, 0px)}
+            #identitas{
+                display:flex;flex-direction:column;justify-content:flex-start;
+                min-height: calc(100dvh - 0px);min-height: calc(100vh - 0px);
+                padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+                overflow-y:auto;-webkit-overflow-scrolling:touch;
+                /* cegah viewport bug saat keyboard muncul */
+                position:relative;
+            }
+            .login-card{
+                margin: 12px auto;width:100%;max-width:520px;
+                /* cegah backdrop-filter bikin glitch keyboard Chrome Android */
+                will-change: auto;
+            }
+            .login-card-body{padding-bottom: calc(24px + env(safe-area-inset-bottom,0px))}
+            /* saat input fokus, beri ruang bawah agar tidak tertutup keyboard */
+            body.kb-open #identitas{padding-bottom: 40vh !important}
+            body.kb-open .login-card{transform: translateY(0) !important}
+        }
+        /* input harus punya z-index tinggi saat fokus */
+        .login-input:focus{position:relative;z-index:2}
+        .autocomplete-dropdown{max-height: 38vh !important}
+
     </style>
     <script>(function(){try{var t=localStorage.getItem("exam_theme");if(!t||["dark","light","low"].indexOf(t)===-1)t="dark";document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
 </head>
 
 <body>
+    <!-- PORTRAIT LOCK WARNING (muncul jika HP diputar landscape) -->
+    <div id="rotate-warning" aria-hidden="true">
+        <i class="fas fa-rotate"></i>
+        <h3>Silakan Putar HP ke Posisi Portrait</h3>
+        <p>Ujian hanya bisa dikerjakan dalam mode <b>tegak (portrait)</b>.<br>Putar perangkat Anda agar lolos.</p>
+    </div>
 
     <!-- OVERLAY LAYAR PENUH (GERBANG PERTAMA) -->
     <div id="start-overlay"
@@ -3153,8 +3232,8 @@
                         <div class="login-field autocomplete-wrap" id="wrap-nama">
                             <label class="login-field-label">Nama Lengkap <small style="text-transform:none;letter-spacing:0;font-size:10px;color:var(--gold-light);font-weight:600;">— ketik 2 huruf & pilih dari daftar</small></label>
                             <i class="fas fa-user login-field-icon"></i>
-                            <input type="text" id="nama" class="login-input" placeholder="Ketik minimal 2 huruf..." autocomplete="off"
-                                oninput="onNamaInput(this.value)" onkeydown="onNamaKeydown(event)" onblur="setTimeout(hideNamaSuggestions, 180)">
+                            <input type="text" id="nama" class="login-input" placeholder="Ketik minimal 2 huruf..." autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" inputmode="text" data-form-type="other" data-lpignore="true"
+                                oninput="onNamaInput(this.value)" onkeydown="onNamaKeydown(event)" onblur="setTimeout(hideNamaSuggestions, 180)" onfocus="handleNamaFocus(this)">
                             <div id="nama-suggestions" class="autocomplete-dropdown" role="listbox"></div>
                         </div>
                         <div class="login-field">
@@ -3571,20 +3650,37 @@
 
         // ===== AKHIR WRITE QUEUE =====
 
-        // Fungsi awal untuk masuk aplikasi dari start-overlay
-        function masukAplikasi() {
+        // Helper: kunci orientasi ke portrait (selalu portrait, jangan landscape)
+        async function lockPortrait(){
+            try{
+                if(screen.orientation && screen.orientation.lock){
+                    await screen.orientation.lock('portrait').catch(function(e){ console.warn('Orientation lock gagal:', e.message); });
+                }
+                // fallback: coba lock portrait-primary
+                if(screen.orientation && screen.orientation.lock && screen.orientation.type && screen.orientation.type.indexOf('landscape')!==-1){
+                    try{ await screen.orientation.lock('portrait-primary'); }catch(e){}
+                }
+            }catch(e){ console.warn('lockPortrait error', e); }
+        }
+        function unlockOrientation(){
+            try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+        }
+        // Fungsi awal untuk masuk aplikasi dari start-overlay — SELALU PORTRAIT
+        async function masukAplikasi() {
             const elem = document.documentElement;
             // iOS tidak support fullscreen, skip dengan silent fail
             if (!isIOS) {
                 try {
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen().catch(e => console.warn("FS ditolak"));
-                    } else if (elem.webkitRequestFullscreen) {
-                        elem.webkitRequestFullscreen();
-                    } else if (elem.msRequestFullscreen) {
-                        elem.msRequestFullscreen();
-                    }
+                    let p = null;
+                    if (elem.requestFullscreen) p = elem.requestFullscreen();
+                    else if (elem.webkitRequestFullscreen) p = elem.webkitRequestFullscreen();
+                    else if (elem.msRequestFullscreen) p = elem.msRequestFullscreen();
+                    if(p && p.then) await p.catch(function(e){ console.warn("FS ditolak",e); });
                 } catch (e) { console.warn("Fullscreen error:", e); }
+                // kunci ke portrait SETELAH fullscreen (harus dalam gesture user)
+                await lockPortrait();
+                // double-try setelah 300ms (beberapa Chrome butuh delay)
+                setTimeout(lockPortrait, 300);
             }
 
             const overlay = document.getElementById('start-overlay');
@@ -3598,6 +3694,77 @@
                 }, 500);
             }
         }
+        // jika user sudah fullscreen lalu putar HP ke landscape, paksa kembali portrait + tampilkan warning
+        try{
+            if(screen.orientation) screen.orientation.addEventListener('change', function(){
+                if(screen.orientation.type && screen.orientation.type.indexOf('landscape')!==-1){
+                    // coba kunci balik ke portrait
+                    lockPortrait();
+                }
+            });
+        }catch(e){}
+        // juga dengarkan fullscreenchange untuk re-lock
+        document.addEventListener('fullscreenchange', function(){
+            if(document.fullscreenElement) setTimeout(lockPortrait, 200);
+        });
+        document.addEventListener('webkitfullscreenchange', function(){
+            if(document.webkitFullscreenElement) setTimeout(lockPortrait, 200);
+        });
+        // ===== FIX KEYBOARD BUG HP: keyboard menutup input / bar putih menutupi form =====
+        function handleNamaFocus(el){
+            // scroll halus agar input tidak tertutup keyboard / bar autofill (foto bug)
+            setTimeout(function(){
+                try{ el.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'}); }catch(e){
+                    var top = el.getBoundingClientRect().top + window.scrollY - 120;
+                    window.scrollTo({top: top, behavior:'smooth'});
+                }
+                // di Android Chrome, keyboard muncul 300-400ms setelah focus — scroll ulang
+                setTimeout(function(){
+                    try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+                }, 400);
+            }, 100);
+            document.body.classList.add('kb-open');
+            var dd = document.getElementById('nama-suggestions');
+            if(dd) setTimeout(function(){ dd.scrollIntoView({block:'nearest'}); }, 450);
+        }
+        // visualViewport: deteksi keyboard muncul / hilang secara akurat (Android Chrome)
+        (function(){
+            var vv = window.visualViewport;
+            var lastH = window.innerHeight;
+            function onVV(){
+                if(!vv) return;
+                var curH = vv.height;
+                var diff = lastH - curH;
+                // jika keyboard muncul (viewport mengecil > 120px), tandai kb-open
+                if(diff > 120){
+                    document.body.classList.add('kb-open');
+                    var active = document.activeElement;
+                    if(active && active.id === 'nama'){
+                        setTimeout(function(){ try{ active.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} }, 150);
+                    }
+                } else if (diff < 80){
+                    // keyboard hilang
+                    document.body.classList.remove('kb-open');
+                }
+            }
+            if(vv){
+                vv.addEventListener('resize', onVV);
+                vv.addEventListener('scroll', onVV);
+            }
+            // fallback focus/blur
+            var namaEl = document.getElementById('nama');
+            // listener dipasang setelah DOM ready (namaEl mungkin null saat parse awal)
+            function attach(){
+                var el = document.getElementById('nama');
+                if(!el) return;
+                el.addEventListener('blur', function(){ setTimeout(function(){ document.body.classList.remove('kb-open'); }, 300); });
+                el.addEventListener('focus', function(){ document.body.classList.add('kb-open'); handleNamaFocus(el); });
+            }
+            if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+            else attach();
+            // cegah scroll bounce saat keyboard aktif di iOS
+            window.addEventListener('orientationchange', function(){ setTimeout(function(){ window.scrollTo(0,0); }, 200); });
+        })();
 
         const supabaseUrl = 'https://bkecjfrwqocguyvjymkn.supabase.co';
         const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
@@ -3957,20 +4124,20 @@
             const jitter = Math.random() * 4000;
             await new Promise(resolve => setTimeout(resolve, jitter));
 
-            // Force fullscreen (skip di iOS)
+            // Force fullscreen + portrait lock (skip di iOS)
             if (!isIOS) {
                 const elem = document.documentElement;
                 try {
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen();
-                    } else if (elem.webkitRequestFullscreen) {
-                        elem.webkitRequestFullscreen();
-                    } else if (elem.msRequestFullscreen) {
-                        elem.msRequestFullscreen();
-                    }
+                    let p2 = null;
+                    if (elem.requestFullscreen) p2 = elem.requestFullscreen();
+                    else if (elem.webkitRequestFullscreen) p2 = elem.webkitRequestFullscreen();
+                    else if (elem.msRequestFullscreen) p2 = elem.msRequestFullscreen();
+                    if(p2 && p2.then) await p2.catch(function(){});
                 } catch (e) {
                     console.log("Fullscreen request failed:", e);
                 }
+                await lockPortrait();
+                setTimeout(lockPortrait, 300);
             }
             const mapelSelect = document.getElementById('mapel');
             const selectedOption = mapelSelect.options[mapelSelect.selectedIndex];
@@ -4349,7 +4516,7 @@
         function tutupModal5Menit() {
             document.getElementById('modalPeringatan5Menit').style.display = 'none';
             if (!isIOS) {
-                try { document.documentElement.requestFullscreen?.(); } catch (e) { }
+                try { document.documentElement.requestFullscreen?.().then(function(){ lockPortrait(); }).catch(function(){}); setTimeout(lockPortrait, 250); } catch (e) { }
             }
         }
 
@@ -4979,9 +5146,10 @@
             const elem = document.documentElement;
             if (!isIOS) {
                 try {
-                if (elem.requestFullscreen) elem.requestFullscreen();
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                setTimeout(lockPortrait, 250);
             } catch (e) { }
             }
             // Lompat ke soal kosong pertama (pagination mode)
@@ -4997,9 +5165,10 @@
             const elem = document.documentElement;
             if (!isIOS) {
                 try {
-                if (elem.requestFullscreen) elem.requestFullscreen();
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                setTimeout(lockPortrait, 250);
             } catch (e) { }
             }
         }
@@ -5014,9 +5183,10 @@
             if (!isIOS) {
                 const elem = document.documentElement;
                 try {
-                    if (elem.requestFullscreen) elem.requestFullscreen();
+                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
                     else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                     else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                    setTimeout(lockPortrait, 250);
                 } catch (e) { }
             }
         }
@@ -5144,9 +5314,10 @@ ${JSON.stringify(payloadJawaban)}`;
             document.getElementById('modalKonfirmasiSubmit').style.display = 'none';
             const elem = document.documentElement;
             try {
-                if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                setTimeout(lockPortrait, 250);
             } catch (e) { }
             if (window._submitting) return;
             window._submitting = true;
@@ -5591,17 +5762,14 @@ let aktifSignalSent = false;
         function tutupOverlay() {
             document.getElementById('overlay').style.display = 'none';
 
-            // Paksa masuk mode fullscreen kembali (skip di iOS)
+            // Paksa masuk mode fullscreen kembali + portrait (skip di iOS)
             if (!isIOS) {
                 const elem = document.documentElement;
                 try {
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen();
-                    } else if (elem.webkitRequestFullscreen) {
-                        elem.webkitRequestFullscreen();
-                    } else if (elem.msRequestFullscreen) {
-                        elem.msRequestFullscreen();
-                    }
+                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                    setTimeout(lockPortrait, 250);
                 } catch (e) {
                     console.log("Fullscreen request failed:", e);
                 }
