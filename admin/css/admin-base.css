@@ -52,7 +52,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', 'Noto Sans Javanese', 'Noto Naskh Arabic', 'Amiri', sans-serif;
 }
 
 /* Fix datetime-local inputs in dark theme */

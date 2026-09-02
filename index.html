@@ -10,6 +10,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap"
         rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Javanese&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="assets/logo-mute.png">
     <!-- SweetAlert2 untuk popup notifikasi modern -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -104,7 +106,7 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', sans-serif;
             background: var(--navy) !important;
             overflow-x: hidden;
             min-height: 100vh;
@@ -1367,6 +1369,11 @@
             color: rgba(255, 255, 255, 0.88);
             margin-bottom: 18px;
             unicode-bidi: plaintext;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', sans-serif;
+        }
+        /* Pastikan aksara Jawa tidak jadi kotak di HP: fallback font khusus Jawa */
+        .soal-text, .option-label-inner, .option-label {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', sans-serif;
         }
 
         /* Span RTL untuk teks Arab dalam soal campuran */
@@ -1374,9 +1381,13 @@
         .option-label-inner span[dir="rtl"] {
             unicode-bidi: isolate;
             display: inline;
-            font-family: "Amiri", "Scheherazade", "Traditional Arabic", serif;
+            font-family: "Amiri", "Noto Naskh Arabic", "Scheherazade", "Traditional Arabic", serif;
             font-size: 1.1em;
             line-height: 1.8;
+        }
+        /* Kimia: pastikan subscript/superscript & panah tetap terbaca di HP */
+        .soal-text sub, .soal-text sup, .option-label-inner sub, .option-label-inner sup {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', 'Noto Naskh Arabic', sans-serif;
         }
 
         /* --- BEAUTIFUL & RESPONSIVE HTML TABLES IN QUESTIONS --- */
@@ -2530,7 +2541,12 @@
             .login-card,
             .top-bar,
             .landing-bg-image {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans Javanese', 'Noto Naskh Arabic', 'Amiri', sans-serif !important;
+            }
+            /* Jangan override font khusus KaTeX/MathJax/Arab/Jawa di soal */
+            .soal-text .katex, .soal-text .katex *, .option-label .katex, .option-label .katex *,
+            .soal-text span[dir="rtl"], .option-label-inner span[dir="rtl"] {
+                font-family: inherit !important;
             }
 
             /* Matikan transisi/animasi hanya pada elemen form ujian untuk kurangi repaint */
