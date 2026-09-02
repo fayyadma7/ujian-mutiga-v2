@@ -196,7 +196,10 @@ async function loadNilaiSiswa() {
                 <td style="text-align:center;font-weight:700;color:var(--primary);font-size:16px;">${siswa.skor_pg !== null ? siswa.skor_pg : '-'}</td>
                 <td style="text-align:center;">
                     <span style="font-size:13px;color:var(--text-main);"><i class="fas fa-clock" style="color:var(--text-muted)"></i> ${siswa.durasi || '-'}</span><br>
-                    <span style="font-size:12px;font-weight:600;color:${siswa.pelanggaran > 0 ? '#ef4444' : '#10b981'};"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran || 0} Pelanggaran</span>
+                    ${(siswa.pelanggaran || 0) > 0
+                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${siswa.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran <i class="fas fa-chevron-right" style="font-size:9px;opacity:0.6;"></i></button>`
+                        : `<span style="font-size:12px;font-weight:600;color:#10b981;"><i class="fas fa-check-circle"></i> Bersih</span>`
+                    }
                 </td>
                 <td style="text-align:center;">
                     <span class="badge" style="background:${String(siswa.status).includes('PELANGGARAN') ? '#fee2e2' : '#d1fae5'};color:${String(siswa.status).includes('PELANGGARAN') ? '#ef4444' : '#065f46'};border:none;white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">

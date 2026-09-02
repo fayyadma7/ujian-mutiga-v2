@@ -206,7 +206,7 @@ async function loadMonitoring() {
         }
 
         const plgBadge = isPlg
-            ? `<span style="color:#ef4444;font-weight:700;"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x</span>`
+            ? `<button onclick="lihatPelanggaran(${s.id}, '${s.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x <i class="fas fa-chevron-right" style="font-size:9px;opacity:0.6;"></i></button>`
             : `<span style="color:#10b981;">✓ Bersih</span>`;
 
         const waktu = s.created_at ? new Date(s.created_at).toLocaleTimeString('id-ID') : '-';

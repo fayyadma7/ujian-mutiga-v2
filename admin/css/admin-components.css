@@ -1492,6 +1492,14 @@ body:has(#loginModalOverlay.show) #landingOverlay {
     color: #e2e8f0;
 }
 
+/* Compact title-to-content spacing for detail modals */
+.swal2-title[style*="text-align:left"] {
+    margin-bottom: 0 !important;
+}
+.swal2-title[style*="text-align:left"] + .swal2-html-container {
+    margin-top: 12px !important;
+}
+
 /* ================================================================
    12. RESPONSIVE MEDIA QUERIES — Component Overrides
    Source: lines 2133-2293 (generic selectors only; page-specific in admin-pages.css)

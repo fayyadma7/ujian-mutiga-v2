@@ -187,6 +187,103 @@ function asyncConfirm(pesan, judul = 'Konfirmasi') {
     });
 }
 
+// ==================== LIHAT PELANGGARAN ====================
+async function lihatPelanggaran(rowId, namaSiswa) {
+    const { data, error } = await db.from('jawaban_ujian')
+        .select('pelanggaran, log_pelanggaran, status, kelas, mapel')
+        .eq('id', rowId)
+        .single();
+
+    if (error || !data) {
+        showToast('Gagal mengambil data pelanggaran', 'error');
+        return;
+    }
+
+    const totalPlg = parseInt(data.pelanggaran) || 0;
+    const rawLog = (data.log_pelanggaran || '').trim();
+    const logs = rawLog ? rawLog.split('\n').filter(l => l.trim()) : [];
+
+    // Deduplicate
+    const uniqueLogs = [...new Set(logs.map(l => l.trim()))];
+
+    // Parse setiap baris — support format waktu HH:MM:SS DAN HH.MM.SS
+    const parsedLogs = uniqueLogs.map((line, idx) => {
+        const match = line.match(/Pelanggaran\s*#(\d+):\s*(.+?)\s*\((\d{2}[.:]\d{2}[.:]\d{2})\)/i);
+        if (match) return { num: match[1], reason: match[2].trim(), time: match[3] };
+        const fallback = line.match(/Pelanggaran\s*#(\d+):\s*(.+)/i);
+        if (fallback) return { num: fallback[1], reason: fallback[2].trim().replace(/\s*\(.*\)\s*$/, ''), time: '-' };
+        return { num: String(idx + 1), reason: line.trim(), time: '-' };
+    });
+
+    // Build log entries
+    let logHTML = '';
+    if (parsedLogs.length === 0) {
+        logHTML = `<div style="text-align:center;padding:24px 16px;">
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                <i class="fas fa-check-circle" style="font-size:22px;color:#10b981;"></i>
+            </div>
+            <div style="font-size:13px;color:#94a3b8;">Tidak ada pelanggaran tercatat.</div>
+        </div>`;
+    } else {
+        logHTML = '<div style="max-height:300px;overflow-y:auto;">';
+        parsedLogs.forEach((l, i) => {
+            const isLast = i === parsedLogs.length - 1;
+            logHTML += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${!isLast ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : ''}">
+                <div style="min-width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f87171;">${l.num}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:#f1f5f9;">${l.reason}</div>
+                </div>
+                <div style="font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${l.time}</div>
+            </div>`;
+        });
+        logHTML += '</div>';
+    }
+
+    const isPlgStatus = (data.status || '').includes('PELANGGARAN');
+    const statusColor = isPlgStatus ? '#ef4444' : '#10b981';
+    const statusBg = isPlgStatus ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)';
+    const kelasDisplay = (data.kelas || '').includes('::') ? data.kelas.split('::')[1] : data.kelas;
+
+    Swal.fire({
+        title: `<div style="text-align:left;">
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:2px;">Detail Pelanggaran</div>
+            <div style="font-size:12px;font-weight:400;color:#64748b;">${namaSiswa} &middot; ${kelasDisplay} &middot; ${data.mapel || ''}</div>
+        </div>`,
+        html: `
+            <div style="text-align:left;">
+                <div style="display:flex;gap:10px;margin-bottom:16px;">
+                    <div style="flex:1;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.12);border-radius:12px;padding:14px;text-align:center;">
+                        <div style="font-size:28px;font-weight:800;color:#ef4444;line-height:1;">${totalPlg}</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:4px;">Total Pelanggaran</div>
+                    </div>
+                    <div style="flex:1;background:${statusBg};border:1px solid ${isPlgStatus ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};border-radius:12px;padding:14px;text-align:center;display:flex;flex-direction:column;justify-content:center;">
+                        <div style="font-size:13px;font-weight:600;color:${statusColor};">${data.status || 'SELESAI'}</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:4px;">Status Akhir</div>
+                    </div>
+                </div>
+                ${parsedLogs.length > 0 ? `
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">
+                    <i class="fas fa-clock" style="margin-right:4px;"></i> Riwayat Waktu
+                </div>
+                ` : ''}
+                ${logHTML}
+            </div>
+        `,
+        background: 'rgba(15,23,42,0.97)',
+        color: '#f1f5f9',
+        confirmButtonColor: '#6366f1',
+        confirmButtonText: '<i class="fas fa-check"></i> Tutup',
+        customClass: {
+            popup: 'modern-swal-popup',
+            title: 'swal2-title',
+            htmlContainer: 'swal2-html-container',
+            actions: 'swal2-actions'
+        },
+        width: 480,
+        padding: '20px'
+    });
+}
+
 // ==================== REALTIME GURU ====================
 let realtimeChannel = null;
 
