@@ -214,7 +214,19 @@
                         onmouseover="this.style.background='rgba(255,255,255,0.08)'"
                         onmouseout="this.style.background='none'"><u>U</u></button>
                     <div style="width:1px;background:var(--border);margin:2px 4px;"></div>
-                    <button type="button" onclick="insertMathFormulaToEditFocused()"
+                    <button type="button" onclick="bukaModalAksaraJawa('edit')"
+                        title="Sisipkan Aksara Jawa ke field aktif"
+                        style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#f59e0b;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(245, 158, 11, 0.1)'" onmouseout="this.style.background='none'">ꦄ Aksara</button>
+                    <button type="button" onclick="bukaModalArab('edit')"
+                        title="Sisipkan Huruf Arab ke field aktif"
+                        style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#10b981;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'" onmouseout="this.style.background='none'">ع Arab</button>
+                    <button type="button" onclick="bukaModalKimia('edit')"
+                        title="Sisipkan Simbol Kimia ke field aktif"
+                        style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#0ea5e9;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(14, 165, 233, 0.1)'" onmouseout="this.style.background='none'"><i class="fas fa-flask"></i> Kimia</button>
+                    <button type="button" onmousedown="event.preventDefault();insertMathFormulaToEditFocused()"
                         title="Sisipkan Rumus ke field aktif"
                         style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:var(--secondary);border-radius:4px;font-weight:600; transition:background 0.2s;"
                         onmouseover="this.style.background='rgba(139, 92, 246, 0.1)'" onmouseout="this.style.background='none'">∑
@@ -591,7 +603,22 @@
                                     onmouseover="this.style.background='rgba(255,255,255,0.08)'"
                                     onmouseout="this.style.background='none'"><u>U</u></button>
                                 <div style="width:1px;background:var(--border);margin:2px 4px;"></div>
-                                <button type="button" onclick="insertMathFormulaToFocused()"
+                                <button type="button" onclick="bukaModalAksaraJawa('manual')"
+                                    title="Sisipkan Aksara Jawa ke field aktif"
+                                    style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#f59e0b;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                                    onmouseover="this.style.background='rgba(245, 158, 11, 0.1)'"
+                                    onmouseout="this.style.background='none'">ꦄ Aksara</button>
+                                <button type="button" onclick="bukaModalArab('manual')"
+                                    title="Sisipkan Huruf Arab ke field aktif"
+                                    style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#10b981;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                                    onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'"
+                                    onmouseout="this.style.background='none'">ع Arab</button>
+                                <button type="button" onclick="bukaModalKimia('manual')"
+                                    title="Sisipkan Simbol Kimia ke field aktif"
+                                    style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:#0ea5e9;border-radius:4px;font-weight:600; transition:background 0.2s;"
+                                    onmouseover="this.style.background='rgba(14, 165, 233, 0.1)'"
+                                    onmouseout="this.style.background='none'"><i class="fas fa-flask"></i> Kimia</button>
+                                <button type="button" onmousedown="event.preventDefault();insertMathFormulaToFocused()"
                                     title="Sisipkan Rumus Matematika ke field aktif"
                                     style="background:none;border:none;cursor:pointer;padding:3px 8px;font-size:12px;color:var(--secondary);border-radius:4px;font-weight:600; transition:background 0.2s;"
                                     onmouseover="this.style.background='rgba(139, 92, 246, 0.1)'"
@@ -608,7 +635,7 @@
                                     style="font-size:11px;color:var(--secondary);align-self:center;margin-left:auto;font-weight:500;">Target:
                                     Pertanyaan</span>
                             </div>
-                            <div id="manual-pertanyaan" contenteditable="true" class="form-control"
+                            <div id="manual-pertanyaan" contenteditable="true" class="form-control" dir="auto"
                                 style="min-height:90px; max-height:200px; overflow-y:auto; font-size:14px; line-height:1.7; background:rgba(255,255,255,0.01);"
                                 data-placeholder="Tulis pertanyaan di sini..."
                                 onfocus="setLastManualFocus('manual-pertanyaan', 'Pertanyaan')"></div>
@@ -636,7 +663,7 @@
                                 <!-- Opsi A -->
                                 <div class="form-group manual-opsi-item" data-opsi="a" style="margin:0;">
                                     <label style="font-size:12px; font-weight:600; color:#34d399;">Opsi A</label>
-                                    <div id="manual-opsi-a" contenteditable="true" class="form-control"
+                                    <div id="manual-opsi-a" contenteditable="true" class="form-control" dir="auto"
                                         style="min-height:42px; font-size:13px; background:rgba(16, 185, 129, 0.03); border-color:rgba(16, 185, 129, 0.2);"
                                         onfocus="setLastManualFocus('manual-opsi-a', 'Opsi A')"></div>
                                 </div>
@@ -1326,6 +1353,817 @@
             <button onclick="document.getElementById('modalDaftarGuru').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>
         </div>
     </div>
+    <!-- ==================== MODAL AKSARA JAWA ==================== -->
+    <div id="modalAksaraJawa" style="position:fixed;bottom:20px;right:20px;z-index:99999;display:none;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:16px;width:380px;box-shadow:0 15px 50px rgba(0,0,0,0.8);position:relative;max-height:85vh;overflow-y:auto;">
+            <div id="modalAksaraJawaHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #334155;padding-bottom:10px;cursor:move;">
+                <h3 style="margin:0;color:#f8fafc;font-size:1rem;font-weight:600;user-select:none;"><i class="fas fa-language" style="color:#f59e0b;"></i> Keyboard Aksara</h3>
+                <button onclick="document.getElementById('modalAksaraJawa').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            
+            <div id="aksara-tabs" style="display:flex;gap:10px;margin-bottom:15px;overflow-x:auto;">
+                <button class="aksara-tab active" onmousedown="event.preventDefault(); switchAksaraTab('nglegena')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Dasar (Nglegena)</button>
+                <button class="aksara-tab" onmousedown="event.preventDefault(); switchAksaraTab('pasangan')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Pasangan</button>
+                <button class="aksara-tab" onmousedown="event.preventDefault(); switchAksaraTab('sandhangan')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Sandhangan</button>
+                <button class="aksara-tab" onmousedown="event.preventDefault(); switchAksaraTab('angka')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Angka & Tanda</button>
+            </div>
+            
+            <!-- Nglegena -->
+            <div id="tab-nglegena" class="aksara-content" style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <!-- Ha Na Ca Ra Ka -->
+                <button onclick="insertAksara('ꦲ')" class="btn-aksara">ꦲ<br><small>ha</small></button>
+                <button onclick="insertAksara('ꦤ')" class="btn-aksara">ꦤ<br><small>na</small></button>
+                <button onclick="insertAksara('ꦕ')" class="btn-aksara">ꦕ<br><small>ca</small></button>
+                <button onclick="insertAksara('ꦫ')" class="btn-aksara">ꦫ<br><small>ra</small></button>
+                <button onclick="insertAksara('ꦏ')" class="btn-aksara">ꦏ<br><small>ka</small></button>
+                <!-- Da Ta Sa Wa La -->
+                <button onclick="insertAksara('ꦢ')" class="btn-aksara">ꦢ<br><small>da</small></button>
+                <button onclick="insertAksara('ꦠ')" class="btn-aksara">ꦠ<br><small>ta</small></button>
+                <button onclick="insertAksara('ꦱ')" class="btn-aksara">ꦱ<br><small>sa</small></button>
+                <button onclick="insertAksara('ꦮ')" class="btn-aksara">ꦮ<br><small>wa</small></button>
+                <button onclick="insertAksara('ꦭ')" class="btn-aksara">ꦭ<br><small>la</small></button>
+                <!-- Pa Dha Ja Ya Nya -->
+                <button onclick="insertAksara('ꦥ')" class="btn-aksara">ꦥ<br><small>pa</small></button>
+                <button onclick="insertAksara('ꦝ')" class="btn-aksara">ꦝ<br><small>dha</small></button>
+                <button onclick="insertAksara('ꦗ')" class="btn-aksara">ꦗ<br><small>ja</small></button>
+                <button onclick="insertAksara('ꦪ')" class="btn-aksara">ꦪ<br><small>ya</small></button>
+                <button onclick="insertAksara('ꦚ')" class="btn-aksara">ꦚ<br><small>nya</small></button>
+                <!-- Ma Ga Ba Tha Nga -->
+                <button onclick="insertAksara('ꦩ')" class="btn-aksara">ꦩ<br><small>ma</small></button>
+                <button onclick="insertAksara('ꦒ')" class="btn-aksara">ꦒ<br><small>ga</small></button>
+                <button onclick="insertAksara('ꦧ')" class="btn-aksara">ꦧ<br><small>ba</small></button>
+                <button onclick="insertAksara('ꦛ')" class="btn-aksara">ꦛ<br><small>tha</small></button>
+                <button onclick="insertAksara('ꦔ')" class="btn-aksara">ꦔ<br><small>nga</small></button>
+            </div>
+
+            <!-- Pasangan (dengan ZWJ agar tampil sebagai pasangan jika sendiri, tapi saat insert kita insert PANGKON + AKSARA) -->
+            <div id="tab-pasangan" class="aksara-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onclick="insertAksara('꧀ꦲ')" class="btn-aksara">◌꧀ꦲ<br><small>ha</small></button>
+                <button onclick="insertAksara('꧀ꦤ')" class="btn-aksara">◌꧀ꦤ<br><small>na</small></button>
+                <button onclick="insertAksara('꧀ꦕ')" class="btn-aksara">◌꧀ꦕ<br><small>ca</small></button>
+                <button onclick="insertAksara('꧀ꦫ')" class="btn-aksara">◌꧀ꦫ<br><small>ra</small></button>
+                <button onclick="insertAksara('꧀ꦏ')" class="btn-aksara">◌꧀ꦏ<br><small>ka</small></button>
+                
+                <button onclick="insertAksara('꧀ꦢ')" class="btn-aksara">◌꧀ꦢ<br><small>da</small></button>
+                <button onclick="insertAksara('꧀ꦠ')" class="btn-aksara">◌꧀ꦠ<br><small>ta</small></button>
+                <button onclick="insertAksara('꧀ꦱ')" class="btn-aksara">◌꧀ꦱ<br><small>sa</small></button>
+                <button onclick="insertAksara('꧀ꦮ')" class="btn-aksara">◌꧀ꦮ<br><small>wa</small></button>
+                <button onclick="insertAksara('꧀ꦭ')" class="btn-aksara">◌꧀ꦭ<br><small>la</small></button>
+                
+                <button onclick="insertAksara('꧀ꦥ')" class="btn-aksara">◌꧀ꦥ<br><small>pa</small></button>
+                <button onclick="insertAksara('꧀ꦝ')" class="btn-aksara">◌꧀ꦝ<br><small>dha</small></button>
+                <button onclick="insertAksara('꧀ꦗ')" class="btn-aksara">◌꧀ꦗ<br><small>ja</small></button>
+                <button onclick="insertAksara('꧀ꦪ')" class="btn-aksara">◌꧀ꦪ<br><small>ya</small></button>
+                <button onclick="insertAksara('꧀ꦚ')" class="btn-aksara">◌꧀ꦚ<br><small>nya</small></button>
+                
+                <button onclick="insertAksara('꧀ꦩ')" class="btn-aksara">◌꧀ꦩ<br><small>ma</small></button>
+                <button onclick="insertAksara('꧀ꦒ')" class="btn-aksara">◌꧀ꦒ<br><small>ga</small></button>
+                <button onclick="insertAksara('꧀ꦧ')" class="btn-aksara">◌꧀ꦧ<br><small>ba</small></button>
+                <button onclick="insertAksara('꧀ꦛ')" class="btn-aksara">◌꧀ꦛ<br><small>tha</small></button>
+                <button onclick="insertAksara('꧀ꦔ')" class="btn-aksara">◌꧀ꦔ<br><small>nga</small></button>
+            </div>
+
+            <!-- Sandhangan -->
+            <div id="tab-sandhangan" class="aksara-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onclick="insertAksara('ꦶ')" class="btn-aksara">◌ꦶ<br><small>wulu (i)</small></button>
+                <button onclick="insertAksara('ꦸ')" class="btn-aksara">◌ꦸ<br><small>suku (u)</small></button>
+                <button onclick="insertAksara('ꦺ')" class="btn-aksara">ꦺ◌<br><small>taling (e)</small></button>
+                <button onclick="insertAksara('ꦼ')" class="btn-aksara">◌ꦼ<br><small>pepet (ê)</small></button>
+                <button onclick="insertAksara('ꦺꦴ')" class="btn-aksara">ꦺ◌ꦴ<br><small>taling tarung (o)</small></button>
+                
+                <button onclick="insertAksara('ꦁ')" class="btn-aksara">◌ꦁ<br><small>cecak (-ng)</small></button>
+                <button onclick="insertAksara('ꦂ')" class="btn-aksara">◌ꦂ<br><small>layar (-r)</small></button>
+                <button onclick="insertAksara('ꦃ')" class="btn-aksara">◌ꦃ<br><small>wignyan (-h)</small></button>
+                <button onclick="insertAksara('꧀')" class="btn-aksara">◌꧀<br><small>pangkon (mati)</small></button>
+                <button onclick="insertAksara('ꦿ')" class="btn-aksara">◌ꦿ<br><small>cakra (-ra)</small></button>
+                
+                <button onclick="insertAksara('ꦽ')" class="btn-aksara">◌ꦽ<br><small>cakra keret (-re)</small></button>
+                <button onclick="insertAksara('ꦾ')" class="btn-aksara">◌ꦾ<br><small>pengkal (-ya)</small></button>
+            </div>
+            
+            <!-- Angka -->
+            <div id="tab-angka" class="aksara-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onclick="insertAksara('꧑')" class="btn-aksara">꧑<br><small>1</small></button>
+                <button onclick="insertAksara('꧒')" class="btn-aksara">꧒<br><small>2</small></button>
+                <button onclick="insertAksara('꧓')" class="btn-aksara">꧓<br><small>3</small></button>
+                <button onclick="insertAksara('꧔')" class="btn-aksara">꧔<br><small>4</small></button>
+                <button onclick="insertAksara('꧕')" class="btn-aksara">꧕<br><small>5</small></button>
+                <button onclick="insertAksara('꧖')" class="btn-aksara">꧖<br><small>6</small></button>
+                <button onclick="insertAksara('꧗')" class="btn-aksara">꧗<br><small>7</small></button>
+                <button onclick="insertAksara('꧘')" class="btn-aksara">꧘<br><small>8</small></button>
+                <button onclick="insertAksara('꧙')" class="btn-aksara">꧙<br><small>9</small></button>
+                <button onclick="insertAksara('꧐')" class="btn-aksara">꧐<br><small>0</small></button>
+                
+                <button onclick="insertAksara('꧊')" class="btn-aksara">꧊<br><small>pada adeg</small></button>
+                <button onclick="insertAksara('꧋')" class="btn-aksara">꧋<br><small>adeg-adeg</small></button>
+                <button onclick="insertAksara('꧈')" class="btn-aksara">꧈<br><small>pada lingsa (,)</small></button>
+                <button onclick="insertAksara('꧉')" class="btn-aksara">꧉<br><small>lungsi (.)</small></button>
+            </div>
+            
+            <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
+                <button onclick="insertAksara('\u200C')" style="background:rgba(255,255,255,0.1);border:1px solid var(--border);color:var(--text-main);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" title="Zero Width Non-Joiner (untuk memisahkan pasangan)">ZWNJ (Spasi Pasangan)</button>
+                <button onclick="insertAksara(' ')" style="background:rgba(255,255,255,0.1);border:1px solid var(--border);color:var(--text-main);padding:6px 20px;border-radius:6px;cursor:pointer;font-size:12px;flex-grow:1;margin-left:10px;">Spasi</button>
+            </div>
+        </div>
+    </div>
+    <!-- ==================== MODAL ARAB ==================== -->
+    <div id="modalArab" style="position:fixed;bottom:20px;right:20px;z-index:99999;display:none;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:16px;width:380px;box-shadow:0 15px 50px rgba(0,0,0,0.8);position:relative;max-height:85vh;overflow-y:auto;">
+            <div id="modalArabHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #334155;padding-bottom:10px;cursor:move;">
+                <h3 style="margin:0;color:#f8fafc;font-size:1rem;font-weight:600;user-select:none;"><i class="fas fa-language" style="color:#10b981;"></i> Keyboard Arab</h3>
+                <button onclick="document.getElementById('modalArab').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            
+            <div id="arab-tabs" style="display:flex;gap:10px;margin-bottom:15px;overflow-x:auto;">
+                <button class="arab-tab active" onmousedown="event.preventDefault(); switchArabTab('huruf')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Huruf</button>
+                <button class="arab-tab" onmousedown="event.preventDefault(); switchArabTab('harakat')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Harakat</button>
+                <button class="arab-tab" onmousedown="event.preventDefault(); switchArabTab('angka')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Angka</button>
+            </div>
+
+            <!-- Huruf -->
+            <div id="tab-huruf" class="arab-content" style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;" dir="rtl">
+                <button onmousedown="event.preventDefault();insertArab('ا')" class="btn-arab">ا</button>
+                <button onmousedown="event.preventDefault();insertArab('ب')" class="btn-arab">ب</button>
+                <button onmousedown="event.preventDefault();insertArab('ت')" class="btn-arab">ت</button>
+                <button onmousedown="event.preventDefault();insertArab('ث')" class="btn-arab">ث</button>
+                <button onmousedown="event.preventDefault();insertArab('ج')" class="btn-arab">ج</button>
+                <button onmousedown="event.preventDefault();insertArab('ح')" class="btn-arab">ح</button>
+                <button onmousedown="event.preventDefault();insertArab('خ')" class="btn-arab">خ</button>
+                <button onmousedown="event.preventDefault();insertArab('د')" class="btn-arab">د</button>
+                <button onmousedown="event.preventDefault();insertArab('ذ')" class="btn-arab">ذ</button>
+                <button onmousedown="event.preventDefault();insertArab('ر')" class="btn-arab">ر</button>
+                <button onmousedown="event.preventDefault();insertArab('ز')" class="btn-arab">ز</button>
+                <button onmousedown="event.preventDefault();insertArab('س')" class="btn-arab">س</button>
+                <button onmousedown="event.preventDefault();insertArab('ش')" class="btn-arab">ش</button>
+                <button onmousedown="event.preventDefault();insertArab('ص')" class="btn-arab">ص</button>
+                <button onmousedown="event.preventDefault();insertArab('ض')" class="btn-arab">ض</button>
+                <button onmousedown="event.preventDefault();insertArab('ط')" class="btn-arab">ط</button>
+                <button onmousedown="event.preventDefault();insertArab('ظ')" class="btn-arab">ظ</button>
+                <button onmousedown="event.preventDefault();insertArab('ع')" class="btn-arab">ع</button>
+                <button onmousedown="event.preventDefault();insertArab('غ')" class="btn-arab">غ</button>
+                <button onmousedown="event.preventDefault();insertArab('ف')" class="btn-arab">ف</button>
+                <button onmousedown="event.preventDefault();insertArab('ق')" class="btn-arab">ق</button>
+                <button onmousedown="event.preventDefault();insertArab('ك')" class="btn-arab">ك</button>
+                <button onmousedown="event.preventDefault();insertArab('ل')" class="btn-arab">ل</button>
+                <button onmousedown="event.preventDefault();insertArab('م')" class="btn-arab">م</button>
+                <button onmousedown="event.preventDefault();insertArab('ن')" class="btn-arab">ن</button>
+                <button onmousedown="event.preventDefault();insertArab('ه')" class="btn-arab">ه</button>
+                <button onmousedown="event.preventDefault();insertArab('و')" class="btn-arab">و</button>
+                <button onmousedown="event.preventDefault();insertArab('ي')" class="btn-arab">ي</button>
+                <button onmousedown="event.preventDefault();insertArab('ء')" class="btn-arab">ء</button>
+                <button onmousedown="event.preventDefault();insertArab('ة')" class="btn-arab">ة</button>
+                <button onmousedown="event.preventDefault();insertArab('ى')" class="btn-arab">ى</button>
+                <button onmousedown="event.preventDefault();insertArab('ئ')" class="btn-arab">ئ</button>
+                <button onmousedown="event.preventDefault();insertArab('ؤ')" class="btn-arab">ؤ</button>
+                <button onmousedown="event.preventDefault();insertArab('أ')" class="btn-arab">أ</button>
+                <button onmousedown="event.preventDefault();insertArab('إ')" class="btn-arab">إ</button>
+            </div>
+
+            <!-- Harakat -->
+            <div id="tab-harakat" class="arab-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onmousedown="event.preventDefault();insertArab('َ')" class="btn-arab">◌َ<br><small>Fathah</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ِ')" class="btn-arab">◌ِ<br><small>Kasrah</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ُ')" class="btn-arab">◌ُ<br><small>Dhammah</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ْ')" class="btn-arab">◌ْ<br><small>Sukun</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ّ')" class="btn-arab">◌ّ<br><small>Tasydid</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ً')" class="btn-arab">◌ً<br><small>Fathatain</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ٍ')" class="btn-arab">◌ٍ<br><small>Kasratain</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ٌ')" class="btn-arab">◌ٌ<br><small>Dhammatain</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ٰ')" class="btn-arab">◌ٰ<br><small>Mad/Alif Kh.</small></button>
+                <button onmousedown="event.preventDefault();insertArab('ـ')" class="btn-arab">ـ<br><small>Tatweel</small></button>
+            </div>
+            
+            <!-- Angka Arab (ID unik: tab-arab-angka) -->
+            <div id="tab-arab-angka" class="arab-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;direction:rtl;">
+                <button onmousedown="event.preventDefault();insertArab('١')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">١<br><small style="font-family:'Inter',sans-serif;font-size:11px;">1</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٢')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٢<br><small style="font-family:'Inter',sans-serif;font-size:11px;">2</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٣')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٣<br><small style="font-family:'Inter',sans-serif;font-size:11px;">3</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٤')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٤<br><small style="font-family:'Inter',sans-serif;font-size:11px;">4</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٥')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٥<br><small style="font-family:'Inter',sans-serif;font-size:11px;">5</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٦')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٦<br><small style="font-family:'Inter',sans-serif;font-size:11px;">6</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٧')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٧<br><small style="font-family:'Inter',sans-serif;font-size:11px;">7</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٨')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٨<br><small style="font-family:'Inter',sans-serif;font-size:11px;">8</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٩')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٩<br><small style="font-family:'Inter',sans-serif;font-size:11px;">9</small></button>
+                <button onmousedown="event.preventDefault();insertArab('٠')" class="btn-arab" style="font-family:'Amiri','Traditional Arabic',sans-serif;font-size:22px;">٠<br><small style="font-family:'Inter',sans-serif;font-size:11px;">0</small></button>
+            </div>
+            
+            <div style="margin-top:15px;border-top:1px solid #334155;padding-top:12px;">
+                <div style="font-size:11px;color:#64748b;margin-bottom:8px;">
+                    <i class="fas fa-info-circle" style="color:#10b981;"></i>
+                    Ketik teks Arab lalu <b style="color:#10b981;">seleksi</b>, klik "Bungkus RTL" untuk isolasi arah.
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button onmousedown="event.preventDefault();insertArab(' ')" style="background:rgba(255,255,255,0.08);border:1px solid #475569;color:#cbd5e1;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">Spasi Arab</button>
+                    <button onmousedown="event.preventDefault();keluarDariArab()" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;flex-grow:1;"><i class="fas fa-sign-out-alt"></i> Keluar (Lanjut Latin)</button>
+                    <button onmousedown="event.preventDefault();bungkusRTL()" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;" title="Bungkus teks Arab terpilih dalam span RTL"><i class="fas fa-text-slash"></i> Bungkus RTL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== MODAL KIMIA ==================== -->
+    <div id="modalKimia" style="position:fixed;bottom:20px;right:20px;z-index:99999;display:none;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:16px;width:380px;box-shadow:0 15px 50px rgba(0,0,0,0.8);position:relative;max-height:85vh;overflow-y:auto;">
+            <div id="modalKimiaHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #334155;padding-bottom:10px;cursor:move;">
+                <h3 style="margin:0;color:#f8fafc;font-size:1rem;font-weight:600;user-select:none;"><i class="fas fa-flask" style="color:#0ea5e9;"></i> Keyboard Kimia</h3>
+                <button onclick="document.getElementById('modalKimia').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            
+            <div id="kimia-tabs" style="display:flex;gap:10px;margin-bottom:15px;overflow-x:auto;">
+                <button class="kimia-tab active" onmousedown="event.preventDefault(); switchKimiaTab('subsuper')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Sub/Super</button>
+                <button class="kimia-tab" onmousedown="event.preventDefault(); switchKimiaTab('simbol')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Simbol & Panah</button>
+                <button class="kimia-tab" onmousedown="event.preventDefault(); switchKimiaTab('wujud')" style="padding:6px 12px;background:rgba(255,255,255,0.05);color:#cbd5e1;border:1px solid #475569;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">Wujud (State)</button>
+            </div>
+
+            <!-- Sub/Super -->
+            <div id="tab-kimia-subsuper" class="kimia-content" style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onmousedown="event.preventDefault();insertKimia('₀')" class="btn-kimia">₀<br><small>sub 0</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₁')" class="btn-kimia">₁<br><small>sub 1</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₂')" class="btn-kimia">₂<br><small>sub 2</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₃')" class="btn-kimia">₃<br><small>sub 3</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₄')" class="btn-kimia">₄<br><small>sub 4</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₅')" class="btn-kimia">₅<br><small>sub 5</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₆')" class="btn-kimia">₆<br><small>sub 6</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₇')" class="btn-kimia">₇<br><small>sub 7</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₈')" class="btn-kimia">₈<br><small>sub 8</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('₉')" class="btn-kimia">₉<br><small>sub 9</small></button>
+                
+                <button onmousedown="event.preventDefault();insertKimia('⁰')" class="btn-kimia">⁰<br><small>sup 0</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('¹')" class="btn-kimia">¹<br><small>sup 1</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('²')" class="btn-kimia">²<br><small>sup 2</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('³')" class="btn-kimia">³<br><small>sup 3</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁴')" class="btn-kimia">⁴<br><small>sup 4</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁵')" class="btn-kimia">⁵<br><small>sup 5</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁶')" class="btn-kimia">⁶<br><small>sup 6</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁷')" class="btn-kimia">⁷<br><small>sup 7</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁸')" class="btn-kimia">⁸<br><small>sup 8</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁹')" class="btn-kimia">⁹<br><small>sup 9</small></button>
+                
+                <button onmousedown="event.preventDefault();insertKimia('⁺')" class="btn-kimia">⁺<br><small>plus</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⁻')" class="btn-kimia">⁻<br><small>min</small></button>
+            </div>
+
+            <!-- Simbol & Panah -->
+            <div id="tab-kimia-simbol" class="kimia-content" style="display:none;grid-template-columns:repeat(5, 1fr);gap:8px;">
+                <button onmousedown="event.preventDefault();insertKimia('→')" class="btn-kimia">→<br><small>panah</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('⇌')" class="btn-kimia">⇌<br><small>setimbang</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('↔')" class="btn-kimia">↔<br><small>resonansi</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('↑')" class="btn-kimia">↑<br><small>gas</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('↓')" class="btn-kimia">↓<br><small>endapan</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('°')" class="btn-kimia">°<br><small>derajat</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('Δ')" class="btn-kimia">Δ<br><small>delta</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('α')" class="btn-kimia">α<br><small>alfa</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('β')" class="btn-kimia">β<br><small>beta</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('γ')" class="btn-kimia">γ<br><small>gamma</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('•')" class="btn-kimia">•<br><small>dot</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('≡')" class="btn-kimia">≡<br><small>rangkap 3</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('≈')" class="btn-kimia">≈<br><small>kira-kira</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('≠')" class="btn-kimia">≠<br><small>tdk sm dg</small></button>
+            </div>
+            
+            <!-- Wujud (State) -->
+            <div id="tab-kimia-wujud" class="kimia-content" style="display:none;grid-template-columns:repeat(4, 1fr);gap:8px;">
+                <button onmousedown="event.preventDefault();insertKimia('(s)')" class="btn-kimia">(s)<br><small>solid</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('(l)')" class="btn-kimia">(l)<br><small>liquid</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('(g)')" class="btn-kimia">(g)<br><small>gas</small></button>
+                <button onmousedown="event.preventDefault();insertKimia('(aq)')" class="btn-kimia">(aq)<br><small>aqueous</small></button>
+            </div>
+            
+            <div style="margin-top:15px;border-top:1px solid #334155;padding-top:12px;">
+                <div style="font-size:11px;color:#64748b;margin-bottom:8px;">
+                    <i class="fas fa-info-circle" style="color:#0ea5e9;"></i>
+                    Klik tombol untuk menyisipkan karakter kimia ke kursor aktif.
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button onmousedown="event.preventDefault();insertKimia(' ')" style="background:rgba(255,255,255,0.08);border:1px solid #475569;color:#cbd5e1;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">Spasi</button>
+                    <button onmousedown="event.preventDefault();document.getElementById('modalKimia').style.display='none'" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;flex-grow:1;"><i class="fas fa-times"></i> Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL MATH ==================== -->
+    <div id="modalMath" style="position:fixed;bottom:20px;right:420px;z-index:99999;display:none;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:16px;width:480px;box-shadow:0 15px 50px rgba(0,0,0,0.8);position:relative;max-height:85vh;overflow-y:auto;font-family: 'Plus Jakarta Sans', sans-serif;">
+            <div id="modalMathHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #334155;padding-bottom:10px;cursor:move;">
+                <h3 style="margin:0;color:#f8fafc;font-size:1rem;font-weight:600;user-select:none;"><i class="fas fa-subscript" style="color:var(--secondary);"></i> Editor Rumus Matematika</h3>
+                <button onclick="document.getElementById('modalMath').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; margin-top: 0;">
+                Target Sisipkan: <b id="modalMathTargetLabel" style="color: var(--primary);">Pertanyaan</b>
+            </p>
+            <div style="display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; overflow-x: auto; white-space: nowrap;">
+                <button type="button" class="swal-math-tab active" onclick="switchSwalMathTab('dasar')" style="background: rgba(124, 58, 237, 0.2); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: #a78bfa; transition: 0.2s;">Dasar</button>
+                <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('lanjut')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Lanjut</button>
+                <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('matriks')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Matriks</button>
+                <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('simbol')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Simbol</button>
+            </div>
+            <div id="swal-math-panel-dasar" class="swal-math-panel" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\frac{}{}', 6)" title="Pecahan" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(\frac{a}{b}\)</span><span style="font-size:10px;color:var(--text-muted);">Pecahan</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\sqrt{}', 6)" title="Akar" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(\sqrt{x}\)</span><span style="font-size:10px;color:var(--text-muted);">Akar</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('^{}', 2)" title="Pangkat" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(x^y\)</span><span style="font-size:10px;color:var(--text-muted);">Pangkat</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('_{}', 2)" title="Subscript" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(x_y\)</span><span style="font-size:10px;color:var(--text-muted);">Subscript</span></button>
+            </div>
+            <div id="swal-math-panel-lanjut" class="swal-math-panel" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px;">
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\int_{}^{} dx', 6)" title="Integral Tentu" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(\int_{a}^{b}\)</span><span style="font-size:10px;color:var(--text-muted);">Integral</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\lim_{x \\to }', 12)" title="Limit" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(\lim_{x\to0}\)</span><span style="font-size:10px;color:var(--text-muted);">Limit</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\sum_{i=1}^{}', 12)" title="Sigma Penjumlahan" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\(\sum\)</span><span style="font-size:10px;color:var(--text-muted);">Sigma</span></button>
+            </div>
+            <div id="swal-math-panel-matriks" class="swal-math-panel" style="display:none;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:15px;">
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\begin{pmatrix} & \\\\ & \\end{pmatrix}', 17)" title="Matriks 2x2" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:14px;font-weight:500;">\(\begin{pmatrix}a&b\\c&d\end{pmatrix}\)</span><span style="font-size:10px;color:var(--text-muted);">Matriks 2x2</span></button>
+                <button type="button" onmousedown="event.preventDefault();insertToModalInput('\\begin{pmatrix} & & \\\\ & & \\\\ & & \\end{pmatrix}', 17)" title="Matriks 3x3" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:12px;font-weight:500;">\(\begin{pmatrix}3x3\end{pmatrix}\)</span><span style="font-size:10px;color:var(--text-muted);">Matriks 3x3</span></button>
+            </div>
+            <div id="swal-math-panel-simbol" class="swal-math-panel" style="display:none;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:15px;"></div>
+            
+            <div style="margin-bottom:10px;border-top:1px solid #334155;padding-top:10px;">
+                <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px;">Ketik Rumus LaTeX Manual:</label>
+                <div style="display:flex;gap:6px;">
+                    <input id="modalMathCustomInput" type="text" placeholder="Contoh: \frac{a}{b} atau x^{2}" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:monospace;font-size:13px;color:var(--text-main);outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();insertMathCustom();}">
+                    <button type="button" onmousedown="event.preventDefault();insertMathCustom()" style="background:var(--primary);border:none;color:white;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap;">Sisipkan</button>
+                </div>
+                <p style="font-size:10px;color:#64748b;margin:5px 0 0;">Tekan Enter atau klik Sisipkan. Rumus otomatis dibungkus \( \)</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="button" onmousedown="event.preventDefault();document.getElementById('modalMath').style.display='none'" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;flex-grow:1;"><i class="fas fa-times"></i> Tutup</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        .btn-aksara { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; padding:10px 5px; cursor:pointer; text-align:center; transition:background 0.2s; font-size:18px; line-height:1.2; font-family:"Javanese Text", "Noto Sans Javanese", sans-serif; }
+        .btn-aksara:hover { background:rgba(245, 158, 11, 0.2); border-color:#f59e0b; }
+        .btn-aksara small { font-size:11px; color:rgba(255,255,255,0.5); font-family:'Inter', sans-serif; display:block; margin-top:2px; }
+        
+        .btn-arab { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; padding:10px 5px; cursor:pointer; text-align:center; transition:background 0.2s; font-size:22px; line-height:1.2; font-family:"Amiri", "Scheherazade", "Traditional Arabic", "Arial", sans-serif; }
+        .btn-arab:hover { background:rgba(16, 185, 129, 0.2); border-color:#10b981; }
+        .btn-arab small { font-size:11px; color:rgba(255,255,255,0.5); font-family:'Inter', sans-serif; display:block; margin-top:2px; }
+
+        .btn-kimia { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; padding:10px 5px; cursor:pointer; text-align:center; transition:background 0.2s; font-size:18px; line-height:1.2; font-family:'Inter', sans-serif; }
+        .btn-kimia:hover { background:rgba(14, 165, 233, 0.2); border-color:#0ea5e9; }
+        .btn-kimia small { font-size:11px; color:rgba(255,255,255,0.5); font-family:'Inter', sans-serif; display:block; margin-top:2px; }
+
+        /* Span yang dihasilkan oleh fitur Bungkus RTL */
+        [contenteditable] span[dir="rtl"] {
+            unicode-bidi: isolate;
+            display: inline;
+            font-family: "Amiri", "Scheherazade", "Traditional Arabic", serif;
+        }
+    </style>
+
+    <script>
+        let aksaraTargetMode = 'manual'; // 'manual' atau 'edit'
+
+        function bukaModalAksaraJawa(mode) {
+            aksaraTargetMode = mode;
+            document.getElementById('modalAksaraJawa').style.display = 'flex';
+        }
+        
+        function bukaModalArab(mode) {
+            aksaraTargetMode = mode;
+            document.getElementById('modalArab').style.display = 'flex';
+            // Tidak memaksa RTL ke seluruh field — biarkan unicode-bidi: plaintext
+            // dan dir="auto" yang mendeteksi arah secara otomatis per-baris
+        }
+
+        function bukaModalKimia(mode) {
+            aksaraTargetMode = mode;
+            document.getElementById('modalKimia').style.display = 'flex';
+        }
+
+        function switchAksaraTab(tabName) {
+            document.querySelectorAll('.aksara-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.aksara-tab').forEach(el => {
+                el.style.background = 'rgba(255,255,255,0.05)';
+                el.style.border = '1px solid #475569';
+                el.style.color = '#cbd5e1';
+            });
+            
+            document.getElementById('tab-' + tabName).style.display = 'grid';
+            event.currentTarget.style.background = 'var(--primary)';
+            event.currentTarget.style.border = 'none';
+            event.currentTarget.style.color = 'white';
+        }
+        
+        function switchArabTab(tabName) {
+            document.querySelectorAll('.arab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.arab-tab').forEach(el => {
+                el.style.background = 'rgba(255,255,255,0.05)';
+                el.style.border = '1px solid #475569';
+                el.style.color = '#cbd5e1';
+            });
+            
+            // Tab angka punya ID unik 'tab-arab-angka'
+            const tabId = (tabName === 'angka') ? 'tab-arab-angka' : ('tab-' + tabName);
+            const tabEl = document.getElementById(tabId);
+            if (tabEl) tabEl.style.display = 'grid';
+            event.currentTarget.style.background = 'var(--primary)';
+            event.currentTarget.style.border = 'none';
+            event.currentTarget.style.color = 'white';
+        }
+
+        function switchKimiaTab(tabName) {
+            document.querySelectorAll('.kimia-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.kimia-tab').forEach(el => {
+                el.style.background = 'rgba(255,255,255,0.05)';
+                el.style.border = '1px solid #475569';
+                el.style.color = '#cbd5e1';
+            });
+            
+            document.getElementById('tab-kimia-' + tabName).style.display = 'grid';
+            event.currentTarget.style.background = 'var(--primary)';
+            event.currentTarget.style.border = 'none';
+            event.currentTarget.style.color = 'white';
+        }
+
+        function insertToModalInput(snippet, offset) {
+            const input = document.getElementById('modalMathCustomInput');
+            if (!input) return;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const val = input.value;
+            input.value = val.substring(0, start) + snippet + val.substring(end);
+            
+            input.focus();
+            let newCursorPos = start + snippet.length;
+            if (offset !== undefined) {
+                newCursorPos = start + offset;
+            }
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+
+        function insertMath(snippet) {
+            let targetId = (aksaraTargetMode === 'manual') ?
+                (typeof lastManualFocusedId !== 'undefined' ? lastManualFocusedId : 'manual-pertanyaan') :
+                (typeof lastEditFocusedId !== 'undefined' ? lastEditFocusedId : 'edit-soal-pertanyaan');
+
+            let el = document.getElementById(targetId);
+            if (!el) return;
+
+            // Tutup modal dulu agar fokus kembali ke contenteditable
+            document.getElementById('modalMath').style.display = 'none';
+
+            // Bungkus dengan delimiter \( \)
+            const text = ' \\(' + snippet + '\\) ';
+
+            // Langkah 1: Fokuskan ke target contenteditable
+            el.focus();
+
+            // Langkah 2: Coba restore saved cursor position (harus di dalam element yg benar)
+            const saved = window.savedMathRange;
+            let cursorPlaced = false;
+            if (saved) {
+                try {
+                    // Validasi: pastikan range masih berada di dalam element target
+                    if (saved.startContainer && el.contains(saved.startContainer)) {
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(saved);
+                        cursorPlaced = true;
+                    }
+                } catch (e) { cursorPlaced = false; }
+            }
+
+            // Jika cursor tidak bisa di-restore, posisikan di akhir element
+            if (!cursorPlaced) {
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false); // false = collapse ke akhir
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            // Langkah 3: Insert teks menggunakan execCommand (paling andal untuk contenteditable)
+            let success = false;
+            try {
+                success = document.execCommand('insertText', false, text);
+            } catch (e) { success = false; }
+
+            // Fallback: insertNode langsung
+            if (!success) {
+                try {
+                    const sel = window.getSelection();
+                    if (sel.rangeCount > 0) {
+                        const range = sel.getRangeAt(0);
+                        range.deleteContents();
+                        const textNode = document.createTextNode(text);
+                        range.insertNode(textNode);
+                        // Pindah kursor setelah text node
+                        range.setStartAfter(textNode);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                } catch (e2) {
+                    // Final fallback: append ke akhir element
+                    el.appendChild(document.createTextNode(text));
+                }
+            }
+
+            // Langkah 4: Render KaTeX (visual) — data-latex disimpan untuk save
+            setTimeout(() => {
+                if (typeof renderKaTeXInElement === 'function') {
+                    renderKaTeXInElement(el);
+                }
+                // Posisikan kursor di akhir
+                el.focus();
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }, 30);
+        }
+
+        function insertMathCustom() {
+            const input = document.getElementById('modalMathCustomInput');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) return;
+            insertMath(val);
+            input.value = '';
+        }
+
+        function insertKimia(char) {
+            let targetId = '';
+            if (aksaraTargetMode === 'manual') {
+                targetId = (typeof lastManualFocusedId !== 'undefined') ? lastManualFocusedId : 'manual-pertanyaan';
+            } else {
+                targetId = (typeof lastEditFocusedId !== 'undefined') ? lastEditFocusedId : 'edit-soal-pertanyaan';
+            }
+            let targetElem = document.getElementById(targetId);
+            if (targetElem) {
+                targetElem.focus();
+                let success = false;
+                try {
+                    success = document.execCommand('insertText', false, char);
+                } catch (e) {
+                    success = false;
+                }
+                if (!success) {
+                    if (typeof window.getSelection !== "undefined") {
+                        let sel = window.getSelection();
+                        if (sel.getRangeAt && sel.rangeCount) {
+                            let range = sel.getRangeAt(0);
+                            if (targetElem.contains(range.commonAncestorContainer)) {
+                                range.deleteContents();
+                                let textNode = document.createTextNode(char);
+                                range.insertNode(textNode);
+                                range.setStartAfter(textNode);
+                                range.collapse(true);
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Bungkus teks Arab yang dipilih (selection) ke dalam span dir="rtl"
+         * agar teks Arab tetap berjalan kanan-ke-kiri di dalam kalimat Indonesia.
+         * Jika tidak ada teks yang diseleksi, sisipkan RLI+PDI (bidi isolate) untuk memulai segmen RTL.
+         */
+        function bungkusRTL() {
+            let targetId = (aksaraTargetMode === 'manual')
+                ? ((typeof lastManualFocusedId !== 'undefined') ? lastManualFocusedId : 'manual-pertanyaan')
+                : ((typeof lastEditFocusedId !== 'undefined') ? lastEditFocusedId : 'edit-soal-pertanyaan');
+            
+            let targetElem = document.getElementById(targetId);
+            if (!targetElem) return;
+            targetElem.focus();
+            
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+                // Ada teks terseleksi — bungkus dalam span RTL isolate
+                const range = sel.getRangeAt(0);
+                if (targetElem.contains(range.commonAncestorContainer)) {
+                    try {
+                        const selectedText = range.toString();
+                        range.deleteContents();
+                        // Gunakan insertHTML agar span masuk sebagai HTML
+                        document.execCommand('insertHTML', false, 
+                            `<span dir="rtl" style="unicode-bidi:isolate;display:inline;">${selectedText}</span>`);
+                        return;
+                    } catch(e) {}
+                }
+            }
+            // Tidak ada seleksi — sisipkan placeholder teks Arab di posisi kursor
+            // menggunakan RLI (U+2067) + PDI (U+2069) sebagai bidi isolate marker
+            try {
+                document.execCommand('insertHTML', false,
+                    `<span dir="rtl" style="unicode-bidi:isolate;display:inline;">\u200F</span>`);
+            } catch(e) {}
+        }
+        
+        function keluarDariArab() {
+            let targetId = (aksaraTargetMode === 'manual')
+                ? ((typeof lastManualFocusedId !== 'undefined') ? lastManualFocusedId : 'manual-pertanyaan')
+                : ((typeof lastEditFocusedId !== 'undefined') ? lastEditFocusedId : 'edit-soal-pertanyaan');
+            
+            let targetElem = document.getElementById(targetId);
+            if (!targetElem) return;
+            targetElem.focus();
+            
+            let sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            let range = sel.getRangeAt(0);
+            
+            let currentNode = range.startContainer;
+            let arabSpan = null;
+            
+            let temp = currentNode;
+            while(temp && temp !== targetElem) {
+                if (temp.nodeType === 1 && temp.getAttribute('dir') === 'rtl') {
+                    arabSpan = temp;
+                    break;
+                }
+                temp = temp.parentNode;
+            }
+            
+            if (arabSpan) {
+                // Pindahkan kursor ke SETELAH span arab
+                let newRange = document.createRange();
+                newRange.setStartAfter(arabSpan);
+                newRange.collapse(true);
+                
+                // Menggunakan Non-Breaking Space (\u00A0) agar kursor benar-benar keluar dari span
+                // dan tidak tergelincir kembali ke dalam span RTL oleh browser.
+                let spaceNode = document.createTextNode('\u00A0'); 
+                newRange.insertNode(spaceNode);
+                
+                // Pindah ke setelah spasi
+                newRange.setStartAfter(spaceNode);
+                newRange.collapse(true);
+                
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+            }
+        }
+        
+        function insertArab(char) {
+            let targetId = (aksaraTargetMode === 'manual') ?
+                (typeof lastManualFocusedId !== 'undefined' ? lastManualFocusedId : 'manual-pertanyaan') :
+                (typeof lastEditFocusedId !== 'undefined' ? lastEditFocusedId : 'edit-soal-pertanyaan');
+
+            let targetElem = document.getElementById(targetId);
+            if (!targetElem) return;
+            targetElem.focus();
+
+            let sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            
+            let range = sel.getRangeAt(0);
+            
+            // Verifikasi bahwa kursor benar-benar ada di dalam field target
+            if (!targetElem.contains(range.commonAncestorContainer)) {
+                // Paksa pindah ke akhir field jika kursor di luar
+                range.selectNodeContents(targetElem);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+            
+            let currentNode = range.startContainer;
+            let isInsideArab = false;
+            
+            let temp = currentNode;
+            while(temp && temp !== targetElem) {
+                if (temp.nodeType === 1 && temp.getAttribute('dir') === 'rtl') {
+                    isInsideArab = true;
+                    break;
+                }
+                temp = temp.parentNode;
+            }
+
+            if (isInsideArab) {
+                document.execCommand('insertText', false, char);
+            } else {
+                let span = document.createElement('span');
+                span.setAttribute('dir', 'rtl');
+                span.className = 'arab-segment';
+                span.style.fontFamily = '"Amiri", "Scheherazade", "Traditional Arabic", serif';
+                span.style.fontSize = "1.2em";
+                span.style.unicodeBidi = "isolate";
+                span.appendChild(document.createTextNode(char));
+                
+                range.deleteContents();
+                range.insertNode(span);
+                
+                // Pindahkan kursor ke DALAM text node span, di akhir teks
+                range.setStart(span.firstChild, span.firstChild.length);
+                range.setEnd(span.firstChild, span.firstChild.length);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        function insertAksara(char) {
+            let targetId = '';
+            
+            if (aksaraTargetMode === 'manual') {
+                targetId = (typeof lastManualFocusedId !== 'undefined') ? lastManualFocusedId : 'manual-pertanyaan';
+            } else {
+                targetId = (typeof lastEditFocusedId !== 'undefined') ? lastEditFocusedId : 'edit-soal-pertanyaan';
+            }
+            
+            let targetElem = document.getElementById(targetId);
+            if (targetElem) {
+                targetElem.focus();
+                
+                // Coba gunakan execCommand agar history (undo/redo) jalan
+                let success = false;
+                try {
+                    success = document.execCommand('insertText', false, char);
+                } catch (e) {
+                    success = false;
+                }
+                
+                // Fallback jika execCommand gagal atau tidak support
+                if (!success) {
+                    if (typeof window.getSelection !== "undefined") {
+                        let sel = window.getSelection();
+                        if (sel.getRangeAt && sel.rangeCount) {
+                            let range = sel.getRangeAt(0);
+                            if (targetElem.contains(range.commonAncestorContainer)) {
+                                range.deleteContents();
+                                let textNode = document.createTextNode(char);
+                                range.insertNode(textNode);
+                                range.setStartAfter(textNode);
+                                range.setEndAfter(textNode);
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            } else {
+                                targetElem.innerText += char;
+                            }
+                        } else {
+                            targetElem.innerText += char;
+                        }
+                    } else {
+                        targetElem.innerText += char;
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const aksaraButtons = document.querySelectorAll('#modalAksaraJawa button, #modalArab button, #modalKimia button');
+            aksaraButtons.forEach(btn => {
+                if(btn.classList.contains('btn-aksara') || btn.classList.contains('btn-arab') || btn.classList.contains('btn-kimia') || btn.innerText.includes('Spasi') || btn.innerText.includes('ZWNJ') || btn.innerText.includes('Set RTL')) {
+                    btn.addEventListener('mousedown', (e) => e.preventDefault());
+                }
+            });
+
+            // Drag logic
+            setupDraggable('modalAksaraJawa', 'modalAksaraJawaHeader');
+            setupDraggable('modalArab', 'modalArabHeader');
+            setupDraggable('modalKimia', 'modalKimiaHeader');
+            setupDraggable('modalMath', 'modalMathHeader');
+
+            function setupDraggable(modalId, headerId) {
+                const modal = document.getElementById(modalId);
+                const header = document.getElementById(headerId);
+                if(!modal || !header) return;
+
+                let isDragging = false;
+                let currentX;
+                let currentY;
+                let initialX;
+                let initialY;
+                let xOffset = 0;
+                let yOffset = 0;
+
+                header.addEventListener('mousedown', dragStart);
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('mousemove', drag);
+
+                function dragStart(e) {
+                    if (e.target.closest('button')) return; // abaikan tombol close
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                    isDragging = true;
+                }
+                function dragEnd(e) {
+                    if(!isDragging) return;
+                    initialX = currentX;
+                    initialY = currentY;
+                    isDragging = false;
+                }
+                function drag(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                        currentX = e.clientX - initialX;
+                        currentY = e.clientY - initialY;
+                        xOffset = currentX;
+                        yOffset = currentY;
+                        modal.style.transform = `translate(${currentX}px, ${currentY}px)`;
+                    }
+                }
+            }
+        });
+    </script>
 
     <script src="admin/js/admin-core.js?v=2"></script>
 

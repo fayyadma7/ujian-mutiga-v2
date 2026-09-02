@@ -244,6 +244,12 @@ tbody tr:hover {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Bidi support untuk contenteditable (soal Arab/Jawa/campuran) */
+[contenteditable].form-control {
+    unicode-bidi: plaintext;
+    line-height: 1.8;
+}
+
 .form-control:focus {
     border-color: var(--primary);
     background: rgba(255, 255, 255, 0.04);

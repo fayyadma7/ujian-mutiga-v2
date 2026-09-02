@@ -21,8 +21,12 @@ function loadMathJax() {
     if (mathJaxLoaded) return;
     mathJaxLoaded = true;
     window.MathJax = {
-        tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] },
-        svg: { fontCache: 'global' },
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$']],
+            processEscapes: true
+        },
+        chtml: { scale: 1 },
         startup: { pageReady: () => {} }
     };
     const script = document.createElement('script');
@@ -184,7 +188,17 @@ async function loadPreviewSoal() {
             const opsi = ['a', 'b', 'c', 'd', 'e'];
             opsi.forEach(o => {
                 const val = s[`opsi_${o}`];
+                let isEmpty = true;
                 if (val) {
+                    let str = val.toString().trim();
+                    let stripped = str.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, '').trim();
+                    let hasMedia = /<(img|audio|video|iframe)/i.test(str);
+                    if (stripped !== "" || hasMedia) {
+                        isEmpty = false;
+                    }
+                }
+                
+                if (!isEmpty) {
                     html += `
                         <li style="display:flex; align-items:flex-start; padding:10px 0; ${s.kunci_jawaban === o.toUpperCase() ? 'font-weight:bold; color:var(--success);' : ''}">
                             <strong style="margin-right:8px; flex-shrink:0;">${o.toUpperCase()}.</strong> 
@@ -489,6 +503,74 @@ async function populateManualMapel() {
     });
 }
 
+/**
+ * Render semua \\(...\\) di dalam contenteditable field dengan KaTeX.
+ * Dipanggil saat load edit soal agar rumus langsung terlihat.
+ */
+function renderKaTeXInElement(el) {
+    if (!el || typeof katex === 'undefined') return;
+    try {
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while (walk.nextNode()) textNodes.push(walk.currentNode);
+        textNodes.forEach(tNode => {
+            const raw = tNode.textContent;
+            const regex = /\\\((.+?)\\\)/g;
+            if (!regex.test(raw)) return;
+            const frag = document.createDocumentFragment();
+            let lastIdx = 0;
+            let m;
+            regex.lastIndex = 0;
+            while ((m = regex.exec(raw)) !== null) {
+                if (m.index > lastIdx) frag.appendChild(document.createTextNode(raw.substring(lastIdx, m.index)));
+                const span = document.createElement('span');
+                span.className = 'katex-rendered';
+                span.setAttribute('data-latex', m[1]);
+                try { katex.render(m[1], span, { throwOnError: false, displayMode: false }); }
+                catch(e) { span.textContent = '\\(' + m[1] + '\\)'; }
+                frag.appendChild(span);
+                lastIdx = m.index + m[0].length;
+            }
+            if (lastIdx < raw.length) frag.appendChild(document.createTextNode(raw.substring(lastIdx)));
+            tNode.parentNode.replaceChild(frag, tNode);
+        });
+    } catch(e) { console.error('renderKaTeXInElement error:', e); }
+}
+
+function renderAllKaTeXInEditFields() {
+    const ids = ['edit-soal-pertanyaan', 'edit-soal-a', 'edit-soal-b', 'edit-soal-c', 'edit-soal-d', 'edit-soal-e'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.textContent.includes('\\(')) renderKaTeXInElement(el);
+    });
+}
+
+/**
+ * Ekstrak LaTeX dari contenteditable yang sudah di-render KaTeX/MathJax.
+ * Mengembalikan innerHTML dengan \\(...\\) mentah (bukan rendered HTML).
+ * Digunakan sebelum save agar data di DB tetap dalam format LaTeX mentah.
+ */
+function extractLatexFromEditable(el) {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    // 1) KaTeX-rendered spans → \\(data-latex\\)
+    clone.querySelectorAll('span.katex-rendered[data-latex]').forEach(span => {
+        const latex = span.getAttribute('data-latex');
+        if (latex) span.parentNode.replaceChild(document.createTextNode('\\(' + latex + '\\)'), span);
+    });
+    // 2) KaTeX default spans (katex.org output) — extract dari annotation
+    clone.querySelectorAll('.katex').forEach(katexSpan => {
+        const ann = katexSpan.querySelector('annotation[encoding="application/x-tex"]');
+        if (ann) katexSpan.parentNode.replaceChild(document.createTextNode('\\(' + ann.textContent + '\\)'), katexSpan);
+    });
+    // 3) MathJax mjx-container — extract dari script[type="math/tex"]
+    clone.querySelectorAll('mjx-container').forEach(mjx => {
+        const script = mjx.querySelector('script[type="math/tex"]');
+        if (script) mjx.parentNode.replaceChild(document.createTextNode('\\(' + script.textContent + '\\)'), mjx);
+    });
+    return clone.innerHTML.trim();
+}
+
 async function simpanSoalManual() {
     const btn = document.getElementById('btn-simpan-manual');
     const status = document.getElementById('status-manual');
@@ -497,7 +579,7 @@ async function simpanSoalManual() {
     if (!mapel) return showToast('Pilih atau isi Mata Pelajaran terlebih dahulu!', 'error');
 
     const tipe = document.getElementById('manual-tipe').value;
-    const pertanyaan = document.getElementById('manual-pertanyaan').innerHTML.trim();
+    const pertanyaan = extractLatexFromEditable(document.getElementById('manual-pertanyaan'));
     const kunci = document.getElementById('manual-kunci').value.trim().toUpperCase();
 
     if (!pertanyaan || pertanyaan === '' || pertanyaan === '<br>') return showToast('Pertanyaan tidak boleh kosong!', 'error');
@@ -515,11 +597,11 @@ async function simpanSoalManual() {
     };
 
     if (tipe !== 'ESSAY') {
-        if (manualOpsiCount >= 1) payload.opsi_a = document.getElementById('manual-opsi-a').innerHTML.trim();
-        if (manualOpsiCount >= 2) payload.opsi_b = document.getElementById('manual-opsi-b').innerHTML.trim();
-        if (manualOpsiCount >= 3) payload.opsi_c = document.getElementById('manual-opsi-c').innerHTML.trim();
-        if (manualOpsiCount >= 4) payload.opsi_d = document.getElementById('manual-opsi-d').innerHTML.trim();
-        if (manualOpsiCount >= 5) payload.opsi_e = document.getElementById('manual-opsi-e').innerHTML.trim();
+        if (manualOpsiCount >= 1) payload.opsi_a = extractLatexFromEditable(document.getElementById('manual-opsi-a'));
+        if (manualOpsiCount >= 2) payload.opsi_b = extractLatexFromEditable(document.getElementById('manual-opsi-b'));
+        if (manualOpsiCount >= 3) payload.opsi_c = extractLatexFromEditable(document.getElementById('manual-opsi-c'));
+        if (manualOpsiCount >= 4) payload.opsi_d = extractLatexFromEditable(document.getElementById('manual-opsi-d'));
+        if (manualOpsiCount >= 5) payload.opsi_e = extractLatexFromEditable(document.getElementById('manual-opsi-e'));
     }
 
     const { error } = await adminDb.insert('bank_soal', [payload]);
@@ -612,114 +694,86 @@ window.updateSwalMathPreview = function(latex) {
 
 async function openVisualMathEditor(targetElementId, targetName) {
     const cleanTargetName = targetName.replace(/Target:\s*/i, '').trim();
-    const { value: formula } = await Swal.fire({
-        title: '∑ Pembantu Rumus Matematika',
-        width: '600px',
-        customClass: { popup: 'swal-dark-popup' },
-        html: `
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; margin-top: 10px;">
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; margin-top: 0;">
-                    Target Sisipkan: <b style="color: var(--primary);">${cleanTargetName}</b>
-                </p>
-                <div style="display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; overflow-x: auto; white-space: nowrap;">
-                    <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('dasar')" style="background: rgba(124, 58, 237, 0.2); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: #a78bfa; transition: 0.2s;">Dasar</button>
-                    <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('lanjut')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Lanjut</button>
-                    <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('matriks')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Matriks</button>
-                    <button type="button" class="swal-math-tab" onclick="switchSwalMathTab('simbol')" style="background: rgba(255, 255, 255, 0.05); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text-muted); transition: 0.2s;">Simbol</button>
-                </div>
-                <div id="swal-math-panel-dasar" class="swal-math-panel" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\frac{}{}', 6)" title="Pecahan" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(\\frac{a}{b}\\)</span><span style="font-size:10px;color:var(--text-muted);">Pecahan</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\sqrt{}', 6)" title="Akar" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(\\sqrt{x}\\)</span><span style="font-size:10px;color:var(--text-muted);">Akar</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('^{}', 2)" title="Pangkat" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(x^y\\)</span><span style="font-size:10px;color:var(--text-muted);">Pangkat</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('_{}', 2)" title="Subscript" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(x_y\\)</span><span style="font-size:10px;color:var(--text-muted);">Subscript</span></button>
-                </div>
-                <div id="swal-math-panel-lanjut" class="swal-math-panel" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px;">
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\int_{}^{} dx', 6)" title="Integral Tentu" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(\\int_{a}^{b}\\)</span><span style="font-size:10px;color:var(--text-muted);">Integral</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\lim_{x \\\\to }', 12)" title="Limit" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(\\lim_{x\\to0}\\)</span><span style="font-size:10px;color:var(--text-muted);">Limit</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\sum_{i=1}^{}', 12)" title="Sigma Penjumlahan" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:15px;font-weight:500;">\\(\\sum\\)</span><span style="font-size:10px;color:var(--text-muted);">Sigma</span></button>
-                </div>
-                <div id="swal-math-panel-matriks" class="swal-math-panel" style="display:none;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:15px;">
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\begin{pmatrix} & \\\\\\\\ & \\\\end{pmatrix}', 17)" title="Matriks 2x2" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:14px;font-weight:500;">\\(\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}\\)</span><span style="font-size:10px;color:var(--text-muted);">Matriks 2x2</span></button>
-                    <button type="button" onclick="insertSwalMathSnippet('\\\\begin{pmatrix} & & \\\\\\\\ & & \\\\\\\\ & & \\\\end{pmatrix}', 17)" title="Matriks 3x3" style="padding:10px 4px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.02);color:var(--text-main);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(124,58,237,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='rgba(255,255,255,0.02)'"><span style="font-size:12px;font-weight:500;">\\(\\begin{pmatrix}3x3\\end{pmatrix}\\)</span><span style="font-size:10px;color:var(--text-muted);">Matriks 3x3</span></button>
-                </div>
-                <div id="swal-math-panel-simbol" class="swal-math-panel" style="display:none;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:15px;"></div>
-                <div style="margin-bottom:12px;">
-                    <label for="swal-math-text-input" style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">Kode Rumus LaTeX:</label>
-                    <textarea id="swal-math-text-input" class="swal2-textarea" style="margin:0;width:100%;height:65px;font-family:monospace;font-size:14px;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:6px;outline:none;resize:none;background:rgba(0,0,0,0.2);color:var(--text-main);" placeholder="Tulis rumus Anda atau klik tombol pembantu di atas..."></textarea>
-                </div>
-                <div>
-                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">Hasil Tampilan Rumus (Live Preview):</label>
-                    <div id="swal-math-live-preview" style="min-height:55px;padding:12px;border:1px dashed var(--primary);border-radius:8px;background:rgba(124,58,237,0.05);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-main);overflow-x:auto;box-sizing:border-box;"><span style="color:#a78bfa;font-size:13px;font-style:italic;">Ketik rumus atau klik tombol pembantu di atas...</span></div>
-                </div>
-            </div>
-        `,
-        confirmButtonText: 'Sisipkan Rumus', confirmButtonColor: '#7c3aed',
-        showCancelButton: true, cancelButtonText: 'Batal',
-        didOpen: () => {
-            const input = document.getElementById('swal-math-text-input');
-            input.focus();
-            if (window.MathJax) MathJax.typesetPromise([document.getElementById('swal2-html-container')]).catch(e => console.log(e));
-            const simbolPanel = document.getElementById('swal-math-panel-simbol');
-            const symbols = [
-                { latex: '\\\\pm', char: '±' }, { latex: '\\\\times', char: '×' }, { latex: '\\\\div', char: '÷' },
-                { latex: '\\\\neq', char: '≠' }, { latex: '\\\\leq', char: '≤' }, { latex: '\\\\geq', char: '≥' },
-                { latex: '\\\\infty', char: '∞' }, { latex: '\\\\pi', char: 'π' }, { latex: '\\\\alpha', char: 'α' },
-                { latex: '\\\\beta', char: 'β' }, { latex: '\\\\theta', char: 'θ' }, { latex: '\\\\Delta', char: 'Δ' },
-                { latex: '\\\\approx', char: '≈' }, { latex: '\\\\equiv', char: '≡' }, { latex: '\\\\to', char: '→' },
-                { latex: '\\\\sin', char: 'sin' }, { latex: '\\\\cos', char: 'cos' }, { latex: '\\\\tan', char: 'tan' }
-            ];
-            simbolPanel.innerHTML = '';
-            symbols.forEach(s => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.title = s.char;
-                btn.style.cssText = 'padding:8px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.02);font-size:14px;text-align:center;color:var(--text-main);transition:0.2s;';
-                btn.onmouseover = () => { btn.style.borderColor = 'var(--primary)'; btn.style.background = 'rgba(124,58,237,0.1)'; };
-                btn.onmouseout = () => { btn.style.borderColor = 'var(--border)'; btn.style.background = 'rgba(255,255,255,0.02)'; };
-                const cleanSnippet = s.latex.replace(/\\\\/g, '\\');
-                btn.onclick = () => window.insertSwalMathSnippet(cleanSnippet, cleanSnippet.length);
-                btn.textContent = s.char;
-                simbolPanel.appendChild(btn);
-            });
-            input.addEventListener('input', (e) => window.updateSwalMathPreview(e.target.value));
-        },
-        preConfirm: () => document.getElementById('swal-math-text-input').value.trim()
-    });
-
-    if (!formula) return;
-    const el = document.getElementById(targetElementId);
-    if (!el) return;
-    el.focus();
-    const htmlToInsert = ` \\(${formula}\\) `;
-    document.execCommand('insertHTML', false, htmlToInsert);
-    if (window.MathJax) MathJax.typesetPromise([el]);
+    document.getElementById('modalMathTargetLabel').textContent = cleanTargetName;
+    document.getElementById('modalMathCustomInput').value = ''; // Kosongkan input
+    document.getElementById('modalMath').style.display = 'block';
+    
+    // Wire symbols (sekali saja)
+    const simbolPanel = document.getElementById('swal-math-panel-simbol');
+    if (simbolPanel.innerHTML === '') {
+        const symbols = [
+            { latex: '\\pm', char: '±' }, { latex: '\\times', char: '×' }, { latex: '\\div', char: '÷' },
+            { latex: '\\neq', char: '≠' }, { latex: '\\leq', char: '≤' }, { latex: '\\geq', char: '≥' },
+            { latex: '\\infty', char: '∞' }, { latex: '\\pi', char: 'π' }, { latex: '\\alpha', char: 'α' },
+            { latex: '\\beta', char: 'β' }, { latex: '\\theta', char: 'θ' }, { latex: '\\Delta', char: 'Δ' },
+            { latex: '\\approx', char: '≈' }, { latex: '\\equiv', char: '≡' }, { latex: '\\to', char: '→' },
+            { latex: '\\sin', char: 'sin' }, { latex: '\\cos', char: 'cos' }, { latex: '\\tan', char: 'tan' }
+        ];
+        symbols.forEach(s => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = s.char;
+            btn.style.cssText = 'padding:8px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.02);font-size:14px;text-align:center;color:var(--text-main);transition:0.2s;';
+            btn.onmouseover = () => { btn.style.borderColor = 'var(--primary)'; btn.style.background = 'rgba(124,58,237,0.1)'; };
+            btn.onmouseout = () => { btn.style.borderColor = 'var(--border)'; btn.style.background = 'rgba(255,255,255,0.02)'; };
+            btn.onmousedown = (e) => { e.preventDefault(); insertToModalInput(s.latex, s.latex.length); };
+            btn.textContent = s.char;
+            simbolPanel.appendChild(btn);
+        });
+    }
+    
+    // Typeset MathJax setiap kali modal dibuka agar rumus di tombol ter-render
+    const modalEl = document.getElementById('modalMath');
+    const doTypeset = () => {
+        if (window.MathJax && MathJax.typesetClear) {
+            MathJax.typesetClear([modalEl]);
+        }
+        if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise([modalEl]).catch(e => console.log(e));
+        }
+    };
+    if (window.MathJax && MathJax.typesetPromise) {
+        doTypeset();
+    } else {
+        // Tunggu MathJax selesai load (maks 5 detik)
+        let waited = 0;
+        const checkMJ = setInterval(() => {
+            waited += 100;
+            if (window.MathJax && MathJax.typesetPromise) {
+                clearInterval(checkMJ);
+                doTypeset();
+            } else if (waited > 5000) {
+                clearInterval(checkMJ);
+            }
+        }, 100);
+    }
 }
 
-async function insertMathFormulaToFocused() {
-    const targetLabel = document.getElementById('manual-toolbar-target-label')?.textContent || 'Pertanyaan';
-    await openVisualMathEditor(lastManualFocusedId || 'manual-pertanyaan', targetLabel);
+function bukaModalMath(mode) {
+    loadMathJax(); // pastikan MathJax sudah dimuat
+    aksaraTargetMode = mode;
+
+    // *** Simpan selection SEKARANG — sebelum fokus berpindah ke input modal ***
+    // Tombol Rumus menggunakan onmousedown+preventDefault sehingga fokus masih di contenteditable saat ini
+    const sel = window.getSelection();
+    window.savedMathRange = (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
+
+    let targetLabel = 'Pertanyaan';
+    if (mode === 'manual') {
+        targetLabel = document.getElementById('manual-toolbar-target-label')?.textContent || 'Pertanyaan';
+    } else {
+        targetLabel = document.getElementById('edit-toolbar-target-label')?.textContent || 'Pertanyaan';
+    }
+    const targetId = (mode === 'manual') ? (lastManualFocusedId || 'manual-pertanyaan') : (lastEditFocusedId || 'edit-soal-pertanyaan');
+    openVisualMathEditor(targetId, targetLabel);
 }
 
-async function insertMathFormulaToEditFocused() {
-    const { value: formula } = await Swal.fire({
-        title: '∑ Sisipkan Rumus Matematika',
-        customClass: { popup: 'swal-dark-popup' },
-        html: `
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Target: <b style="color:var(--primary);">${document.getElementById('edit-toolbar-target-label')?.textContent || 'Pertanyaan'}</b></p>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tulis rumus dalam format LaTeX</p>
-            <input id="swal-math-input-edit" class="swal2-input" placeholder="Contoh: \\\\frac{a}{b} = c" style="font-family:monospace;background:rgba(0,0,0,0.2);color:var(--text-main);border:1px solid var(--border);">
-        `,
-        confirmButtonText: 'Sisipkan', confirmButtonColor: '#7c3aed',
-        showCancelButton: true, cancelButtonText: 'Batal',
-        didOpen: () => document.getElementById('swal-math-input-edit').focus(),
-        preConfirm: () => document.getElementById('swal-math-input-edit').value.trim()
-    });
-    if (!formula) return;
-    const el = document.getElementById(lastEditFocusedId);
-    if (!el) return;
-    el.focus();
-    document.execCommand('insertHTML', false, ` \\(${formula}\\) `);
-    if (window.MathJax) MathJax.typesetPromise([el]);
+function insertMathFormulaToFocused() {
+    bukaModalMath('manual');
+}
+
+function insertMathFormulaToEditFocused() {
+    bukaModalMath('edit');
 }
 
 // --- EDIT SOAL ---
@@ -745,6 +799,9 @@ async function editSatuSoal(id) {
     document.getElementById('edit-soal-tipe').value = data.tipe_soal;
     document.getElementById('edit-soal-pertanyaan').innerHTML = data.pertanyaan || '';
     document.getElementById('edit-soal-kunci').value = data.kunci_jawaban || '';
+
+    // Render rumus KaTeX di semua field edit setelah isi konten
+    setTimeout(() => renderAllKaTeXInEditFields(), 50);
 
     const opsiContainer = document.getElementById('edit-opsi-container');
     const kunciWrapper = document.getElementById('edit-kunci-wrapper');
@@ -781,16 +838,16 @@ async function simpanEditSoal() {
     btn.disabled = true;
 
     const payload = {
-        pertanyaan: document.getElementById('edit-soal-pertanyaan').innerHTML,
+        pertanyaan: extractLatexFromEditable(document.getElementById('edit-soal-pertanyaan')),
         kunci_jawaban: tipe === 'ESSAY' ? '-' : document.getElementById('edit-soal-kunci').value
     };
 
     if (tipe !== 'ESSAY') {
-        payload.opsi_a = editOpsiCount >= 1 ? document.getElementById('edit-soal-a').innerHTML : '';
-        payload.opsi_b = editOpsiCount >= 2 ? document.getElementById('edit-soal-b').innerHTML : '';
-        payload.opsi_c = editOpsiCount >= 3 ? document.getElementById('edit-soal-c').innerHTML : '';
-        payload.opsi_d = editOpsiCount >= 4 ? document.getElementById('edit-soal-d').innerHTML : '';
-        payload.opsi_e = editOpsiCount >= 5 ? document.getElementById('edit-soal-e').innerHTML : '';
+        payload.opsi_a = editOpsiCount >= 1 ? extractLatexFromEditable(document.getElementById('edit-soal-a')) : '';
+        payload.opsi_b = editOpsiCount >= 2 ? extractLatexFromEditable(document.getElementById('edit-soal-b')) : '';
+        payload.opsi_c = editOpsiCount >= 3 ? extractLatexFromEditable(document.getElementById('edit-soal-c')) : '';
+        payload.opsi_d = editOpsiCount >= 4 ? extractLatexFromEditable(document.getElementById('edit-soal-d')) : '';
+        payload.opsi_e = editOpsiCount >= 5 ? extractLatexFromEditable(document.getElementById('edit-soal-e')) : '';
     }
 
     const { error } = await adminDb.update('bank_soal', id, payload);

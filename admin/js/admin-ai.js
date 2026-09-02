@@ -316,6 +316,8 @@ Gunakan variasi substantif melalui: Konteks berbeda, Kasus berbeda, Sudut pandan
 - Hindari penggunaan: Semua jawaban benar, Semua jawaban salah.
 - Distribusikan posisi jawaban benar secara bervariasi dan alami (JANGAN menumpuk di 1 atau 2 huruf saja).
 - Kelima opsi memiliki peluang yang setara.
+- PENTING: Jika pengguna meminta soal Bahasa Arab, Bahasa Jawa (Aksara Jawa), atau materi yang memerlukan skrip khusus, gunakan karakter unicode asli (contoh: huruf Arab lengkap dengan harakat, atau Aksara Jawa asli) di teks soal dan opsi.
+- PENTING UNTUK KIMIA: Jika soal Kimia, gunakan langsung karakter unicode asli untuk rumus kimia, subscript, superscript, dan panah reaksi (contoh: H₂O, SO₄²⁻, →, ⇌). JANGAN menggunakan package eksternal seperti mhchem (\\ce{}). Rumus matematika/perhitungan tetap gunakan LaTeX standar dengan $...$.
 
 ==================================================
 4. KUALITAS SOAL ESSAY

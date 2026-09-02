@@ -1345,6 +1345,17 @@
             line-height: 1.7;
             color: rgba(255, 255, 255, 0.88);
             margin-bottom: 18px;
+            unicode-bidi: plaintext;
+        }
+
+        /* Span RTL untuk teks Arab dalam soal campuran */
+        .soal-text span[dir="rtl"],
+        .option-label-inner span[dir="rtl"] {
+            unicode-bidi: isolate;
+            display: inline;
+            font-family: "Amiri", "Scheherazade", "Traditional Arabic", serif;
+            font-size: 1.1em;
+            line-height: 1.8;
         }
 
         /* --- BEAUTIFUL & RESPONSIVE HTML TABLES IN QUESTIONS --- */
@@ -1514,6 +1525,7 @@
         .option-label-inner {
             width: 100%;
             display: block;
+            unicode-bidi: plaintext;
         }
 
         .option-label p {
@@ -4030,24 +4042,34 @@
                 <i class="${raguIcon}"></i> Ragu-Ragu
             </button>
         </div>
-        <div class="soal-text">${s[0]}</div>`;
+        <div class="soal-text" dir="auto">${s[0]}</div>`;
                 if (s[8] === "PG") {
                     h += `<div class="option-list">`;
                     ['A', 'B', 'C', 'D', 'E'].forEach((o, idx) => {
                         try {
                             const teksOpsi = s[idx + 1];
-                            if (teksOpsi && teksOpsi.toString().trim() !== "") {
+                            let isEmpty = true;
+                            if (teksOpsi) {
+                                let str = teksOpsi.toString().trim();
+                                let stripped = str.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, '').trim();
+                                let hasMedia = /<(img|audio|video|iframe)/i.test(str);
+                                if (stripped !== "" || hasMedia) {
+                                    isEmpty = false;
+                                }
+                            }
+                            
+                            if (!isEmpty) {
                                 h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}')">
               <input type="radio" name="q${i}" value="${o}" id="r${i}${o}" onchange="saveProgress(); updateProgressBar();">
               <div class="option-key">${o}</div>
-              <div class="option-label"><div class="option-label-inner">${teksOpsi}</div></div>
+              <div class="option-label"><div class="option-label-inner" dir="auto">${teksOpsi}</div></div>
             </label>`;
                             }
                         } catch (_) { /* skip opsi rusak */ }
                     });
                     h += `</div>`;
                 } else {
-                    h += `<textarea name="q${i}" id="essay-${i}" class="essay-textarea" rows="4" oninput="debouncedEssaySave(this, ${i})" placeholder="Ketik jawaban essay kamu di sini..."></textarea>`;
+                    h += `<textarea name="q${i}" id="essay-${i}" class="essay-textarea" rows="4" dir="auto" oninput="debouncedEssaySave(this, ${i})" placeholder="Ketik jawaban essay kamu di sini..."></textarea>`;
                 }
                 h += `</div>`;
             });
