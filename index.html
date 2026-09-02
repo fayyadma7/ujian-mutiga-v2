@@ -2854,25 +2854,29 @@
             /* identitas harus scrollable saat keyboard muncul - jangan fixed */
             #app-section{padding-bottom: env(safe-area-inset-bottom, 0px)}
             #identitas{
-                display:flex;flex-direction:column;justify-content:flex-start;
-                min-height: calc(100dvh - 0px);min-height: calc(100vh - 0px);
-                padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
-                overflow-y:auto;-webkit-overflow-scrolling:touch;
-                /* cegah viewport bug saat keyboard muncul */
+                display:block;
+                min-height: 100vh; min-height: 100dvh;
+                padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+                overflow: visible !important;
                 position:relative;
             }
             .login-card{
-                margin: 12px auto;width:100%;max-width:520px;
-                /* cegah backdrop-filter bikin glitch keyboard Chrome Android — ini penyebab bar putih terlepas (floating) */
-                will-change: auto;
+                margin: 16px auto;width:100%;max-width:520px;
+                /* FIX UTAMA: backdrop-filter + overflow:hidden + border-radius + transform bikin bar putih Chrome (kunci/kartu/lokasi) floating tengah layar saat fullscreen — matikan total di HP */
+                will-change: auto !important;
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
                 filter: none !important;
                 transform: none !important;
+                animation: none !important;
+                overflow: visible !important;
+                contain: none !important;
+                isolation: auto !important;
             }
-            .login-card-header{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
-            .bg-scene, .bg-grid, .bg-orb{transform:none !important}
-            html, body{height:auto;overflow-y:auto !important}
+            .login-card-header{backdrop-filter:none !important;-webkit-backdrop-filter:none !important; overflow: visible !important}
+            .login-card-header::before{display:none !important}
+            #identitas .login-logo{filter:none !important; animation:none !important}
+            .bg-scene, .bg-grid, .bg-orb{transform:none !important; will-change:auto !important}
             .login-card-body{padding-bottom: calc(24px + env(safe-area-inset-bottom,0px))}
             /* saat input fokus, beri ruang bawah agar tidak tertutup keyboard + bubble fullscreen Chrome */
             body.kb-open #identitas{padding-bottom: 42vh !important}
@@ -3679,24 +3683,11 @@
         function unlockOrientation(){
             try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
         }
-        // Fungsi awal untuk masuk aplikasi dari start-overlay — SELALU PORTRAIT
+        // Fungsi awal untuk masuk aplikasi dari start-overlay — TIDAK fullscreen di login (fix bar putih Chrome terlepas)
+        // Fullscreen + portrait lock hanya saat ujian dimulai (mulaiUjian), karena Chrome Android bug: autofill bar (kunci/kartu/lokasi) floating tengah layar jika input fokus dalam mode fullscreen
         async function masukAplikasi() {
-            const elem = document.documentElement;
-            // iOS tidak support fullscreen, skip dengan silent fail
-            if (!isIOS) {
-                try {
-                    let p = null;
-                    if (elem.requestFullscreen) p = elem.requestFullscreen();
-                    else if (elem.webkitRequestFullscreen) p = elem.webkitRequestFullscreen();
-                    else if (elem.msRequestFullscreen) p = elem.msRequestFullscreen();
-                    if(p && p.then) await p.catch(function(e){ console.warn("FS ditolak",e); });
-                } catch (e) { console.warn("Fullscreen error:", e); }
-                // kunci ke portrait SETELAH fullscreen (harus dalam gesture user)
-                await lockPortrait();
-                // double-try setelah 300ms (beberapa Chrome butuh delay)
-                setTimeout(lockPortrait, 300);
-            }
-
+            // jangan masuk fullscreen di landing/login — biarkan login normal agar bar autofill nempel keyboard
+            // fullscreen akan diminta nanti di mulaiUjian() setelah siswa klik Mulai Ujian
             const overlay = document.getElementById('start-overlay');
             if (overlay) {
                 overlay.style.opacity = '0';
