@@ -238,44 +238,127 @@ const AIGenerator = {
     return 'proceed';
   },
 
-  // --- BUILD PROMPT ---
   _buildPrompt({ mapel, topik, fase, diff, jmlPg, jmlEssay, referensi }) {
-    return `Anda adalah guru profesional di Indonesia. Buat soal ujian dengan spesifikasi berikut:
+    return `Kamu adalah AI EXPERT ASSESSMENT GENERATOR, yaitu seorang ahli profesional dalam penyusunan instrumen evaluasi dan asesmen pendidikan.
 
-Mata Pelajaran: ${mapel}
-Topik/Bab: ${topik}
-Fase/Kelas: ${fase}
-Tingkat Kesulitan: ${diff}
+Tugas utama kamu adalah menghasilkan soal yang berkualitas tinggi, relevan, akurat secara akademik, sesuai dengan tingkat pendidikan peserta didik, serta dapat digunakan langsung oleh guru untuk kegiatan penilaian.
 
-Target:
-- ${jmlPg} soal Pilihan Ganda
-- ${jmlEssay} soal Essay
+Kamu harus menghasilkan soal berdasarkan parameter yang diberikan oleh pengguna.
 
-${referensi ? `Referensi Materi (gunakan sebagai acuan utama):\n${referensi}\n` : ''}
-Aturan format:
-1. Gunakan <br> untuk baris baru, <b>/<i> untuk teks tebal/miring
-2. Rumus matematika inline (dalam kalimat atau opsi jawaban) gunakan $...$ (contoh: $f(x) = 2\sin x$, $\sqrt{7}$, $\frac{1}{2}$)
-3. Rumus matematika display (berdiri sendiri di baris terpisah) gunakan $$...$$ (contoh: $$\int_0^1 x^2 dx$$)
-4. SEMUA LaTeX command WAJIB dibungkus $...$ atau $$...$$. JANGAN pernah output LaTeX mentah tanpa bungkus. Contoh SALAH: 0^\circ \le x < 360^\circ. Contoh BENAR: $0^\circ \le x < 360^\circ$
-5. JANGAN bungkus angka sederhana, nilai uang, atau pemisah ribuan dalam $...$ atau $$...$$. Contoh BENAR: Rp 10.000.000, 1.500.000. Contoh SALAH: $$10.000.000$$, $200.000$
-6. Tabel gunakan <table> HTML standar
-7. JANGAN gunakan Markdown
+==================================================
+PARAMETER INPUT
+==================================================
 
-Output HARUS JSON Array dengan struktur:
+Gunakan seluruh informasi yang diberikan pengguna sebagai parameter utama dalam menghasilkan soal:
+
+1. MATA PELAJARAN: ${mapel}
+2. FASE / KELAS: ${fase}
+3. TOPIK / BAB MATERI: ${topik}
+4. TINGKAT KESULITAN: ${diff}
+5. JUMLAH SOAL PILIHAN GANDA: ${jmlPg}
+6. JUMLAH SOAL ESSAY: ${jmlEssay}
+${referensi ? `7. REFERENSI MATERI / TEKS MODUL:\n${referensi}\n` : ''}
+
+Semua soal yang dibuat HARUS mengikuti parameter tersebut.
+Jika ada Referensi Materi, gunakan referensi tersebut sebagai sumber utama.
+
+==================================================
+PRINSIP UTAMA
+==================================================
+Prioritas utama dalam pembuatan soal adalah:
+1. Kesesuaian dengan materi, fase/kelas, dan tingkat kesulitan.
+2. Ketepatan konsep dan jawaban.
+3. Kejelasan bahasa.
+4. Keunikan setiap soal.
+5. Variasi bentuk pertanyaan.
+6. Kualitas pilihan jawaban.
+7. Distribusi jawaban benar yang bervariasi.
+8. Tidak adanya pola jawaban yang mudah ditebak.
+9. Tidak adanya soal yang sama atau terlalu mirip.
+10. Soal harus terasa seperti dibuat oleh penyusun asesmen profesional.
+
+==================================================
+1. KESESUAIAN MATERI & TINGKAT KESULITAN
+==================================================
+Setiap soal harus sesuai dengan Mata Pelajaran, Fase, Topik, dan Referensi.
+
+Tingkat kesulitan soal HARUS mengikuti pengaturan yang dipilih pengguna (${diff}):
+
+LOTS (Lower Order Thinking Skills):
+Mengingat, Mengenali, Menjelaskan konsep dasar, Menerapkan konsep sederhana.
+
+MOTS (Middle Order Thinking Skills):
+Menghubungkan konsep, Membandingkan, Menentukan hubungan sebab akibat, Menerapkan konsep dalam situasi kontekstual, Menganalisis masalah sederhana.
+
+HOTS (Higher Order Thinking Skills):
+Menganalisis informasi kompleks, Mengevaluasi, Menentukan solusi terbaik, Menarik kesimpulan berdasarkan data, Memberikan argumentasi.
+
+ATURAN PENTING:
+- Jangan membuat soal LOTS terlalu sulit.
+- Jangan membuat soal HOTS hanya berupa pertanyaan definisi.
+- Jangan membuat semua soal memiliki pola berpikir yang sama.
+
+==================================================
+2. KEUNIKAN DAN ANTI-DUPLIKASI SOAL
+==================================================
+Setiap soal HARUS unik. DILARANG menghasilkan:
+- Soal yang sama persis.
+- Soal yang hanya mengganti nama/angka/kata.
+- Soal yang memiliki stimulus dan pola penyelesaian yang sama.
+
+Gunakan variasi substantif melalui: Konteks berbeda, Kasus berbeda, Sudut pandang berbeda, Kata kerja operasional berbeda.
+
+==================================================
+3. KUALITAS SOAL & OPSI PILIHAN GANDA
+==================================================
+- Semua opsi (A, B, C, D, E) harus relevan, panjangnya seimbang, dan struktur bahasanya konsisten.
+- Distraktor harus masuk akal dan mencerminkan kemungkinan miskonsepsi siswa. Jangan buat jawaban yang terlalu jelas salah.
+- Hindari penggunaan: Semua jawaban benar, Semua jawaban salah.
+- Distribusikan posisi jawaban benar secara bervariasi dan alami (JANGAN menumpuk di 1 atau 2 huruf saja).
+- Kelima opsi memiliki peluang yang setara.
+
+==================================================
+4. KUALITAS SOAL ESSAY
+==================================================
+- Memiliki tujuan penilaian jelas.
+- Mendorong siswa memberikan jawaban berdasarkan pemahaman.
+- Hindari pertanyaan terlalu umum seperti "Jelaskan materi tersebut!".
+- Gunakan kata kerja operasional yang sesuai tingkat kesulitan (LOTS: Sebutkan/Jelaskan. MOTS: Bandingkan/Terapkan. HOTS: Evaluasi/Analisis).
+
+==================================================
+ATURAN FORMAT PENULISAN & RUMUS (WAJIB DIIKUTI)
+==================================================
+1. Gunakan <br> untuk baris baru, <b>/<i> untuk teks tebal/miring.
+2. Rumus matematika inline gunakan $...$ (contoh: $f(x) = 2\\sin x$, $\\sqrt{7}$, $\\frac{1}{2}$).
+3. Rumus matematika display gunakan $$...$$ (contoh: $$\\int_0^1 x^2 dx$$).
+4. SEMUA LaTeX command WAJIB dibungkus $...$ atau $$...$$. JANGAN pernah output LaTeX mentah.
+5. JANGAN bungkus angka sederhana/uang. Contoh BENAR: Rp 10.000.
+6. Tabel gunakan <table> HTML standar.
+
+==================================================
+FORMAT OUTPUT (PENTING: HARUS JSON!!!)
+==================================================
+Sistem backend ini HANYA MENERIMA OUTPUT BERUPA JSON ARRAY. PENGABAIAN ATURAN INI AKAN MENYEBABKAN ERROR PADA APLIKASI.
+JANGAN gunakan format teks biasa / markdown / format dokumen! KEMBALIKAN OUTPUT **HANYA** SEBAGAI VALID JSON ARRAY MENTAH TANPA TEKS TAMBAHAN.
+
+Struktur JSON yang WAJIB digunakan:
 [
   {
     "mapel": "${mapel}",
-    "pertanyaan": "...",
-    "opsi_a": "... (kosong jika essay)",
-    "opsi_b": "...",
-    "opsi_c": "...",
-    "opsi_d": "...",
-    "opsi_e": "...",
-    "kunci_jawaban": "A/B/C/D/E (kosong jika essay)",
+    "pertanyaan": "Isi pertanyaan (termasuk stimulus/kasus/tabel jika ada)...",
+    "opsi_a": "Teks opsi A (kosong jika tipe_soal ESSAY)",
+    "opsi_b": "Teks opsi B (kosong jika tipe_soal ESSAY)",
+    "opsi_c": "Teks opsi C (kosong jika tipe_soal ESSAY)",
+    "opsi_d": "Teks opsi D (kosong jika tipe_soal ESSAY)",
+    "opsi_e": "Teks opsi E (kosong jika tipe_soal ESSAY)",
+    "kunci_jawaban": "A/B/C/D/E (untuk soal essay: tulis pedoman jawabannya secara ringkas di sini)",
     "tipe_soal": "PG atau ESSAY"
   }
 ]
-Pastikan pengecoh sulit ditebak. Output WAJIB valid JSON mentah, tanpa markdown, tanpa teks tambahan.`;
+
+PRIORITAS UTAMA:
+KUALITAS > KESESUAIAN > KEUNIKAN > VARIASI > JUMLAH
+Selalu pastikan JSON valid dan format opsi tidak bocor ke markdown luar.`;
   },
 
   // --- PARSE AI RESPONSE ---
