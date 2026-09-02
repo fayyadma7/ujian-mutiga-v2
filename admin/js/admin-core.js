@@ -541,6 +541,8 @@ function pasangNavigasiRole() {
     const isAdmin = sesi && sesi.isAdmin === true;
     const navAkunGuru = document.getElementById('nav-akun-guru');
     if (navAkunGuru) navAkunGuru.style.display = isAdmin ? '' : 'none';
+    const navDataKelas = document.getElementById('nav-data-kelas');
+    if (navDataKelas) navDataKelas.style.display = isAdmin ? '' : 'none'; // hanya admin boleh akses Data Kelas & Siswa
 
     const spanRole = document.getElementById('role-badge');
     const spanRoleText = document.getElementById('role-badge-text');
@@ -576,6 +578,16 @@ function bukaHalaman(idHalaman, elemenTombol) {
             return;
         }
     }
+    // Data Kelas & Siswa: hanya admin (sama seperti akun-guru)
+    if (idHalaman === 'data-kelas') {
+        const sesi2 = getGuruSession();
+        if (!sesi2 || sesi2.isAdmin !== true) {
+            showToast('Akses ditolak. Halaman ini hanya untuk Admin.', 'error');
+            const dashboardBtn2 = document.querySelector('.nav-btn[onclick*="dashboard"]');
+            if (dashboardBtn2) bukaHalaman('dashboard', dashboardBtn2);
+            return;
+        }
+    }
 
     document.querySelectorAll('.page-section').forEach(page => page.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -589,6 +601,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
         'monitoring': '🔴 Live Monitoring Ujian',
         'laporan': 'Laporan Hasil Ujian Siswa',
         'analisis-soal-page': 'Analisis Statistik & Butir Soal',
+        'data-kelas': 'Data Kelas & Siswa',
         'akun-guru': 'Pusat Akun Guru'
     };
     const judulEl = document.getElementById('judul-halaman');
@@ -610,6 +623,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
         'monitoring': 'admin-monitoring.js',
         'laporan': 'admin-laporan.js',
         'analisis-soal-page': 'admin-analisis.js',
+        'data-kelas': 'admin-siswa.js',
         'akun-guru': 'admin-guru.js'
     };
     const scriptName = moduleMap[idHalaman];
@@ -668,6 +682,10 @@ function initPage(idHalaman) {
         if (typeof populateFilterKelas === 'function') populateFilterKelas().then(() => {
             if (typeof loadMonitoring === 'function') loadMonitoring();
         });
+    }
+    if (idHalaman === 'data-kelas') {
+        if (typeof initDataKelasSiswa === 'function') initDataKelasSiswa();
+        else if (typeof loadKelasMaster === 'function') { loadKelasMaster(); loadSiswa(); }
     }
     if (idHalaman === 'akun-guru') {
         mulaiRealtimeGuru();

@@ -1,10 +1,8 @@
 // @ts-nocheck
 // ============================================================
-// admin-jadwal.js — Jadwal Ujian Section
-// Functions: loadJadwal, simpanJadwal, updateJadwal, 
-//            mulaiEditJadwal, toggleAktifJadwal, hapusJadwal,
-//            bulkActionJadwal, populateJadwalMapelDropdown,
-//            loadJadwalGuruOptions, toLocalISOString
+// admin-jadwal.js — Jadwal Ujian Section (multi-kelas klik-toggle)
+// Format kelas: "X AKL A, X AKL B" (tanpa jurusan)
+// Klik per kelas, tanpa Ctrl
 // ============================================================
 
 let editingJadwalId = null;
@@ -30,6 +28,104 @@ async function populateJadwalMapelDropdown() {
     });
 }
 
+async function populateJadwalKelasOptions() {
+    const list = document.getElementById('jadwal-kelas-list');
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!list || !sel) return;
+    const prevVals = new Set([...sel.selectedOptions].map(o => o.value));
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;"><i class="fas fa-spinner fa-spin"></i> Memuat kelas...</div>';
+    const { data, error } = await db.from('kelas').select('nama').eq('is_aktif', true).order('nama', { ascending: true });
+    if (error || !data) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:#f87171;font-size:12px;">Gagal memuat kelas</div>';
+        return;
+    }
+    if (data.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Belum ada kelas — buat di Data Kelas & Siswa</div>';
+        sel.innerHTML = '';
+        return;
+    }
+    // sync hidden select
+    sel.innerHTML = '';
+    data.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k.nama;
+        opt.textContent = k.nama;
+        if (prevVals.has(k.nama)) opt.selected = true;
+        sel.appendChild(opt);
+    });
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
+}
+
+function renderJadwalKelasList() {
+    const list = document.getElementById('jadwal-kelas-list');
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!list || !sel) return;
+    const selected = new Set([...sel.selectedOptions].map(o => o.value));
+    const all = [...sel.options].map(o => o.value);
+    if (all.length === 0) return;
+    list.innerHTML = all.map(nama => {
+        const active = selected.has(nama);
+        return `<button type="button" onclick="toggleJadwalKelas('${nama.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid ${active ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.06)'};background:${active ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.02)'};color:${active ? '#93c5fd' : 'var(--text-main)'};font-size:13px;font-weight:${active ? '700' : '500'};cursor:pointer;transition:all 0.15s;">
+            <span style="width:18px;height:18px;border-radius:4px;border:1px solid ${active ? '#60a5fa' : 'rgba(255,255,255,0.15)'};background:${active ? '#3b82f6' : 'transparent'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:white;">${active ? '✓' : ''}</span>
+            <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nama}</span>
+        </button>`;
+    }).join('');
+}
+
+function toggleJadwalKelas(nama) {
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!sel) return;
+    const opt = [...sel.options].find(o => o.value === nama);
+    if (!opt) return;
+    opt.selected = !opt.selected;
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
+}
+
+function renderJadwalKelasChips() {
+    const sel = document.getElementById('jadwal-kelas-select');
+    const wrap = document.getElementById('jadwal-kelas-chips');
+    if (!sel || !wrap) return;
+    const vals = [...sel.selectedOptions].map(o => o.value);
+    if (vals.length === 0) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = vals.map(v => `<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;">${v} <button type="button" onclick="removeJadwalKelasChip('${v.replace(/'/g, "\\'")}')" style="background:rgba(255,255,255,0.08);border:none;color:#93c5fd;width:16px;height:16px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:10px;">×</button></span>`).join('');
+}
+
+function removeJadwalKelasChip(val) {
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!sel) return;
+    const opt = [...sel.options].find(o => o.value === val);
+    if (opt) opt.selected = false;
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
+}
+
+function getJadwalKelasFinal() {
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!sel) return null;
+    const vals = [...sel.selectedOptions].map(o => o.value.trim()).filter(Boolean);
+    if (vals.length === 0) return null;
+    return vals.join(', ');
+}
+
+function setJadwalKelasFromString(kelasStr) {
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (!sel) return;
+    [...sel.options].forEach(o => o.selected = false);
+    if (!kelasStr) { renderJadwalKelasList(); renderJadwalKelasChips(); return; }
+    let list = [];
+    if (kelasStr.includes('::')) {
+        const parts = kelasStr.split('::');
+        list = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+    } else {
+        list = kelasStr.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    [...sel.options].forEach(o => { if (list.includes(o.value)) o.selected = true; });
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
+}
+
 function toLocalISOString(datetimeLocalValue) {
     if (!datetimeLocalValue) return null;
     const d = new Date(datetimeLocalValue);
@@ -43,8 +139,6 @@ function toLocalISOString(datetimeLocalValue) {
 
 async function simpanJadwal() {
     const mapel = document.getElementById('jadwal-mapel').value.trim();
-    const jurusan = document.getElementById('jadwal-jurusan') ? document.getElementById('jadwal-jurusan').value.trim() : '';
-    const kelasInput = document.getElementById('jadwal-kelas').value.trim();
     const waktuMulaiRaw = document.getElementById('jadwal-waktu').value;
     const waktuSelesaiRaw = document.getElementById('jadwal-selesai').value;
     const durasiInput = parseInt(document.getElementById('jadwal-durasi').value);
@@ -74,8 +168,7 @@ async function simpanJadwal() {
     const btnSubmit = document.getElementById('btn-submit-jadwal');
     if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
-    let kelasFinal = kelasInput || null;
-    if (jurusan && kelasInput) kelasFinal = jurusan + "::" + kelasInput;
+    const kelasFinal = getJadwalKelasFinal();
 
     const { error } = await adminDb.insert('jadwal_ujian', [{
         mapel, kelas: kelasFinal,
@@ -88,8 +181,10 @@ async function simpanJadwal() {
 
     statusEl.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Jadwal "${mapel}" — ${durasiInput} menit/siswa berhasil disimpan!</span>`;
     document.getElementById('jadwal-mapel').value = '';
-    if (document.getElementById('jadwal-jurusan')) document.getElementById('jadwal-jurusan').value = '';
-    document.getElementById('jadwal-kelas').value = '';
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (sel) [...sel.options].forEach(o => o.selected = false);
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
     document.getElementById('jadwal-waktu').value = '';
     document.getElementById('jadwal-selesai').value = '';
     document.getElementById('jadwal-durasi').value = '';
@@ -102,6 +197,8 @@ async function loadJadwal() {
     const _jSesi = getGuruSession();
     const _jIsAdmin = _jSesi && _jSesi.isAdmin === true;
     const _jGuruId = _jSesi ? _jSesi.id : null;
+
+    if (document.getElementById('jadwal-kelas-list')) populateJadwalKelasOptions();
 
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat data jadwal...</td></tr>';
 
@@ -249,16 +346,8 @@ async function mulaiEditJadwal(id) {
     editingJadwalId = id;
     document.getElementById('jadwal-mapel').value = data.mapel;
 
-    const inputJurusan = document.getElementById('jadwal-jurusan');
-    const inputKelas = document.getElementById('jadwal-kelas');
-    if (data.kelas && data.kelas.includes('::')) {
-        const parts = data.kelas.split('::');
-        if (inputJurusan) inputJurusan.value = parts[0];
-        inputKelas.value = parts[1];
-    } else {
-        if (inputJurusan) inputJurusan.value = '';
-        inputKelas.value = data.kelas || '';
-    }
+    await populateJadwalKelasOptions();
+    setJadwalKelasFromString(data.kelas);
 
     function toLocalDatetimeInput(isoStr) {
         if (!isoStr) return '';
@@ -287,14 +376,12 @@ async function mulaiEditJadwal(id) {
         btnSubmit.onclick = updateJadwal;
     }
 
-    document.querySelector('.card-panel').scrollIntoView({ behavior: 'smooth' });
+    document.querySelector('#jadwal .card-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function updateJadwal() {
     if (!editingJadwalId) return;
     const mapel = document.getElementById('jadwal-mapel').value;
-    const jurusan = document.getElementById('jadwal-jurusan') ? document.getElementById('jadwal-jurusan').value.trim() : '';
-    const kelasInput = document.getElementById('jadwal-kelas').value.trim();
     const mulaiRaw = document.getElementById('jadwal-waktu').value;
     const selesaiRaw = document.getElementById('jadwal-selesai').value;
     const durasiInput = parseInt(document.getElementById('jadwal-durasi').value);
@@ -309,8 +396,7 @@ async function updateJadwal() {
     const btnSubmit = document.getElementById('btn-submit-jadwal');
     if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
-    let kelasFinal = kelasInput || null;
-    if (jurusan && kelasInput) kelasFinal = jurusan + "::" + kelasInput;
+    const kelasFinal = getJadwalKelasFinal();
 
     const { error } = await adminDb.update('jadwal_ujian', editingJadwalId, {
         mapel, kelas: kelasFinal, waktu_mulai: mulai, waktu_selesai: selesai, durasi_menit: durasiInput, is_aktif: true
@@ -325,8 +411,10 @@ async function updateJadwal() {
     if (btnSubmit) btnSubmit.onclick = simpanJadwal;
 
     document.getElementById('jadwal-mapel').value = '';
-    if (document.getElementById('jadwal-jurusan')) document.getElementById('jadwal-jurusan').value = '';
-    document.getElementById('jadwal-kelas').value = '';
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (sel) [...sel.options].forEach(o => o.selected = false);
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
     document.getElementById('jadwal-waktu').value = '';
     document.getElementById('jadwal-selesai').value = '';
     document.getElementById('jadwal-durasi').value = '';
@@ -358,7 +446,4 @@ async function bulkActionJadwal(action) {
     loadJadwal();
 }
 
-function loadJadwalGuruOptions() {
-    // This is a placeholder; guru options can be loaded from /guru table if needed
-    // Currently jadwal doesn't assign guru, so this is a no-op.
-}
+function loadJadwalGuruOptions() {}

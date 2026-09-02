@@ -190,3 +190,20 @@
     padding: 12px !important;
     margin-bottom: 10px !important;
 }
+
+/* ================================================================
+   5. DATA KELAS & SISWA — tabs, chips, jadwal multi-select
+   ================================================================ */
+#btn-tab-kelas.active, #btn-tab-siswa.active {
+    background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05)) !important;
+    color: #93c5fd !important;
+    border-bottom-color: #3b82f6 !important;
+}
+#btn-tab-kelas, #btn-tab-siswa { transition: all 0.2s; }
+#btn-tab-kelas:hover, #btn-tab-siswa:hover { background: rgba(255,255,255,0.04) !important; }
+.chips-wrap:empty { display: none; }
+.chips-wrap { min-height: 0; }
+#jadwal-kelas-select { background: rgba(255,255,255,0.04); }
+#jadwal-kelas-select option { padding: 6px 10px; }
+#jadwal-kelas-select option:checked { background: rgba(59,130,246,0.25) !important; color: #93c5fd; }
+#tabel-kelas tbody tr:hover, #tabel-siswa tbody tr:hover { background: rgba(59,130,246,0.04); }

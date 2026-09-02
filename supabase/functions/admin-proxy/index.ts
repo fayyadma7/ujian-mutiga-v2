@@ -49,7 +49,7 @@ serve(async (req: Request) => {
     }
 
     const isAdmin = guru.role === 'admin';
-    const OWNED_TABLES = ['bank_soal', 'jadwal_ujian'];
+    const OWNED_TABLES = ['bank_soal', 'jadwal_ujian', 'kelas', 'siswa'];
     const ADMIN_TABLES = ['guru', 'registrasi_guru'];
 
     // ========== RBAC ==========

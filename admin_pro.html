@@ -346,6 +346,8 @@
                     <span>Laporan Nilai</span></a></li>
             <li><a class="nav-btn" onclick="bukaHalaman('analisis-soal-page', this)"><i class="fas fa-chart-pie"></i>
                     <span>Analisis Soal</span></a></li>
+            <li id="nav-data-kelas"><a class="nav-btn" onclick="bukaHalaman('data-kelas', this)"><i class="fas fa-users"></i>
+                    <span>Data Kelas & Siswa</span></a></li>
             <li id="nav-akun-guru" style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px;">
                 <a class="nav-btn" onclick="bukaHalaman('akun-guru', this)"><i class="fas fa-chalkboard-teacher"></i>
                     <span>Akun Guru</span></a></li>
@@ -820,14 +822,13 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Jurusan / Kategori Kelas (Opsional)</label>
-                            <input type="text" id="jadwal-jurusan" class="form-control"
-                                placeholder="Contoh: Akuntansi & Keuangan Lembaga">
-                        </div>
-                        <div class="form-group">
-                            <label>Untuk Kelas</label>
-                            <input type="text" id="jadwal-kelas" class="form-control"
-                                placeholder="Contoh: X AKL A, X AKL B">
+                            <label>Kelas Peserta <small style="color:var(--text-muted);font-weight:400;">— klik per kelas, kosongkan = semua kelas</small></label>
+                            <div id="jadwal-kelas-chips" class="chips-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
+                            <div id="jadwal-kelas-list" class="form-control" style="min-height:120px;max-height:160px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px;">
+                                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Memuat kelas...</div>
+                            </div>
+                            <select id="jadwal-kelas-select" style="display:none;" multiple></select>
+                            <small style="color:var(--text-muted);font-size:11px;">Klik kelas untuk pilih/batal — terpilih = biru.</small>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-calendar-check"></i> Window Waktu Ujian <span
@@ -1232,6 +1233,121 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HALAMAN: DATA KELAS & SISWA -->
+            <section id="data-kelas" class="page-section">
+                <div class="card-panel" style="padding:0;overflow:hidden;">
+                    <div class="panel-header" style="border-bottom:1px solid var(--border);padding:18px 24px;gap:16px;flex-wrap:wrap;">
+                        <h3 class="panel-title"><i class="fas fa-users" style="color:#60a5fa;"></i> Data Kelas & Siswa</h3>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-outline" onclick="downloadTemplateSiswa()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-file-excel"></i> Template Import</button>
+                            <button class="btn btn-outline" onclick="exportSiswaExcel()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-file-export"></i> Export Siswa</button>
+                            <button class="btn btn-outline" onclick="initDataKelasSiswa()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                    </div>
+                    <!-- Stats -->
+                    <div style="display:flex;gap:12px;padding:16px 20px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);flex-wrap:wrap;">
+                        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:10px;">
+                            <div style="font-size:22px;font-weight:800;color:#93c5fd;" id="stat-total-kelas">-</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Kelas</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:10px;">
+                            <div style="font-size:22px;font-weight:800;color:#86efac;" id="stat-kelas-aktif">-</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Kelas Aktif</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;">
+                            <div style="font-size:22px;font-weight:800;color:#fcd34d;" id="stat-total-siswa">-</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Siswa</div>
+                        </div>
+                    </div>
+                    <!-- Tabs -->
+                    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);">
+                        <button id="btn-tab-kelas" class="active" onclick="switchKelasSiswaTab('kelas')" style="flex:1;padding:12px 16px;border:none;background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(59,130,246,0.05));color:#93c5fd;font-weight:700;font-size:13px;cursor:pointer;border-bottom:2px solid #3b82f6;"><i class="fas fa-chalkboard"></i> Kelola Kelas</button>
+                        <button id="btn-tab-siswa" onclick="switchKelasSiswaTab('siswa')" style="flex:1;padding:12px 16px;border:none;background:transparent;color:var(--text-muted);font-weight:600;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;"><i class="fas fa-user-graduate"></i> Kelola Siswa</button>
+                    </div>
+                    <!-- PANE KELAS -->
+                    <div id="pane-kelas" style="padding:20px;">
+                        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
+                            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;">
+                                <h4 style="font-size:13px;color:var(--text-main);margin-bottom:12px;"><i class="fas fa-plus" style="color:#60a5fa;"></i> Tambah / Edit Kelas</h4>
+                                <div class="form-group">
+                                    <label>Nama Kelas <small style="color:var(--text-muted);font-weight:400;">— contoh: X AKL A</small></label>
+                                    <input type="text" id="kelas-nama" class="form-control" placeholder="X AKL A" onkeydown="if(event.key==='Enter')simpanKelas()">
+                                </div>
+                                <div style="display:flex;gap:8px;">
+                                    <button id="btn-simpan-kelas" class="btn btn-primary" style="flex:1;justify-content:center;" onclick="simpanKelas()"><i class="fas fa-plus"></i> Tambah Kelas</button>
+                                    <button class="btn btn-outline" onclick="batalEditKelas()" title="Batal edit"><i class="fas fa-times"></i></button>
+                                </div>
+                                <div id="status-kelas" style="margin-top:10px;font-size:12px;min-height:18px;text-align:center;"></div>
+                            </div>
+                            <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;">
+                                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                    <thead><tr>
+                                        <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">No</th>
+                                        <th style="padding:10px 12px;text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">NAMA KELAS</th>
+                                        <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">SISWA</th>
+                                        <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">AKTIF</th>
+                                        <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">AKSI</th>
+                                    </tr></thead>
+                                    <tbody id="tabel-kelas"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- PANE SISWA -->
+                    <div id="pane-siswa" style="padding:20px;display:none;">
+                        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
+                            <div>
+                                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+                                    <h4 style="font-size:13px;color:var(--text-main);margin-bottom:12px;"><i class="fas fa-user-plus" style="color:#34d399;"></i> Tambah / Edit Siswa</h4>
+                                    <div class="form-group"><label>Nama Lengkap</label><input type="text" id="siswa-nama" class="form-control" placeholder="Ahmad Fauzi" onkeydown="if(event.key==='Enter')simpanSiswa()"></div>
+                                    <div class="form-group"><label>Kelas</label><select id="siswa-kelas" class="form-control"><option value="">— Pilih Kelas —</option></select></div>
+                                    <div style="display:flex;gap:8px;">
+                                        <button id="btn-simpan-siswa" class="btn btn-primary" style="flex:1;justify-content:center;" onclick="simpanSiswa()"><i class="fas fa-plus"></i> Tambah Siswa</button>
+                                        <button class="btn btn-outline" onclick="batalEditSiswa()" title="Batal"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div id="status-siswa" style="margin-top:10px;font-size:12px;min-height:18px;text-align:center;"></div>
+                                </div>
+                                <div style="background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:14px;">
+                                    <h4 style="font-size:12px;color:#fcd34d;margin-bottom:8px;"><i class="fas fa-file-excel"></i> Import Excel Gabung</h4>
+                                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Format kolom: <b style="color:var(--text-main);">Nama</b> | <b style="color:var(--text-main);">Kelas</b> — header baris 1. Kelas baru otomatis dibuat.</p>
+                                    <input type="file" id="inputSiswaExcel" accept=".xlsx,.xls" style="display:none;" onchange="importSiswaExcel(this)">
+                                    <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;" onclick="document.getElementById('inputSiswaExcel').click()"><i class="fas fa-upload"></i> Pilih File Excel</button>
+                                    <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:11px;margin-top:6px;" onclick="downloadTemplateSiswa()"><i class="fas fa-download"></i> Download Template</button>
+                                    <div id="status-import-siswa" style="margin-top:8px;font-size:11px;min-height:18px;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+                                    <input type="text" id="search-siswa" class="form-control" placeholder="Cari nama..." style="flex:1;min-width:160px;padding:7px 10px;font-size:12px;">
+                                    <select id="filter-kelas-siswa" class="form-control" style="width:180px;padding:7px 10px;font-size:12px;"><option value="">Semua Kelas</option></select>
+                                    <button class="btn btn-outline" style="padding:6px 12px;font-size:11px;" onclick="loadSiswa()"><i class="fas fa-sync-alt"></i></button>
+                                    <button class="btn btn-outline" style="padding:6px 12px;font-size:11px;" onclick="exportSiswaExcel()"><i class="fas fa-file-export"></i> Export</button>
+                                </div>
+                                <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;">
+                                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                        <thead><tr>
+                                            <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">No</th>
+                                            <th style="padding:10px 12px;text-align:left;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">NAMA</th>
+                                            <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">KELAS</th>
+                                            <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">STATUS</th>
+                                            <th style="padding:10px 12px;text-align:center;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">AKSI</th>
+                                        </tr></thead>
+                                        <tbody id="tabel-siswa"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr></tbody>
+                                    </table>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                                    <div id="siswa-page-info" style="font-size:12px;color:var(--text-muted);"></div>
+                                    <div style="display:flex;gap:6px;">
+                                        <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;" onclick="changeSiswaPage(-1)">Sebelumnya</button>
+                                        <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;" onclick="changeSiswaPage(1)">Selanjutnya</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

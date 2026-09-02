@@ -951,6 +951,27 @@
             color: var(--blue-pale);
         }
 
+        /* ===== AUTOCOMPLETE NAMA SISWA (strict, min 2 huruf, limit 10) ===== */
+        .autocomplete-wrap{position:relative}
+        .autocomplete-dropdown{
+            position:absolute;top:calc(100% + 6px);left:0;right:0;
+            background:rgba(15,23,42,0.98);border:1px solid rgba(255,255,255,0.12);
+            border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.45);
+            max-height:220px;overflow-y:auto;display:none;z-index:30;
+            backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+        }
+        .autocomplete-dropdown.show{display:block}
+        .ac-item{
+            padding:10px 14px;display:flex;justify-content:space-between;align-items:center;
+            cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);transition:background 0.15s;
+        }
+        .ac-item:last-child{border-bottom:none}
+        .ac-item:hover,.ac-item.active{background:rgba(59,130,246,0.12)}
+        .ac-item-name{font-size:13px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .ac-item-kelas{font-size:11px;font-weight:700;color:#93c5fd;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.2);border-radius:20px;padding:2px 8px;white-space:nowrap;margin-left:8px;flex-shrink:0}
+        .ac-empty{padding:14px;text-align:center;font-size:12px;color:rgba(255,255,255,0.45)}
+        .ac-hint{padding:8px 14px;font-size:11px;color:rgba(255,255,255,0.35);text-align:center;border-top:1px solid rgba(255,255,255,0.06)}
+
         .btn-login {
             width: 100%;
             background: linear-gradient(135deg, #1A56DB, #3B82F6);
@@ -3113,14 +3134,15 @@
                 </div>
                 <div class="login-card-body">
                     <div class="login-field-group">
-                        <div class="login-field">
-                            <label class="login-field-label">Nama Lengkap</label>
+                        <div class="login-field autocomplete-wrap" id="wrap-nama">
+                            <label class="login-field-label">Nama Lengkap <small style="text-transform:none;letter-spacing:0;font-size:10px;color:var(--gold-light);font-weight:600;">— ketik 2 huruf & pilih dari daftar</small></label>
                             <i class="fas fa-user login-field-icon"></i>
-                            <input type="text" id="nama" class="login-input" placeholder="Masukkan nama lengkapmu..."
-                                onblur="formatNamaLengkap(this)">
+                            <input type="text" id="nama" class="login-input" placeholder="Ketik minimal 2 huruf..." autocomplete="off"
+                                oninput="onNamaInput(this.value)" onkeydown="onNamaKeydown(event)" onblur="setTimeout(hideNamaSuggestions, 180)">
+                            <div id="nama-suggestions" class="autocomplete-dropdown" role="listbox"></div>
                         </div>
                         <div class="login-field">
-                            <label class="login-field-label">Kelas</label>
+                            <label class="login-field-label">Kelas <small style="text-transform:none;letter-spacing:0;font-size:10px;color:var(--gold-light);font-weight:600;">— terisi otomatis</small></label>
                             <i class="fas fa-users login-field-icon"></i>
                             <select id="kelas" class="login-input" onchange="updateMapel()">
                                 <option value="">— Memuat Daftar Kelas... —</option>
@@ -3627,14 +3649,125 @@
         // 4. UPDATE 'SELESAI'  → saat siswa submit jawaban
         // Re-login: mulaiUjian() mendeteksi baris lama → UPDATE 'AKTIF' kembali
 
+        // ===== AUTOCOMPLETE NAMA (strict, anon, min 2 huruf, limit 10, tampil Nama — Kelas) =====
+        let _selectedSiswa = null; // {id,nama,kelasNama,kelasId}
+        let _acItems = [];
+        let _acActiveIdx = -1;
+        let _acTimer = null;
+        let _acLastQuery = '';
+        function onNamaInput(val){
+            _selectedSiswa = null;
+            const q = (val||'').trim();
+            const dd = document.getElementById('nama-suggestions');
+            if(_acTimer) clearTimeout(_acTimer);
+            if(q.length < 2){ if(dd){dd.classList.remove('show'); dd.innerHTML='';} _acItems=[]; _acActiveIdx=-1; return; }
+            if(q === _acLastQuery) return;
+            _acTimer = setTimeout(async ()=>{
+                _acLastQuery = q;
+                try{
+                    // anon SELECT with ilike, min 2 chars, limit 10 — aman dari dump massal
+                    const {data, error} = await db.from('siswa').select('id,nama,kelas_id, kelas:kelas_id(nama)').ilike('nama', `%${q}%`).eq('is_aktif', true).order('nama', {ascending:true}).limit(10);
+                    if(error) throw error;
+                    _acItems = (data||[]).map(r=>({id:r.id, nama:r.nama, kelasNama: r.kelas ? r.kelas.nama : 'Tanpa Kelas', kelasId: r.kelas_id}));
+                    renderNamaSuggestions(q);
+                }catch(e){
+                    console.warn('autocomplete siswa error', e);
+                    if(dd){ dd.innerHTML='<div class="ac-empty">Gagal memuat</div>'; dd.classList.add('show'); }
+                }
+            }, 180);
+        }
+        function renderNamaSuggestions(q){
+            const dd = document.getElementById('nama-suggestions');
+            if(!dd) return;
+            _acActiveIdx = -1;
+            if(_acItems.length===0){
+                dd.innerHTML = '<div class="ac-empty">Tidak ditemukan — hubungi admin jika namamu belum terdaftar</div>';
+                dd.classList.add('show'); return;
+            }
+            dd.innerHTML = _acItems.map((it,idx)=>{
+                const escName = it.nama.replace(/</g,'&lt;');
+                const escKelas = it.kelasNama.replace(/</g,'&lt;');
+                return `<div class="ac-item" data-idx="${idx}" onmousedown="event.preventDefault(); pickSiswa(${idx})" role="option"><span class="ac-item-name">${escName}</span><span class="ac-item-kelas">${escKelas}</span></div>`;
+            }).join('') + '<div class="ac-hint">Pilih namamu — kelas akan terisi otomatis</div>';
+            dd.classList.add('show');
+        }
+        function pickSiswa(idx){
+            const it = _acItems[idx];
+            if(!it) return;
+            _selectedSiswa = it;
+            const inp = document.getElementById('nama');
+            if(inp){ inp.value = it.nama; formatNamaLengkap(inp); }
+            // simpan kelas ke select kelas (pastikan option ada)
+            const sel = document.getElementById('kelas');
+            if(sel){
+                let found = [...sel.options].some(o=> o.value === it.kelasNama);
+                if(!found){
+                    // coba load ulang kelas aktif lalu set
+                    loadKelasAktif().then(()=>{
+                        setKelasValue(it.kelasNama);
+                    });
+                } else {
+                    setKelasValue(it.kelasNama);
+                }
+            }
+            hideNamaSuggestions();
+        }
+        function setKelasValue(kelasNama){
+            const sel = document.getElementById('kelas');
+            if(!sel) return;
+            // jika opsi belum ada (mis. jadwal belum dibuat), buat opsi sementara agar value bisa ter-set
+            let found = [...sel.options].some(o=> o.value.toLowerCase() === kelasNama.toLowerCase());
+            if(!found){
+                const tmpOpt = document.createElement('option');
+                tmpOpt.value = kelasNama;
+                tmpOpt.textContent = kelasNama + ' (otomatis)';
+                sel.appendChild(tmpOpt);
+            }
+            sel.value = kelasNama;
+            if(sel.value !== kelasNama){
+                const opt = [...sel.options].find(o=> o.value.toLowerCase() === kelasNama.toLowerCase());
+                if(opt) sel.value = opt.value;
+            }
+            sel.dispatchEvent(new Event('change', {bubbles:true}));
+            sel.style.transition='background 0.3s';
+            sel.style.background='rgba(59,130,246,0.12)';
+            setTimeout(()=> sel.style.background='', 800);
+        }
+        function hideNamaSuggestions(){
+            const dd = document.getElementById('nama-suggestions');
+            if(dd) dd.classList.remove('show');
+        }
+        function onNamaKeydown(e){
+            const dd = document.getElementById('nama-suggestions');
+            if(!dd || !dd.classList.contains('show')) return;
+            const items = dd.querySelectorAll('.ac-item');
+            if(e.key==='ArrowDown'){ e.preventDefault(); _acActiveIdx=Math.min(_acActiveIdx+1, items.length-1); updateAcActive(items); }
+            else if(e.key==='ArrowUp'){ e.preventDefault(); _acActiveIdx=Math.max(_acActiveIdx-1, 0); updateAcActive(items); }
+            else if(e.key==='Enter'){ if(_acActiveIdx>=0){ e.preventDefault(); pickSiswa(_acActiveIdx); } }
+            else if(e.key==='Escape'){ hideNamaSuggestions(); }
+        }
+        function updateAcActive(items){
+            items.forEach((el,i)=> el.classList.toggle('active', i===_acActiveIdx));
+            if(items[_acActiveIdx]) items[_acActiveIdx].scrollIntoView({block:'nearest'});
+        }
+        // expose for inline handlers (ensure global)
+        window.onNamaInput = onNamaInput;
+        window.onNamaKeydown = onNamaKeydown;
+        window.hideNamaSuggestions = hideNamaSuggestions;
+        window.pickSiswa = pickSiswa;
+        window.setKelasValue = setKelasValue;
+        document.addEventListener('click', (e)=>{
+            const wrap = document.getElementById('wrap-nama');
+            if(wrap && !wrap.contains(e.target)) hideNamaSuggestions();
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             loadKelasAktif();
         });
 
         function loadKelasAktif() {
             const kelasSelect = document.getElementById('kelas');
-
-            db.from('jadwal_ujian').select('kelas').eq('is_aktif', true)
+            return db.from('jadwal_ujian').select('kelas').eq('is_aktif', true)
                 .then(({ data, error }) => {
                     if (error) throw error;
 
@@ -3757,15 +3890,25 @@
         }
 
         function cekSebelumMulai() {
-            const n = document.getElementById('nama').value, k = document.getElementById('kelas').value, m = document.getElementById('mapel').value;
+            const n = document.getElementById('nama').value.trim(), k = document.getElementById('kelas').value, m = document.getElementById('mapel').value;
             if (!n || !k || !m) {
                 document.getElementById('modalBiodataKosong').style.display = 'flex';
+                return;
+            }
+            // STRICT: harus pilih dari autocomplete master
+            if (!_selectedSiswa || _selectedSiswa.nama.trim().toLowerCase() !== n.toLowerCase()) {
+                Swal.fire({ icon:'warning', title:'Nama belum dipilih dari daftar', text:'Ketik minimal 2 huruf lalu pilih namamu dari daftar. Jika namamu belum ada, hubungi admin.', background:'rgba(15,23,42,0.95)', color:'#f1f5f9', confirmButtonColor:'#3b82f6', customClass:{popup:'modern-swal-popup'} });
+                return;
+            }
+            if (_selectedSiswa.kelasNama && k.toLowerCase() !== _selectedSiswa.kelasNama.toLowerCase()) {
+                Swal.fire({ icon:'warning', title:'Kelas tidak sesuai', text:`Kamu terdaftar di kelas "${_selectedSiswa.kelasNama}". Kelas akan disesuaikan otomatis.`, background:'rgba(15,23,42,0.95)', color:'#f1f5f9', confirmButtonColor:'#3b82f6', customClass:{popup:'modern-swal-popup'} });
+                setKelasValue(_selectedSiswa.kelasNama);
                 return;
             }
             document.getElementById('modalPeringatan').style.display = 'flex';
         }
 
-        function tutupModal() { document.getElementById('modalPeringatan').style.display = 'none'; }
+        function tutupModal() { document.getElementById('modalPeringatan').style.display = 'none'; const btnMulai=document.querySelector("#modalPeringatan .btn-modal-confirm"); if(btnMulai){btnMulai.disabled=false; btnMulai.innerHTML='Ya, Mulai!';} }
 
         async function mulaiUjian() {
             const n = document.getElementById('nama').value;
