@@ -2863,17 +2863,31 @@
             }
             .login-card{
                 margin: 12px auto;width:100%;max-width:520px;
-                /* cegah backdrop-filter bikin glitch keyboard Chrome Android */
+                /* cegah backdrop-filter bikin glitch keyboard Chrome Android — ini penyebab bar putih terlepas (floating) */
                 will-change: auto;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                filter: none !important;
+                transform: none !important;
             }
+            .login-card-header{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+            .bg-scene, .bg-grid, .bg-orb{transform:none !important}
+            html, body{height:auto;overflow-y:auto !important}
             .login-card-body{padding-bottom: calc(24px + env(safe-area-inset-bottom,0px))}
-            /* saat input fokus, beri ruang bawah agar tidak tertutup keyboard */
-            body.kb-open #identitas{padding-bottom: 40vh !important}
+            /* saat input fokus, beri ruang bawah agar tidak tertutup keyboard + bubble fullscreen Chrome */
+            body.kb-open #identitas{padding-bottom: 42vh !important}
             body.kb-open .login-card{transform: translateY(0) !important}
+            /* Chrome fullscreen bubble "To exit full screen..." muncul ~3 detik di atas — beri jarak agar tidak nutup input nama */
+            #identitas{padding-top: 12px !important; scroll-padding-top: 80px}
         }
         /* input harus punya z-index tinggi saat fokus */
         .login-input:focus{position:relative;z-index:2}
         .autocomplete-dropdown{max-height: 38vh !important}
+        /* sembunyikan bar autofill yang detached saat keyboard belum stabil - Chrome Android */
+        @media (max-width:768px){
+            /* paksa Chrome menempelkan bar di atas keyboard, bukan floating tengah */
+            input, textarea, select{font-size:16px !important}
+        }
 
     </style>
     <script>(function(){try{var t=localStorage.getItem("exam_theme");if(!t||["dark","light","low"].indexOf(t)===-1)t="dark";document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
