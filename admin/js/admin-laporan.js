@@ -212,6 +212,28 @@ function clearSortLaporan() {
 }
 
 // --- BULK ACTIONS ---
+
+async function hapusDataNilai(id, nama) {
+    const s = getGuruSession();
+    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
+    if (!await asyncConfirm(`Hapus data sesi/jawaban siswa "${nama}"?<br>Anda akan memiliki waktu untuk membatalkan tindakan ini.`, "Hapus Data Siswa?")) return;
+    const { data: savedData } = await db.from('jawaban_ujian').select('*').eq('id', id).single();
+    const { error } = await adminDb.delete('jawaban_ujian', id);
+    if (error) showToast("Gagal menghapus: " + error.message, 'error');
+    else {
+        const undoDelete = async () => {
+            if (savedData) {
+                const { error: insertError } = await adminDb.insert('jawaban_ujian', [savedData]);
+                if (insertError) showToast("Gagal membatalkan penghapusan: " + insertError.message, 'error');
+                else { showToast(`Data siswa "${nama}" berhasil dipulihkan`, 'success'); if(typeof loadNilaiSiswa==='function') loadNilaiSiswa(); if(typeof loadMonitoring==='function' && document.getElementById('monitoring')?.classList.contains('active')) loadMonitoring(); }
+            }
+        };
+        showToast(`Data siswa "${nama}" berhasil dihapus`, 'success', undoDelete, 'Batalkan');
+        if(typeof loadNilaiSiswa==='function') loadNilaiSiswa();
+        if(typeof loadMonitoring==='function' && document.getElementById('monitoring')?.classList.contains('active')) loadMonitoring();
+    }
+}
+
 async function bulkActionNilai(action) {
     const s = getGuruSession();
     if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
@@ -257,6 +279,9 @@ async function exportExcel() {
 }
 
 async function exportLaporan() { return exportExcel(); }
+
+// --- ALIAS untuk tombol Hapus Data Terpilih (admin_pro.html memanggil bulkActionLaporan) ---
+async function bulkActionLaporan(action){ return bulkActionNilai(action); }
 
 async function exportNilaiWord() {
     // Placeholder — Word export for laporan can be added if needed

@@ -206,34 +206,60 @@ async function lihatPelanggaran(rowId, namaSiswa) {
     // Deduplicate
     const uniqueLogs = [...new Set(logs.map(l => l.trim()))];
 
+    // Map jenis ke keterangan lengkap
+    const _plgKeterangan = (r) => {
+        const s = r.toLowerCase();
+        if (s.includes('keluar tab')) return 'Meninggalkan halaman/tab ujian — pindah ke tab atau aplikasi lain';
+        if (s.includes('kehilangan fokus') || s.includes('fokus')) return 'Jendela ujian kehilangan fokus — klik di luar browser / ganti aplikasi';
+        if (s.includes('fullscreen') || s.includes('layar penuh')) return 'Keluar dari mode layar penuh (fullscreen wajib aktif)';
+        if (s.includes('layar terbagi') || s.includes('split') || s.includes('layar')) return 'Terdeteksi resize / split-screen — ukuran viewport berubah signifikan';
+        if (s.includes('screenshot') || s.includes('print')) return 'Upaya mengambil tangkapan layar (shortcut / tombol PrintScreen)';
+        return 'Pelanggaran terdeteksi oleh sistem anti-cheat';
+    };
+
     // Parse setiap baris — support format waktu HH:MM:SS DAN HH.MM.SS
     const parsedLogs = uniqueLogs.map((line, idx) => {
         const match = line.match(/Pelanggaran\s*#(\d+):\s*(.+?)\s*\((\d{2}[.:]\d{2}[.:]\d{2})\)/i);
-        if (match) return { num: match[1], reason: match[2].trim(), time: match[3] };
+        if (match) return { num: match[1], reason: match[2].trim(), time: match[3], ket: _plgKeterangan(match[2].trim()) };
         const fallback = line.match(/Pelanggaran\s*#(\d+):\s*(.+)/i);
-        if (fallback) return { num: fallback[1], reason: fallback[2].trim().replace(/\s*\(.*\)\s*$/, ''), time: '-' };
-        return { num: String(idx + 1), reason: line.trim(), time: '-' };
+        if (fallback) { const rs = fallback[2].trim().replace(/\s*\(.*\)\s*$/, ''); return { num: fallback[1], reason: rs, time: '-', ket: _plgKeterangan(rs) }; }
+        return { num: String(idx + 1), reason: line.trim(), time: '-', ket: _plgKeterangan(line.trim()) };
     });
 
     // Build log entries
     let logHTML = '';
     if (parsedLogs.length === 0) {
-        logHTML = `<div style="text-align:center;padding:24px 16px;">
-            <div style="width:48px;height:48px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                <i class="fas fa-check-circle" style="font-size:22px;color:#10b981;"></i>
-            </div>
-            <div style="font-size:13px;color:#94a3b8;">Tidak ada pelanggaran tercatat.</div>
-        </div>`;
+        if (totalPlg > 0) {
+            // Count ada tapi log kosong → pelanggaran terjadi sebelum fitur log aktif
+            logHTML = `<div style="text-align:center;padding:20px 16px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.12);border-radius:12px;">
+                <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                    <i class="fas fa-history" style="font-size:18px;color:#f59e0b;"></i>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#f59e0b;">Detail tidak tersedia</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;line-height:1.5;">
+                    Terdeteksi ${totalPlg} pelanggaran, tapi rincian waktu/jenis tidak tercatat.<br>
+                    (Terjadi sebelum fitur log detail diaktifkan)
+                </div>
+            </div>`;
+        } else {
+            logHTML = `<div style="text-align:center;padding:24px 16px;">
+                <div style="width:48px;height:48px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                    <i class="fas fa-check-circle" style="font-size:22px;color:#10b981;"></i>
+                </div>
+                <div style="font-size:13px;color:#94a3b8;">Tidak ada pelanggaran tercatat.</div>
+            </div>`;
+        }
     } else {
-        logHTML = '<div style="max-height:300px;overflow-y:auto;">';
+        logHTML = '<div style="max-height:320px;overflow-y:auto;">';
         parsedLogs.forEach((l, i) => {
             const isLast = i === parsedLogs.length - 1;
-            logHTML += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${!isLast ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : ''}">
-                <div style="min-width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f87171;">${l.num}</div>
+            logHTML += `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;${!isLast ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : ''}">
+                <div style="min-width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f87171;flex-shrink:0;">${l.num}</div>
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:13px;font-weight:600;color:#f1f5f9;">${l.reason}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px;line-height:1.4;">${l.ket}</div>
                 </div>
-                <div style="font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${l.time}</div>
+                <div style="font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0;margin-top:2px;">${l.time}</div>
             </div>`;
         });
         logHTML += '</div>';
