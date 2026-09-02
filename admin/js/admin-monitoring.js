@@ -80,7 +80,7 @@ function stopMonitoring() {
 async function populateFilterKelas() {
     const selectKelas = document.getElementById('filter-kelas-monitoring');
     const selectMapel = document.getElementById('filter-mapel-monitoring');
-    const { data, error } = await db.from('jadwal_ujian').select('kelas, mapel').eq('is_aktif', true);
+    const { data, error } = await db.from('jawaban_ujian').select('kelas, mapel');
 
     const kelasSet = new Set();
     const mapelSet = new Set();

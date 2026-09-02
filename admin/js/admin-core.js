@@ -988,6 +988,62 @@ const sortState = {
 let tempMonitoringData = [];
 let tempLaporanData = [];
 
+// ==================== CUSTOM SELECT (SHARED) ====================
+function initCustomSelect(selectId) {
+    const native = document.getElementById(selectId);
+    if (!native || native.dataset.cslReady) return;
+    native.dataset.cslReady = '1';
+    const wrapper = native.parentNode;
+    const container = document.createElement('div');
+    container.className = 'csl-container';
+    const btn = document.createElement('button');
+    btn.className = 'csl-btn';
+    btn.type = 'button';
+    const dd = document.createElement('div');
+    dd.className = 'csl-dropdown';
+    dd.id = selectId + '-csldd';
+    wrapper.insertBefore(container, native);
+    container.appendChild(btn);
+    container.appendChild(dd);
+    container.appendChild(native);
+    syncCustomSelect(selectId);
+    btn.onclick = function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.csl-dropdown.show').forEach(d => { if (d.id !== dd.id) { d.classList.remove('show'); d.parentNode.querySelector('.csl-btn').classList.remove('open'); } });
+        dd.classList.toggle('show');
+        btn.classList.toggle('open');
+    };
+}
+
+function syncCustomSelect(selectId) {
+    const native = document.getElementById(selectId);
+    if (!native || !native.dataset.cslReady) return;
+    const container = native.closest('.csl-container');
+    if (!container) return;
+    const btn = container.querySelector('.csl-btn');
+    const dd = document.getElementById(selectId + '-csldd');
+    if (!dd) return;
+    dd.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    Array.from(native.options).forEach(opt => {
+        const item = document.createElement('div');
+        item.className = 'csl-option' + (opt.selected ? ' selected' : '');
+        item.textContent = opt.textContent;
+        item.dataset.value = opt.value;
+        item.onclick = function(e) {
+            e.stopPropagation();
+            native.value = this.dataset.value;
+            native.dispatchEvent(new Event('change', { bubbles: true }));
+            dd.classList.remove('show');
+            btn.classList.remove('open');
+            syncCustomSelect(selectId);
+        };
+        frag.appendChild(item);
+    });
+    dd.appendChild(frag);
+    btn.textContent = native.options[native.selectedIndex] ? native.options[native.selectedIndex].textContent : '';
+}
+
 // ==================== TOGGLE SELECT ALL ====================
 function toggleSelectAll(type) {
     const isChecked = document.getElementById('select-all-' + type).checked;
