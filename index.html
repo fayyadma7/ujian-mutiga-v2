@@ -3696,6 +3696,8 @@
             let pgWithIds = [];
             let essayItems = [];
             let hasValue = false;
+            // Essay pakai nomor Bank (tetap) walau tampilan acak — siswa tetap lihat soal acak
+            const urut = window._currentUrutan || null;
             s_data.forEach((s, i) => {
                 let el = document.getElementsByName('q' + i);
                 if (!el || !el[0]) {
@@ -3708,7 +3710,10 @@
                     nilai = sel ? sel.value : "";
                 } else {
                     nilai = el[0].value.trim();
-                    if (nilai) essayItems.push("No." + (i + 1) + ": " + nilai);
+                    if (nilai) {
+                        const bankNo = (urut && urut[i] !== undefined) ? (urut[i] + 1) : (i + 1);
+                        essayItems.push("No." + bankNo + ": " + nilai);
+                    }
                 }
                 if (nilai) hasValue = true;
                 pgWithIds.push({ id: s[6], j: nilai });
@@ -4370,17 +4375,20 @@
                     try { urutanIndeks = JSON.parse(savedUrutan); } catch (e) { urutanIndeks = null; }
                     if (urutanIndeks && urutanIndeks.length === data.length) {
                         s_data = urutanIndeks.map(idx => data[idx]);
+                        window._currentUrutan = urutanIndeks;
                     } else {
                         let idxBaru = data.map((_, i) => i);
                         kocokSoal(idxBaru);
                         localStorage.setItem(keyUrutan, JSON.stringify(idxBaru));
                         s_data = idxBaru.map(idx => data[idx]);
+                        window._currentUrutan = idxBaru;
                     }
                 } else {
                     let indeks = data.map((_, i) => i);
                     kocokSoal(indeks);
                     localStorage.setItem(keyUrutan, JSON.stringify(indeks));
                     s_data = indeks.map(idx => data[idx]);
+                    window._currentUrutan = indeks;
                 }
 
                 // Simpan urutan soal ke Supabase — penting untuk restore antar device
@@ -5214,30 +5222,45 @@
                 console.warn('[Ragu] Gagal restore ragu dari Supabase:', e);
             }
 
-            // === Restore ESSAY hanya jika urutan_soal ada (konsistensi index terjamin) ===
+            // === Restore ESSAY: nomor sekarang = nomor Bank (tetap), map ke index acak via urutan_soal ===
             if (!urutanAda) return;
             try {
                 const { data: essayData } = await dbWithTimeout(db.from('jawaban_ujian')
                     .select('jawaban_essay').eq('id', window.idRowUjian).maybeSingle());
                 if (essayData && essayData.jawaban_essay) {
                     const lines = essayData.jawaban_essay.split("\n");
+                    const urut = window._currentUrutan || null;
                     lines.forEach(line => {
-                        // Format: "No.1: isi jawaban"
+                        // Format baru: "No.<bankNo>: isi" — bankNo 1-based dari Bank Soal
                         const match = line.match(/^No\.(\d+):\s*(.*)/);
                         if (match) {
-                            const nomor = parseInt(match[1]) - 1; // zero-indexed
+                            const bankNo = parseInt(match[1]);
                             const isi = match[2];
-                            if (nomor >= 0 && nomor < s_data.length) {
-                                const el = document.getElementsByName('q' + nomor);
+                            let acakIdx = bankNo - 1;
+                            if (urut && urut.length === s_data.length) {
+                                const found = urut.indexOf(bankNo - 1);
+                                if (found !== -1) acakIdx = found;
+                            }
+                            if (acakIdx >= 0 && acakIdx < s_data.length) {
+                                const el = document.getElementsByName('q' + acakIdx);
                                 if (el && el[0] && el[0].type === 'textarea' && !el[0].value.trim()) {
                                     el[0].value = isi;
                                     const event = new Event('input', { bubbles: true });
                                     el[0].dispatchEvent(event);
                                 }
                             }
+                        } else if (line.trim()) {
+                            // Fallback legacy tanpa "No." — coba isi textarea kosong pertama
+                            for (let idx = 0; idx < s_data.length; idx++) {
+                                const el = document.getElementsByName('q' + idx);
+                                if (el && el[0] && el[0].type === 'textarea' && !el[0].value.trim()) {
+                                    el[0].value = line.trim();
+                                    break;
+                                }
+                            }
                         }
                     });
-                    console.log("Restore: Jawaban essay dipulihkan.");
+                    console.log("Restore: Jawaban essay dipulihkan (bank mapping).");
                 }
             } catch (e) {
                 console.warn("Restore essay gagal:", e);

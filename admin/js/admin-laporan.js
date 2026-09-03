@@ -263,16 +263,64 @@ async function exportExcel() {
     const { data, error } = await db.from('jawaban_ujian').select('*').eq('mapel', mapel).eq('kelas', kelas).order('nama', { ascending: true });
     if (error || !data || data.length === 0) { showToast("Tidak ada data nilai untuk diekspor.", 'error'); return; }
 
+    // Ambil nomor soal essay untuk mapping jawaban legacy "|||" tanpa nomor
+    let essayNos = [];
+    try {
+        const { data: soalList } = await db.from('bank_soal').select('tipe_soal').eq('mapel', mapel).order('id', { ascending: true });
+        if (soalList) soalList.forEach((s, idx) => { if (s.tipe_soal === 'ESSAY') essayNos.push(idx + 1); });
+    } catch(_) {}
+
     const strukturData = [["No", "Nama Siswa", "Kelas", "Mata Pelajaran", "Skor PG", "Jawaban Essay", "Durasi Pengerjaan", "Jumlah Pelanggaran", "Detail Pelanggaran", "Status Akhir", "Waktu Selesai"]];
     data.forEach((s, index) => {
-        strukturData.push([index + 1, s.nama, s.kelas, s.mapel, s.skor_pg !== null ? s.skor_pg : 0, s.jawaban_essay || '-', s.durasi || '-', s.pelanggaran || 0, s.log_pelanggaran || '-', s.status || 'SELESAI', s.created_at ? new Date(s.created_at).toLocaleString('id-ID') : '-']);
+        let essayCell = '-';
+        if (s.jawaban_essay && String(s.jawaban_essay).trim() !== '') {
+            let raw = String(s.jawaban_essay).replace(/\r\n/g, '\n').trim();
+            let parts = [];
+            if (raw.includes('|||')) {
+                parts = raw.split('|||').map(p => p.trim()).filter(Boolean);
+                parts = parts.map((p, i) => {
+                    if (/^No\.\s*\d+\s*:/i.test(p)) return p;
+                    // legacy: mapping ke nomor essay sebenarnya (No.2, No.5, dst) jika diketahui
+                    const realNo = essayNos[i] || (i + 1);
+                    // hilangkan prefix angka mentah "1: xxx" jika ada
+                    const cleaned = p.replace(/^\d+\s*[:\.]\s*/, '');
+                    return `No.${realNo}: ${cleaned}`;
+                });
+            } else if (raw.includes('\n')) {
+                parts = raw.split('\n').map(p => p.trim()).filter(Boolean);
+            } else {
+                parts = [raw];
+                if (!/^No\.\s*\d+\s*:/i.test(raw)) {
+                    const realNo = essayNos[0] || 1;
+                    parts = [`No.${realNo}: ${raw}`];
+                }
+            }
+            essayCell = parts.join('\n');
+        }
+        strukturData.push([index + 1, s.nama, s.kelas, s.mapel, s.skor_pg !== null ? s.skor_pg : 0, essayCell, s.durasi || '-', s.pelanggaran || 0, s.log_pelanggaran || '-', s.status || 'SELESAI', s.created_at ? new Date(s.created_at).toLocaleString('id-ID') : '-']);
     });
 
     const worksheet = XLSX.utils.aoa_to_sheet(strukturData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Nilai");
-    worksheet['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 20 }, { wch: 18 }, { wch: 60 }, { wch: 30 }, { wch: 25 }];
-    XLSX.writeFile(workbook, `Nilai_${mapel}_${kelas}.xlsx`.replace(/\s+/g, '_'));
+    worksheet['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 55 }, { wch: 20 }, { wch: 18 }, { wch: 60 }, { wch: 30 }, { wch: 25 }];
+    // Wrap text untuk kolom Jawaban Essay (F) agar \n tampil sebagai baris baru
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    for (let r = 1; r <= range.e.r; r++) {
+        const addr = XLSX.utils.encode_cell({ r, c: 5 });
+        if (worksheet[addr]) {
+            if (!worksheet[addr].s) worksheet[addr].s = {};
+            worksheet[addr].s.alignment = { wrapText: true, vertical: 'top' };
+        }
+    }
+    // Tinggi baris auto (minimal 40 untuk essay)
+    if (!worksheet['!rows']) worksheet['!rows'] = [];
+    for (let r = 1; r <= range.e.r; r++) {
+        const essayVal = strukturData[r] ? strukturData[r][5] : '';
+        const lineCount = essayVal ? String(essayVal).split('\n').length : 1;
+        worksheet['!rows'][r] = { hpt: Math.max(20, lineCount * 15) };
+    }
+    XLSX.writeFile(workbook, `Nilai_${mapel}_${kelas}.xlsx`.replace(/\s+/g, '_'), { cellStyles: true });
 }
 
 async function exportLaporan() { return exportExcel(); }
