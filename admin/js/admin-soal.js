@@ -863,7 +863,6 @@ async function simpanEditSoal() {
 }
 
 async function editSoal(id) { return editSatuSoal(id); }
-async function simpanEditSoal(id) { return simpanEditSoal(); }
 
 // --- EXPORT WORD ---
 async function exportSoalWord(btn) {
