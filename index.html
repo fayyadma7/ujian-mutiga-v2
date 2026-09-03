@@ -3683,11 +3683,20 @@
         function unlockOrientation(){
             try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
         }
-        // Fungsi awal untuk masuk aplikasi dari start-overlay — TIDAK fullscreen di login (fix bar putih Chrome terlepas)
-        // Fullscreen + portrait lock hanya saat ujian dimulai (mulaiUjian), karena Chrome Android bug: autofill bar (kunci/kartu/lokasi) floating tengah layar jika input fokus dalam mode fullscreen
+        // Fungsi awal untuk masuk aplikasi dari start-overlay — SELALU PORTRAIT + FULLSCREEN (klik Masuk Layar Penuh langsung fullscreen)
         async function masukAplikasi() {
-            // jangan masuk fullscreen di landing/login — biarkan login normal agar bar autofill nempel keyboard
-            // fullscreen akan diminta nanti di mulaiUjian() setelah siswa klik Mulai Ujian
+            const elem = document.documentElement;
+            if (!isIOS) {
+                try {
+                    let p = null;
+                    if (elem.requestFullscreen) p = elem.requestFullscreen();
+                    else if (elem.webkitRequestFullscreen) p = elem.webkitRequestFullscreen();
+                    else if (elem.msRequestFullscreen) p = elem.msRequestFullscreen();
+                    if(p && p.then) await p.catch(function(e){ console.warn("FS ditolak",e); });
+                } catch (e) { console.warn("Fullscreen error:", e); }
+                await lockPortrait();
+                setTimeout(lockPortrait, 300);
+            }
             const overlay = document.getElementById('start-overlay');
             if (overlay) {
                 overlay.style.opacity = '0';
