@@ -81,11 +81,11 @@ async function loadKelasMaster() {
     tbody.innerHTML = _kelasCache.map((k, i) => {
         const jml = countMap[k.id] || 0;
         return `<tr>
-            <td style="text-align:center;">${i + 1}</td>
-            <td style="font-weight:700;color:var(--text-main);">${k.nama}</td>
-            <td style="text-align:center;"><span class="badge" style="background:rgba(59,130,246,0.1);color:#93c5fd;border:1px solid rgba(59,130,246,0.2);">${jml} siswa</span></td>
-            <td style="text-align:center;"><label class="toggle"><input type="checkbox" ${k.is_aktif ? 'checked' : ''} onchange="toggleKelasAktif(${k.id}, this.checked)"><span class="toggle-slider"></span></label></td>
-            <td style="text-align:center;">
+            <td data-label="No" style="text-align:center;">${i + 1}</td>
+            <td data-label="Nama Kelas" style="font-weight:700;color:var(--text-main);">${k.nama}</td>
+            <td data-label="Jumlah Siswa" style="text-align:center;"><span class="badge" style="background:rgba(59,130,246,0.1);color:#93c5fd;border:1px solid rgba(59,130,246,0.2);">${jml} siswa</span></td>
+            <td data-label="Aktif" style="text-align:center;"><label class="toggle"><input type="checkbox" ${k.is_aktif ? 'checked' : ''} onchange="toggleKelasAktif(${k.id}, this.checked)"><span class="toggle-slider"></span></label></td>
+            <td data-label="Aksi" style="text-align:center;">
                 <button class="btn btn-outline" style="padding:5px 8px;font-size:11px;" onclick="mulaiEditKelas(${k.id})" title="Edit"><i class="fas fa-pen"></i></button>
                 <button class="btn btn-danger" style="padding:5px 8px;font-size:11px;" onclick="hapusKelas(${k.id}, '${k.nama.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
             </td>
@@ -220,11 +220,11 @@ function renderSiswaRows(data, from, total, pageInfo) {
         const no = from + idx + 1;
         const kelasNama = s.kelas ? s.kelas.nama : '<span style="color:var(--text-muted);font-style:italic;">Tanpa kelas</span>';
         return `<tr>
-            <td style="text-align:center;">${no}</td>
-            <td style="font-weight:600;">${s.nama}</td>
-            <td style="text-align:center;"><span class="badge" style="background:rgba(59,130,246,0.1);color:#93c5fd;border:1px solid rgba(59,130,246,0.2);">${kelasNama}</span></td>
-            <td style="text-align:center;"><span class="badge" style="background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.2);">Aktif</span></td>
-            <td style="text-align:center;">
+            <td data-label="No" style="text-align:center;">${no}</td>
+            <td data-label="Nama Siswa" style="font-weight:600;">${s.nama}</td>
+            <td data-label="Kelas" style="text-align:center;"><span class="badge" style="background:rgba(59,130,246,0.1);color:#93c5fd;border:1px solid rgba(59,130,246,0.2);">${kelasNama}</span></td>
+            <td data-label="Status" style="text-align:center;"><span class="badge" style="background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.2);">Aktif</span></td>
+            <td data-label="Aksi" style="text-align:center;">
                 <button class="btn btn-outline" style="padding:5px 8px;font-size:11px;" onclick="mulaiEditSiswa(${s.id})"><i class="fas fa-pen"></i></button>
                 <button class="btn btn-danger" style="padding:5px 8px;font-size:11px;" onclick="hapusSiswa(${s.id}, '${s.nama.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
             </td>

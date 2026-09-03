@@ -60,15 +60,15 @@ async function loadGuruList() {
         list.forEach((g, i) => {
             const isGuruAdmin = (g.role === 'admin');
             html += '<tr>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + g.nama + '</strong></td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + g.username + '</td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (isGuruAdmin ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)') + ';border:1px solid ' + (isGuruAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)') + ';color:' + (isGuruAdmin ? '#fbbf24' : '#93c5fd') + ';"><i class="fas fa-' + (isGuruAdmin ? 'crown' : 'user-graduate') + '"></i>' + (isGuruAdmin ? 'Admin' : 'Guru') + '</span></td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;flex-direction:column;gap:4px;align-items:center;">' +
+                '<td data-label="No" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
+                '<td data-label="Nama" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + g.nama + '</strong></td>' +
+                '<td data-label="Username" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + g.username + '</td>' +
+                '<td data-label="Role" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (isGuruAdmin ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)') + ';border:1px solid ' + (isGuruAdmin ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)') + ';color:' + (isGuruAdmin ? '#fbbf24' : '#93c5fd') + ';"><i class="fas fa-' + (isGuruAdmin ? 'crown' : 'user-graduate') + '"></i>' + (isGuruAdmin ? 'Admin' : 'Guru') + '</span></td>' +
+                '<td data-label="Status" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;flex-direction:column;gap:4px;align-items:center;">' +
                     '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:' + (g.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)') + ';border:1px solid ' + (g.is_active ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)') + ';color:' + (g.is_active ? '#86efac' : '#fca5a5') + ';"><i class="fas fa-' + (g.is_active ? 'check-circle' : 'times-circle') + '"></i>' + (g.is_active ? 'Aktif' : 'Nonaktif') + '</span>' +
                     badgeStatus(isGuruAdmin ? 'online' : g.status, isGuruAdmin ? new Date().toISOString() : g.last_seen) +
                 '</div></td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
+                '<td data-label="Aksi" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
                     '<button onclick="toggleGuruStatus(' + g.id + ',' + !g.is_active + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);font-family:\'Inter\',sans-serif;">' +
                         '<i class="fas fa-' + (g.is_active ? 'pause' : 'play') + '"></i> ' + (g.is_active ? 'Nonaktifkan' : 'Aktifkan') + '</button>' +
                     '<button onclick="hapusGuruAkun(' + g.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:\'Inter\',sans-serif;">' +
@@ -100,11 +100,11 @@ async function loadPendingList() {
         list.forEach((p, i) => {
             const tgl = p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
             html += '<tr>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + p.nama + '</strong></td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + p.username + '</td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + tgl + '</td>' +
-                '<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
+                '<td data-label="No" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);text-align:center;">' + (i+1) + '</td>' +
+                '<td data-label="Nama" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;"><strong>' + p.nama + '</strong></td>' +
+                '<td data-label="Username" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + p.username + '</td>' +
+                '<td data-label="Tanggal Daftar" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;text-align:center;">' + tgl + '</td>' +
+                '<td data-label="Aksi" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">' +
                     '<button onclick="setujuiGuruAkun(' + p.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(34,197,94,0.25);background:rgba(34,197,94,0.1);color:#86efac;font-family:\'Inter\',sans-serif;"><i class="fas fa-check"></i> Setujui</button>' +
                     '<button onclick="tolakGuruAkun(' + p.id + ')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:\'Inter\',sans-serif;"><i class="fas fa-times"></i> Tolak</button>' +
                 '</div></td>' +

@@ -6,28 +6,34 @@
 // ============================================================
 
 async function updateDashboardStats() {
-    const { data: siswa } = await db.from('jawaban_ujian').select('id');
-    if (siswa) document.getElementById('tot-siswa').innerText = siswa.length + " Orang";
-
-    const { count: jmlSoal } = await db.from('bank_soal').select('*', { count: 'exact', head: true });
-    document.getElementById('tot-soal').innerText = jmlSoal || 0;
-
-    const { data: nilai } = await db.from('jawaban_ujian').select('skor_pg');
-    if (nilai && nilai.length > 0) {
-        const total = nilai.reduce((acc, curr) => acc + Number(curr.skor_pg || 0), 0);
-        const rata = (total / nilai.length).toFixed(1);
-        document.getElementById('rata-nilai').innerText = rata;
+    // 1. Total Siswa — hitung dari tabel master `siswa` (is_aktif = true)
+    try {
+        const { count: jmlSiswa } = await db.from('siswa').select('*', { count: 'exact', head: true }).eq('is_aktif', true);
+        const elSiswa = document.getElementById('tot-siswa');
+        if (elSiswa) elSiswa.innerText = (jmlSiswa || 0) + " Orang";
+    } catch (_) {
+        const elSiswa = document.getElementById('tot-siswa');
+        if (elSiswa) elSiswa.innerText = "0 Orang";
     }
 
-    const now = new Date().toISOString();
-    const { count: activeCount } = await db.from('jadwal_ujian')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_aktif', true)
-        .lte('waktu_mulai', now)
-        .gte('waktu_selesai', now);
+    // 2. Total Bank Soal
+    const { count: jmlSoal } = await db.from('bank_soal').select('*', { count: 'exact', head: true });
+    const elSoal = document.getElementById('tot-soal');
+    if (elSoal) elSoal.innerText = jmlSoal || 0;
 
-    const elActive = document.getElementById('tot-aktif');
-    if (elActive) elActive.innerText = activeCount || 0;
+    // 3. Siswa Sedang Ujian — status BELUM SELESAI (menggantikan Rata-rata Nilai)
+    try {
+        const { data: ujianData } = await db.from('jawaban_ujian').select('status');
+        let sedang = 0;
+        if (ujianData) sedang = ujianData.filter(r => !String(r.status || '').startsWith('SELESAI')).length;
+        const elSedang = document.getElementById('tot-sedang-ujian');
+        if (elSedang) elSedang.innerText = sedang;
+    } catch (_) {
+        const elSedang = document.getElementById('tot-sedang-ujian');
+        if (elSedang) elSedang.innerText = '0';
+    }
+
+    // 4. Ujian Sedang Aktif — dihapus sesuai permintaan (card dihapus)
 }
 
 async function loadDashboardJadwalAktif() {
@@ -55,8 +61,12 @@ async function loadDashboardJadwalAktif() {
         const tMulai = new Date(j.waktu_mulai);
         const tSelesai = new Date(j.waktu_selesai);
 
+        const escMapel = (j.mapel || '').replace(/"/g, '&quot;');
         html += `
-            <div style="background:rgba(16, 185, 129, 0.03); border:1px solid rgba(16, 185, 129, 0.15); border-radius:12px; padding:15px; margin-bottom:12px; transition:all 0.3s; border-left:4px solid #10b981; backdrop-filter:blur(6px);">
+            <div data-mapel="${escMapel}" onclick="filterMonitoringByMapel(this.dataset.mapel)" title="Klik untuk lihat di Live Monitoring → ${j.mapel}"
+                 style="background:rgba(16, 185, 129, 0.03); border:1px solid rgba(16, 185, 129, 0.15); border-radius:12px; padding:15px; margin-bottom:12px; transition:all 0.3s; border-left:4px solid #10b981; backdrop-filter:blur(6px); cursor:pointer;"
+                 onmouseover="this.style.background='rgba(16,185,129,0.08)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(16,185,129,0.15)'"
+                 onmouseout="this.style.background='rgba(16,185,129,0.03)';this.style.transform='none';this.style.boxShadow='none'">
                 <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
                     <strong style="color:var(--text-main); font-size:15px;">${j.mapel}</strong>
                     <span class="badge" style="background:rgba(16, 185, 129, 0.15); color:#34d399; border:1px solid rgba(16, 185, 129, 0.3); font-size:10px;">LIVE</span>
@@ -64,14 +74,52 @@ async function loadDashboardJadwalAktif() {
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
                     <i class="fas fa-users" style="width:16px;"></i> ${kelasStr}
                 </div>
-                <div style="display:flex; align-items:center; gap:15px; font-size:11px; color:var(--text-muted); font-weight:600; padding-top:8px; border-top:1px solid var(--border);">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:15px; font-size:11px; color:var(--text-muted); font-weight:600; padding-top:8px; border-top:1px solid var(--border);">
                     <span><i class="fas fa-clock"></i> Selesai: ${tSelesai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <span style="color:#f87171;"><i class="fas fa-circle fa-beat"></i> Sedang Berjalan</span>
+                    <span style="display:inline-flex;align-items:center;gap:4px;color:#34d399;font-size:10px;">Sedang Berjalan <i class="fas fa-chevron-right" style="font-size:9px;"></i></span>
                 </div>
             </div>
         `;
     });
     container.innerHTML = html;
+}
+
+function filterMonitoringByMapel(mapel) {
+    if (!mapel) return;
+    const clean = mapel.trim();
+    window._pendingMonMapel = clean;
+    // simpan juga di session untuk survive reload/lazy-load
+    try { sessionStorage.setItem('_pendingMonMapel', clean); } catch(_) {}
+    const btn = document.querySelector('.nav-btn[onclick*="monitoring"]');
+    bukaHalaman('monitoring', btn);
+    // fallback polling — jika admin-core handler terlewat, paksa set setelah populate
+    let tries = 0;
+    const poll = setInterval(() => {
+        tries++;
+        const sel = document.getElementById('filter-mapel-monitoring');
+        const isActive = document.getElementById('monitoring')?.classList.contains('active');
+        const pending = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
+        if (!pending) { clearInterval(poll); try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}; return; }
+        if (!isActive || !sel) { if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}}; return; }
+        // tunggu populate selesai: opsi >1 atau sudah ada pending di opsi
+        const hasRealOptions = sel.options.length > 1;
+        if (!hasRealOptions && tries < 6) return; // beri waktu DB 1.5 detik
+        let exists = [...sel.options].some(o => o.value === pending);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = pending; opt.textContent = pending;
+            sel.appendChild(opt);
+        }
+        sel.value = pending;
+        if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-mapel-monitoring');
+        if (sel.value === pending) {
+            window._pendingMonMapel = null;
+            try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}
+            if (typeof loadMonitoring === 'function') loadMonitoring();
+            clearInterval(poll);
+        }
+        if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}}
+    }, 300);
 }
 
 async function loadRecentActivity() {

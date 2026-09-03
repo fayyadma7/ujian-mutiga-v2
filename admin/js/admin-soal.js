@@ -82,13 +82,23 @@ async function populatePreviewMapel() {
         const creatorLabel = _sIsAdmin
             ? [...info.creators].join(', ')
             : '<span style="color:var(--text-muted);font-size:11px;">Milik Saya</span>';
+        const creatorPlain = _sIsAdmin ? [...info.creators].join(', ') : 'Milik Saya';
+        const creatorHtml = _sIsAdmin ? creatorPlain : '<span style="color:var(--text-muted)">Milik Saya</span>';
         html += `
             <tr>
-                <td style="text-align:center;"><input type="checkbox" class="cb-mapel" value="${mapel}"></td>
-                <td style="font-weight:600; color:var(--text-main); text-align:left; padding-left:15px;">${mapel}</td>
-                <td style="text-align:center;"><span class="badge" style="background:rgba(99, 102, 241, 0.1); color:var(--primary); border:1px solid rgba(99, 102, 241, 0.2);">${info.count} Soal</span></td>
-                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorLabel}</td>
-                <td style="text-align:center;">
+                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-mapel" value="${mapel}"></td>
+                <td data-label="Mata Pelajaran" style="font-weight:600; color:var(--text-main); text-align:left; padding-left:15px;">
+                    <div style="display:flex; align-items:center; gap:12px; width:100%; background:transparent;">
+                        <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas fa-book-open" style="color:#60a5fa; font-size:16px;"></i></div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:700; color:#f1f5f9; font-size:14px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${mapel}</div>
+                            <div class="mapel-sub-mobile" style="font-size:12px; color:#64748b; margin-top:2px;">Dibuat oleh <span style="color:#60a5fa; font-weight:600;">${creatorPlain}</span></div>
+                        </div>
+                    </div>
+                </td>
+                <td data-label="Jumlah Soal" style="text-align:center;"><span class="badge" style="background:rgba(15,23,42,.7); color:#94a3b8; border:1px solid rgba(255,255,255,.07); display:inline-flex; align-items:center; gap:6px;"><i class="far fa-file" style="font-size:11px; opacity:.7;"></i> ${info.count} SOAL</span></td>
+                <td data-label="Dibuat Oleh" style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorHtml}</td>
+                <td data-label="Aksi" style="text-align:center;">
                     <div class="action-buttons" style="display:flex; justify-content:center; gap:8px;">
                         <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="bukaDetailSoal('${mapel}')">
                             <i class="fas fa-eye"></i> Lihat Soal

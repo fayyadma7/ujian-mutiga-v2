@@ -11,10 +11,18 @@
 
 const violationTracker = new Map();
 let monitoringChannel = null;
-
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+function scheduleReconnect(){
+  if(reconnectTimer) clearTimeout(reconnectTimer);
+  const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
+  console.warn(`[monitoring] reconnect ${reconnectAttempts} in ${delay}ms`);
+  reconnectTimer = setTimeout(()=> startRealtimeMonitoring(), delay);
+}
 function startRealtimeMonitoring() {
-    if (monitoringChannel) { db.removeChannel(monitoringChannel); monitoringChannel = null; }
-    monitoringChannel = db.channel('monitoring-live');
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
+    if (monitoringChannel) { try{ db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
+    monitoringChannel = db.channel('monitoring-live-v2');
     const seenIds = new Set();
 
     monitoringChannel = monitoringChannel
@@ -68,13 +76,22 @@ function startRealtimeMonitoring() {
             }
         )
         .subscribe((status, err) => {
-            if (status === 'SUBSCRIBED') console.log('✅ Realtime monitoring terhubung!');
-            else console.error('❌ Realtime monitoring gagal:', status, err);
+            if (status === 'SUBSCRIBED') {
+                reconnectAttempts = 0;
+                console.log('✅ Realtime monitoring terhubung!');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.error('❌ Realtime monitoring gagal:', status, err || '(no err) — cek publication & RLS');
+                if(status==='CLOSED' && !err) console.warn('Hint: publication supabase_realtime belum ada — sudah difix via migration 20260911000000');
+                scheduleReconnect();
+            } else {
+                console.warn('Realtime status:', status, err);
+            }
         });
 }
 
 function stopMonitoring() {
-    if (monitoringChannel) { db.removeChannel(monitoringChannel); monitoringChannel = null; }
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
+    if (monitoringChannel) { try{ db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
 }
 
 async function populateFilterKelas() {
@@ -224,7 +241,7 @@ async function loadMonitoring() {
         }
 
         const plgBadge = isPlg
-            ? `<button onclick="lihatPelanggaran(${s.id}, '${s.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x <i class="fas fa-chevron-right" style="font-size:9px;opacity:0.6;"></i></button>`
+            ? `<button onclick="lihatPelanggaran(${s.id}, '${s.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x</button>`
             : `<span style="color:#10b981;">✓ Bersih</span>`;
 
         const waktu = s.created_at ? new Date(s.created_at).toLocaleTimeString('id-ID') : '-';
@@ -238,17 +255,20 @@ async function loadMonitoring() {
 
         tbody.innerHTML += `
             <tr style="${!isSelesai ? 'background:rgba(250,204,21,0.06);' : ''}">
-                <td style="text-align:center;"><input type="checkbox" class="cb-monitoring" value="${s.id}"></td>
-                <td style="text-align:center;">${startIdx + i + 1}</td>
-                <td style="font-weight:600;">${displayNama}</td>
-                <td style="text-align:center;">
+                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-monitoring" value="${s.id}"></td>
+                <td data-label="No" style="text-align:center;">${startIdx + i + 1}</td>
+                <td data-label="Nama Siswa" style="font-weight:600;">
+                    <span class="mon-no-mobile" style="display:none; width:26px; height:26px; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.28); border-radius:7px; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#93c5fd; flex-shrink:0;">${startIdx + i + 1}</span>
+                    <span class="mon-nama-text">${displayNama}</span>
+                </td>
+                <td data-label="Kelas / Mapel" style="text-align:center;">
                     <span class="badge" style="display:inline-block;margin-bottom:3px;">${s.kelas.includes('::') ? s.kelas.split('::')[1] : s.kelas}</span><br>
                     <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${s.mapel}</span>
                 </td>
-                <td style="text-align:center;">${statusBadge}</td>
-                <td style="text-align:center;">${plgBadge}</td>
-                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${waktu}</td>
-                <td style="text-align:center;">${hapusBtn}</td>
+                <td data-label="Status" style="text-align:center;">${statusBadge}</td>
+                <td data-label="Pelanggaran" style="text-align:center;">${plgBadge}</td>
+                <td data-label="Waktu Mulai" style="text-align:center; font-size:12px; color:var(--text-muted);">${waktu}</td>
+                <td data-label="Aksi" style="text-align:center;">${hapusBtn}</td>
             </tr>`;
     });
 

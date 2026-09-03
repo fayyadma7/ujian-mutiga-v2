@@ -528,12 +528,6 @@ function updateWelcomeGreeting() {
         const elHeaderName = document.getElementById('header-user-name-text');
         if (elHeaderName) elHeaderName.textContent = nama;
     }
-    const elDate = document.getElementById('welcome-date');
-    if (elDate) {
-        const now = new Date();
-        const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-        elDate.textContent = now.toLocaleDateString('id-ID', opts);
-    }
 }
 
 function pasangNavigasiRole() {
@@ -679,9 +673,34 @@ function initPage(idHalaman) {
             initCustomSelect('filter-kelas-monitoring');
         }
         if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
-        if (typeof populateFilterKelas === 'function') populateFilterKelas().then(() => {
+        if (typeof populateFilterKelas === 'function') {
+            // dukung pending dari sessionStorage (jika set sebelum lazy-load)
+            if (!window._pendingMonMapel) { try{ window._pendingMonMapel = sessionStorage.getItem('_pendingMonMapel'); }catch(_){} }
+            populateFilterKelas().then(() => {
+            // jika datang dari klik Jadwal Aktif di dashboard, auto-filter mapel
+            const pending = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
+            if (pending) {
+                const sel = document.getElementById('filter-mapel-monitoring');
+                if (sel) {
+                    let exists = [...sel.options].some(o => o.value === pending);
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = pending; opt.textContent = pending;
+                        sel.appendChild(opt);
+                    }
+                    sel.value = pending;
+                    if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-mapel-monitoring');
+                }
+                window._pendingMonMapel = null;
+                try{ sessionStorage.removeItem('_pendingMonMapel'); }catch(_){}
+            }
             if (typeof loadMonitoring === 'function') loadMonitoring();
-        });
+            });
+        } else {
+            // fallback jika populate belum ready (lazy-load race)
+            const pending2 = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
+            if (pending2 && typeof loadMonitoring === 'function') loadMonitoring();
+        }
     }
     if (idHalaman === 'data-kelas') {
         if (typeof initDataKelasSiswa === 'function') initDataKelasSiswa();
@@ -1174,7 +1193,46 @@ if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
 startJadwalRealtime();
 startSoalRealtime();
 
-// Sidebar toggle
+// Sidebar toggle — desktop collapses 280→80, mobile = drawer + backdrop
+function closeMobileSidebar(){
+    const sb=document.querySelector('.sidebar');
+    const bd=document.getElementById('sidebar-backdrop');
+    if(!sb) return;
+    sb.classList.remove('open');
+    if(bd){ bd.classList.remove('show'); }
+    document.body.style.overflow='';
+}
+function openMobileSidebar(){
+    const sb=document.querySelector('.sidebar');
+    const bd=document.getElementById('sidebar-backdrop');
+    if(!sb) return;
+    sb.classList.add('open');
+    if(bd) bd.classList.add('show');
+    document.body.style.overflow='hidden';
+}
 document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
-    document.querySelector('.sidebar').classList.toggle('collapsed');
+    if(window.innerWidth<=768){ const sb=document.querySelector('.sidebar'); sb.classList.contains('open')?closeMobileSidebar():openMobileSidebar(); }
+    else { document.querySelector('.sidebar').classList.toggle('collapsed'); }
 });
+window.addEventListener('resize', ()=>{ if(window.innerWidth>768) closeMobileSidebar(); });
+// Bottom nav (Opsi A — 5 frequent)
+function bottomNavGo(page){
+    const map={ 'dashboard':'dashboard','bank-soal':'bank-soal','jadwal':'jadwal','monitoring':'monitoring','laporan':'laporan' };
+    const id=map[page]||page;
+    const btn=document.querySelector(`.nav-links .nav-btn[onclick*="'${id}'"]`);
+    bukaHalaman(id, btn);
+    closeMobileSidebar();
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+function syncBottomNavActive(idHalaman){
+    document.querySelectorAll('#bottom-nav button').forEach(b=>{ b.classList.toggle('active', b.dataset.page===idHalaman); });
+}
+// patch bukaHalaman to sync bottom nav + close drawer on mobile
+(function(){
+    const _orig=bukaHalaman;
+    window.bukaHalaman=function(idHalaman, el){
+        _orig(idHalaman, el);
+        syncBottomNavActive(idHalaman);
+        if(window.innerWidth<=768) closeMobileSidebar();
+    };
+})();

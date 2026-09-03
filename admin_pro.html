@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="admin/css/admin-base.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=24">
 </head>
 
 <body>
@@ -355,6 +356,16 @@
                     <span>Akun Guru</span></a></li>
         </ul>
     </nav>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- BOTTOM NAV (Mobile ≤768px — Opsi A: 5 frequent) -->
+    <nav class="bottom-nav" id="bottom-nav" aria-label="Navigasi utama mobile">
+        <button onclick="bottomNavGo('dashboard')" data-page="dashboard" class="active"><i class="fas fa-home"></i><span>Dashboard</span></button>
+        <button onclick="bottomNavGo('bank-soal')" data-page="bank-soal"><i class="fas fa-file-alt"></i><span>Bank Soal</span></button>
+        <button onclick="bottomNavGo('jadwal')" data-page="jadwal"><i class="fas fa-calendar-alt"></i><span>Jadwal</span></button>
+        <button onclick="bottomNavGo('monitoring')" data-page="monitoring"><i class="fas fa-satellite-dish"></i><span>Live</span></button>
+        <button onclick="bottomNavGo('laporan')" data-page="laporan"><i class="fas fa-chart-bar"></i><span>Nilai</span></button>
+    </nav>
 
     <!-- KONTEN UTAMA -->
     <main class="main-wrapper">
@@ -414,13 +425,12 @@
                                 <span id="welcome-role-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;">
                                     <i class="fas fa-shield-halved"></i> Guru
                                 </span>
-                                <span><i class="fas fa-calendar-day" style="color:var(--text-muted);"></i> <span id="welcome-date"></span></span>
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:10px; display:none;">
                         <button onclick="logoutGuru()"
-                            style="display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;"
+                            style="display:none;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;"
                             onmouseover="this.style.background='rgba(239,68,68,0.18)';this.style.borderColor='rgba(239,68,68,0.4)';"
                             onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';">
                             <i class="fas fa-sign-out-alt"></i> Keluar
@@ -431,7 +441,7 @@
                     <div class="stat-card">
                         <div class="icon-box icon-blue"><i class="fas fa-users"></i></div>
                         <div class="stat-info">
-                            <h4>Total Siswa Ujian</h4>
+                            <h4>Total Siswa</h4>
                             <h2 id="tot-siswa">-</h2>
                         </div>
                     </div>
@@ -443,18 +453,10 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="icon-box icon-green"><i class="fas fa-check-circle"></i></div>
+                        <div class="icon-box" style="background:rgba(6, 182, 214, 0.12); color:#22d3ee;"><i class="fas fa-user-clock"></i></div>
                         <div class="stat-info">
-                            <h4>Rata-rata Nilai</h4>
-                            <h2 id="rata-nilai">-</h2>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="icon-box" style="background:rgba(239, 68, 68, 0.1); color:#f87171;"><i
-                                class="fas fa-broadcast-tower"></i></div>
-                        <div class="stat-info">
-                            <h4>Ujian Sedang Aktif</h4>
-                            <h2 id="tot-aktif" style="color:#f87171;">0</h2>
+                            <h4>Siswa Sedang Ujian</h4>
+                            <h2 id="tot-sedang-ujian" style="color:#22d3ee;">0</h2>
                         </div>
                     </div>
                 </div>

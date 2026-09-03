@@ -1,0 +1,698 @@
+/* ================================================================
+   ADMIN PANEL — MOBILE RESPONSIVE (Opsi A: Bottom Nav 5 + Drawer)
+   Override untuk HP tanpa mode desktop.
+   Load PALING AKHIR setelah admin-base/components/pages
+   Breakpoints: 768px (HP/Tablet portrait), 480px (HP kecil)
+   ================================================================ */
+
+/* ---------- 0. Bottom Nav (desktop hidden) ---------- */
+.bottom-nav{ display:none; }
+.sidebar-backdrop{ display:none; }
+
+/* ================================================================
+   1. Tablet & Mobile ≤768px — LAYOUT UTAMA
+   ================================================================ */
+@media (max-width: 768px){
+  /* Body jadi scroll vertikal normal, bukan flex terkunci */
+  body{ flex-direction:row; height:auto; min-height:100dvh; min-height:100vh; overflow:auto; overflow-x:hidden; background:var(--bg-color); }
+  /* Sidebar jadi drawer off-canvas */
+  .sidebar{
+    position:fixed; top:0; left:0; bottom:0;
+    width:280px; max-width:82vw;
+    transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    z-index:1100;
+    box-shadow:4px 0 32px rgba(0,0,0,.5);
+    overflow-y:auto;
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .sidebar.collapsed{ width:280px; transform:translateX(-100%); }
+  .sidebar.collapsed.open{ transform:translateX(0); }
+  /* Backdrop */
+  .sidebar-backdrop{
+    display:none; position:fixed; inset:0;
+    background:rgba(4,8,18,.55); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+    z-index:1099;
+  }
+  .sidebar-backdrop.show{ display:block; }
+  /* Main wrapper full width + bottom nav offset */
+  .main-wrapper{ flex:1; width:100%; min-width:0; overflow:visible; }
+  .content-area{ padding:16px 14px 96px 14px; overflow:visible; }
+  header{
+    padding:0 14px; height:auto; min-height:56px; gap:8px; flex-wrap:wrap;
+    position:sticky; top:0; z-index:100;
+  }
+  header > div:first-child{ gap:10px !important; }
+  header > div:last-child{ gap:8px !important; flex-wrap:wrap; justify-content:flex-end; width:100%; }
+  #tanggal-sekarang{ display:none !important; }
+  .header-title{ font-size:.95rem; }
+  .header-title::before{ display:none; }
+  #header-user-name, #role-badge, #header-logout-btn{ font-size:11px; }
+  /* Landing — stack 1 kolom */
+  .landing-container{ grid-template-columns:1fr !important; gap:2rem; }
+  .landing-panel-left{ align-items:center; text-align:center; }
+  .landing-panel-left .landing-desc{ text-align:center; }
+  .landing-brand{ justify-content:center; }
+  #landingOverlay{ padding:1.5rem 1rem; }
+  .landing-title{ font-size:clamp(2rem, 8vw, 3rem); }
+  .landing-title-sub{ font-size:clamp(1.4rem, 6vw, 2rem); }
+  /* Grid 2 kolom jadi 1 kolom — override inline style via !important */
+  #jadwal > div[style*="grid-template-columns"],
+  div[style*="grid-template-columns: 380px 1fr"],
+  div[style*="grid-template-columns: 320px 1fr"],
+  div[style*="grid-template-columns: 1fr 1fr"]:not(.landing-stats-grid){
+    grid-template-columns:1fr !important; gap:16px !important;
+  }
+  .grid-cards{ grid-template-columns:1fr 1fr; gap:12px; }
+  #jadwal .card-panel:first-child{ order:1; }
+  #jadwal .card-panel:last-child{ order:2; }
+  /* Upload area grid  */
+  div[style*="grid-template-columns: 1fr 1fr"]{ gap:12px !important; }
+  .upload-area{ padding:22px 14px; }
+  /* Panel header — stack + anti-terpotong */
+  .panel-header{ flex-wrap:wrap; gap:10px; align-items:flex-start; }
+  .panel-header > div{ width:100%; justify-content:flex-start !important; flex-wrap:wrap !important; gap:6px !important; }
+  .panel-header .btn, .card-panel .btn{ flex-shrink:0; white-space:nowrap; overflow:visible; text-overflow:clip; min-height:34px; line-height:1.3; padding-top:7px; padding-bottom:7px; }
+  .panel-header .form-control{ flex:1 1 140px; min-width:0; width:auto !important; }
+  #dashboard-welcome{ padding:16px !important; overflow:hidden; }
+  #dashboard-welcome > div:first-child{ min-width:0; flex:1; }
+  #panel-daftar-mapel .panel-header > div, #panel-detail-soal .panel-header > div{ gap:6px !important; }
+  /* Bottom Nav — FLOATING (melayang, rounded, blur) */
+  .bottom-nav{
+    display:flex; position:fixed; left:12px; right:12px; bottom:12px;
+    bottom:calc(12px + env(safe-area-inset-bottom, 0));
+    height:64px; padding:6px;
+    background:rgba(20, 32, 56, 0.92); background:linear-gradient(180deg, rgba(30,45,74,0.96), rgba(18,30,52,0.94));
+    border:1px solid rgba(255,255,255,0.09); border-radius:20px;
+    backdrop-filter:blur(18px) saturate(1.2); -webkit-backdrop-filter:blur(18px) saturate(1.2);
+    z-index:1050; justify-content:space-around; align-items:center; gap:4px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+  .bottom-nav button{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; background:none; border:none; color:#7a8aaa; cursor:pointer;
+    font-family:'Inter',sans-serif; font-size:9px; font-weight:600; letter-spacing:.3px;
+    text-transform:uppercase; padding:6px 2px; position:relative; transition:all .2s; border-radius:14px;
+  }
+  .bottom-nav button i{ font-size:18px; margin-bottom:1px; transition:all .2s; }
+  .bottom-nav button.active{ color:#93c5fd; background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.22); }
+  .bottom-nav button.active i{ color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,.4)); transform:none; }
+  .bottom-nav button.active::before{ display:none; }
+  .bottom-nav button:active{ transform:scale(.96); }
+  /* Dashboard 2-col jadi 1 */
+  div[style*="grid-template-columns: 1fr 1fr"][style*="gap: 20px"]{ grid-template-columns:1fr !important; }
+  /* Soal preview opsi grid */
+  #manual-opsi-grid, #edit-opsi-grid{ grid-template-columns:1fr !important; }
+  .manual-opsi-item, .edit-opsi-item{ grid-column:auto !important; }
+  /* Form datetime 2 col jadi 1 di phone kecil dibawah */
+  /* Table wrapper — cardlist handles, hide horizontal scroll hint */
+  /* Monitoring/Laporan filter bar — sudah flex-wrap, pastikan full width */
+  #monitoring .panel-header > div, #laporan .panel-header > div{ width:100%; }
+  /* MONITORING — Filter & Tombol dirapikan total (mobile) mirror Laporan */
+  #monitoring .panel-header{ padding:14px !important; background:rgba(255,255,255,0.015) !important; border:1px solid rgba(255,255,255,0.06) !important; border-radius:14px !important; }
+  #monitoring .panel-header > div{ gap:12px !important; }
+  #monitoring .panel-header > div > div:nth-child(1){
+    display:grid !important; grid-template-columns:1fr 1fr; gap:8px !important;
+    justify-content:stretch !important; align-items:center !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) #search-nama-monitoring{
+    grid-column:1 / -1 !important; width:100% !important; height:38px !important; font-size:13px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:10px !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) > button:nth-of-type(1),
+  #monitoring .panel-header > div > div:nth-child(1) > button:nth-of-type(2){
+    height:36px !important; font-size:11px !important; font-weight:600 !important; border-radius:8px !important; justify-content:center !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) > div[style*="position:relative"]{
+    grid-column:1 / -1 !important; width:100% !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) > div[style*="position:relative"] #btn-date-filter{
+    width:100% !important; justify-content:center !important; height:36px !important; border-radius:8px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) .csl-container{
+    display:block !important; width:100% !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(1) .csl-btn{
+    width:100% !important; height:36px !important; font-size:12px !important; border-radius:8px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important; justify-content:center !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(2){
+    display:grid !important; grid-template-columns:1fr 1fr; gap:8px !important;
+    justify-content:stretch !important; align-items:center !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(2) button{
+    height:36px !important; font-size:11px !important; font-weight:600 !important; border-radius:8px !important; justify-content:center !important; white-space:nowrap !important;
+  }
+  #monitoring .panel-header > div > div:nth-child(2) button[onclick*="bulkActionMonitoring"]{
+    background:rgba(239,68,68,0.08) !important; border:1px solid rgba(239,68,68,0.18) !important; color:#fca5a5 !important;
+  }
+  /* MONITORING cards — horizontal & kecil */
+  #monitoring div[style*="grid-template-columns:repeat(3,1fr)"]{
+    grid-template-columns:repeat(3,1fr) !important; gap:8px !important; margin-bottom:16px !important;
+  }
+  #monitoring #mon-card-aktif, #monitoring #mon-card-selesai, #monitoring #mon-card-pelanggaran{
+    padding:10px 8px !important; border-radius:12px !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; min-height:72px !important;
+  }
+  #monitoring #mon-card-aktif div:first-child,
+  #monitoring #mon-card-selesai div:first-child,
+  #monitoring #mon-card-pelanggaran div:first-child{
+    font-size:1.35rem !important; line-height:1 !important;
+  }
+  #monitoring #mon-card-aktif div:last-child,
+  #monitoring #mon-card-selesai div:last-child,
+  #monitoring #mon-card-pelanggaran div:last-child{
+    font-size:0.62rem !important; margin-top:4px !important; text-align:center !important; line-height:1.2 !important; letter-spacing:0.2px !important;
+  }
+  /* LAPORAN NILAI — Filter & Tombol dirapikan total (mobile) */
+  #laporan .panel-header{ padding:14px !important; background:rgba(255,255,255,0.015) !important; border:1px solid rgba(255,255,255,0.06) !important; border-radius:14px !important; }
+  #laporan .panel-header > div{ gap:12px !important; }
+  #laporan .panel-header > div > div:nth-child(1){
+    display:grid !important; grid-template-columns:1fr 1fr; gap:8px !important;
+    justify-content:stretch !important; align-items:center !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) #search-nama-laporan{
+    grid-column:1 / -1 !important; width:100% !important; height:38px !important; font-size:13px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:10px !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) > button:nth-of-type(1),
+  #laporan .panel-header > div > div:nth-child(1) > button:nth-of-type(2){
+    height:36px !important; font-size:11px !important; font-weight:600 !important; border-radius:8px !important; justify-content:center !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) > div[style*="position:relative"]{
+    grid-column:1 / -1 !important; width:100% !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) > div[style*="position:relative"] #btn-date-filter-laporan{
+    width:100% !important; justify-content:center !important; height:36px !important; border-radius:8px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) .csl-container{
+    display:block !important; width:100% !important;
+  }
+  #laporan .panel-header > div > div:nth-child(1) .csl-btn{
+    width:100% !important; height:36px !important; font-size:12px !important; border-radius:8px !important;
+    background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.08) !important; justify-content:center !important;
+  }
+  #laporan .panel-header > div > div:nth-child(2){
+    display:grid !important; grid-template-columns:1fr 1fr; gap:8px !important;
+    justify-content:stretch !important; align-items:center !important;
+  }
+  #laporan .panel-header > div > div:nth-child(2) button{
+    height:36px !important; font-size:11px !important; font-weight:600 !important; border-radius:8px !important; justify-content:center !important; white-space:nowrap !important;
+  }
+  #laporan .panel-header > div > div:nth-child(2) button[onclick*="exportExcel"]{
+    grid-column:1 / -1 !important; background:linear-gradient(135deg, #3b82f6, #2563eb) !important; border:none !important; color:white !important; height:40px !important; font-size:12px !important; font-weight:700 !important; border-radius:10px !important; box-shadow:0 4px 12px rgba(59,130,246,0.30) !important;
+  }
+  #laporan .panel-header > div > div:nth-child(2) button[onclick*="bulkActionLaporan"]{
+    background:rgba(239,68,68,0.08) !important; border:1px solid rgba(239,68,68,0.18) !important; color:#fca5a5 !important;
+  }
+  #laporan .panel-header > div > div:nth-child(2) button[onclick*="fileUploadDarurat"]{
+    grid-column:1 / -1 !important; background:linear-gradient(135deg, #f59e0b, #d97706) !important; border:none !important; color:white !important; height:40px !important; font-size:12px !important; font-weight:700 !important; border-radius:10px !important; box-shadow:0 4px 12px rgba(245,158,11,0.3) !important;
+  }
+  /* Soalku: horizontal card overflow fix */
+  .soal-item{ padding:12px !important; }
+  /* Stat cards di analisis */
+  #analisis-soal-page div[style*="flex: 2"], #analisis-soal-page div[style*="flex: 1"]{ min-width:100% !important; flex:1 1 100% !important; }
+}
+
+/* ================================================================
+   2. CARDLIST — Semua tabel jadi kartu di HP (Pro & Rapi)
+   ================================================================ */
+@media (max-width: 768px){
+  /* Sembunyikan header tabel */
+  .card-panel table thead{ display:none !important; }
+  .card-panel table, .card-panel tbody, .card-panel tr{ display:block; width:100%; }
+  .card-panel table{ border-collapse:separate; border-spacing:0; }
+  /* Tiap baris jadi kartu — base */
+  .card-panel tbody tr{
+    background:rgba(15,23,42,.9); border:1px solid rgba(255,255,255,.07); border-radius:16px;
+    padding:0; margin-bottom:12px; display:block; position:relative;
+    box-shadow:0 4px 16px rgba(0,0,0,.2); overflow:hidden;
+  }
+  .card-panel tbody tr::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:linear-gradient(to bottom, #3b82f6, #8b5cf6); opacity:.9;
+  }
+  .card-panel tbody tr:hover{ border-color:rgba(59,130,246,.2); box-shadow:0 6px 20px rgba(0,0,0,.25); }
+  .card-panel tbody tr td{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:10px 14px 10px 18px; border:none; border-bottom:1px solid rgba(255,255,255,.05);
+    font-size:13px; text-align:right; min-height:34px;
+  }
+  .card-panel tbody tr td:last-child{ border-bottom:none; }
+  .card-panel tbody tr td::before{
+    content:attr(data-label); font-size:10px; font-weight:700; color:#64748b;
+    text-transform:uppercase; letter-spacing:.6px; text-align:left; flex-shrink:0; max-width:42%;
+  }
+  .card-panel tbody tr td[data-label=""]::before,
+  .card-panel tbody tr td[data-label="No"]::before,
+  .card-panel tbody tr td:first-child::before{ display:none; }
+  /* Checkbox pojok kanan atas — lebih halus */
+  .card-panel tbody tr td:first-child{
+    position:absolute; top:10px; right:10px; width:auto; padding:0; border:none; display:block; z-index:2;
+  }
+  .card-panel tbody tr td:first-child input[type="checkbox"]{ width:16px; height:16px; accent-color:#3b82f6; opacity:.85; }
+  /* Kolom No badge kecil */
+  .card-panel tbody tr td:nth-child(2){
+    position:absolute; top:10px; left:18px; width:auto; padding:0; border:none; display:block;
+    font-size:10px; font-weight:800; color:#94a3b8; background:rgba(255,255,255,.06);
+    border-radius:6px; padding:2px 6px; line-height:1;
+  }
+  .card-panel tbody tr td:nth-child(2)::before{ display:none; }
+  /* Ruang atas untuk badge No + checkbox */
+  .card-panel tbody tr{ padding-top:34px; }
+  /* Footer aksi — background beda, tombol rapi */
+  .card-panel tbody tr td[data-label="Aksi"]{
+    justify-content:flex-end; background:rgba(255,255,255,.02); margin:0 -0; padding:10px 14px 10px 18px;
+    gap:8px; border-top:1px solid rgba(255,255,255,.05);
+  }
+  .card-panel tbody tr td[data-label="Aksi"]::before{ display:none; }
+  .card-panel tbody tr td[data-label="Aksi"] .btn{ padding:6px 14px; font-size:11px; font-weight:600; border-radius:8px; min-height:32px; }
+  /* --- DESAIN EXACT SEPERTI GAMBAR: Daftar Bank Soal --- */
+  #panel-daftar-mapel tbody tr{ padding-top:0 !important; border-left:none; background:#1e2a3a; border:1px solid rgba(255,255,255,.06); border-radius:12px; display:block; overflow:hidden; }
+  #panel-daftar-mapel tbody tr::before{ display:none; }
+  #panel-daftar-mapel tbody tr td[data-label="Mata Pelajaran"]{
+    position:static !important; top:auto !important; left:auto !important; background:none !important;
+    padding:14px 38px 10px 14px !important; border-bottom:none !important; display:block !important; width:100% !important;
+  }
+  #panel-daftar-mapel tbody tr td[data-label="Mata Pelajaran"]::before{ display:none !important; }
+  #panel-daftar-mapel tbody tr td[data-label="Mata Pelajaran"]{
+    position:static !important; top:auto !important; left:auto !important; background:none !important;
+    display:block !important; width:100% !important; padding:14px 38px 10px 14px !important;
+    border:none !important; border-bottom:none !important; font-size:inherit !important; color:inherit !important;
+    border-radius:0 !important;
+  }
+  #panel-daftar-mapel tbody tr td[data-label="Mata Pelajaran"]::before{ display:none !important; }
+  #panel-daftar-mapel tbody tr td:first-child{
+    position:absolute !important; top:16px !important; right:10px !important; padding:0 !important; display:block !important; z-index:2; border:none !important;
+  }
+  #panel-daftar-mapel tbody tr td:first-child input{ width:16px; height:16px; accent-color:#3b82f6; opacity:.6; border-radius:3px; }
+  /* Baris tengah: hanya 35 SOAL */
+  #panel-daftar-mapel tbody tr td[data-label="Jumlah Soal"]{
+    display:block !important; padding:8px 12px !important; margin:0 12px !important; background:transparent !important; border:none !important;
+    border-top:1px solid rgba(255,255,255,.06) !important; border-bottom:1px solid rgba(255,255,255,.06) !important; text-align:left !important;
+  }
+  #panel-daftar-mapel tbody tr td[data-label="Jumlah Soal"]::before, #panel-daftar-mapel tbody tr td[data-label="Jumlah Soal"]::after{ display:none !important; }
+  #panel-daftar-mapel tbody tr td[data-label="Dibuat Oleh"]{ display:none !important; }
+  /* Footer aksi: 2 tombol full */
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"]{
+    display:flex; gap:10px; padding:10px 12px 12px 12px; background:transparent; border:none; justify-content:space-between;
+  }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"]::before{ display:none; }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .action-buttons{ display:contents; }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn{ flex:1; justify-content:center; padding:9px 10px; font-size:12px; font-weight:600; border-radius:8px; min-height:36px; background:transparent; }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn:first-child{ color:#60a5fa; border:1px solid rgba(59,130,246,.35); background:rgba(59,130,246,.06); }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn:last-child{ color:#f87171; border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.06); }
+  /* Jadwal card — EXACT FOTO REFERENSI (tbody#tabel-jadwal) — Pro Max pixel-perfect */
+  #tabel-jadwal{ display:block; }
+  tbody#tabel-jadwal{ display:block; }
+  tbody#tabel-jadwal tr{
+    display:block; background:#1e2d44; border:1px solid rgba(255,255,255,.08); border-radius:18px;
+    padding:0 !important; overflow:hidden; position:relative; margin-bottom:16px;
+    box-shadow:0 8px 28px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.04) inset;
+  }
+  tbody#tabel-jadwal tr::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:#3b82f6; border-radius:18px 0 0 18px;
+  }
+  .card-panel tbody#tabel-jadwal tr{ padding-top:0 !important; }
+  tbody#tabel-jadwal tr td[data-label=""]{
+    position:absolute !important; top:22px !important; right:16px !important;
+    padding:0 !important; border:none !important; z-index:2; display:block !important;
+    width:auto !important; height:auto !important; background:transparent !important;
+  }
+  tbody#tabel-jadwal tr td[data-label=""]::before{ display:none !important; content:none !important; }
+  tbody#tabel-jadwal tr td[data-label=""] input[type="checkbox"]{
+    width:22px !important; height:22px !important; accent-color:#3b82f6; opacity:1;
+    border:1.5px solid rgba(148,163,184,.5) !important; border-radius:6px !important; background:transparent !important;
+    appearance:none !important; -webkit-appearance:none !important;
+    background:rgba(255,255,255,.02) !important; border:1.5px solid #6b7a99 !important;
+  }
+  tbody#tabel-jadwal tr td[data-label=""] input[type="checkbox"]:checked{
+    background:#3b82f6 !important; border-color:#3b82f6 !important;
+  }
+  /* HEADER MAPEL — besar seperti foto */
+  tbody#tabel-jadwal tr td[data-label="Mapel"]{
+    display:flex !important; align-items:center !important;
+    position:static !important; top:auto !important; left:auto !important;
+    width:100% !important; max-width:100% !important;
+    padding:18px 52px 18px 16px !important;
+    border:none !important; border-bottom:1px solid rgba(255,255,255,.07) !important;
+    background:rgba(255,255,255,.015) !important; border-radius:0 !important; box-shadow:none !important;
+    min-height:72px !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Mapel"]::before{ display:none !important; content:none !important; }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div{
+    display:flex !important; align-items:center !important; gap:14px !important; width:100% !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child{
+    width:52px !important; height:52px !important; min-width:52px !important;
+    border-radius:14px !important; background:#19365a !important;
+    border:1px solid rgba(59,130,246,.25) !important;
+    display:flex !important; align-items:center !important; justify-content:center !important;
+    box-shadow:0 2px 8px rgba(0,0,0,.2) !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child i{ font-size:20px !important; color:#60a5fa !important; }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
+    font-size:18px !important; font-weight:700 !important; color:#f1f5f9 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+    line-height:1.2 !important; letter-spacing:.2px !important;
+  }
+  /* REBUILD TOTAL: FLEX ROW — icon + label DISAMPING (bukan dibawah) — label 100% KIRI, value TENGAH KANAN */
+  tbody#tabel-jadwal tr td[data-label="Kelas"],
+  tbody#tabel-jadwal tr td[data-label="Waktu"],
+  tbody#tabel-jadwal tr td[data-label="Durasi"],
+  tbody#tabel-jadwal tr td[data-label="Status"],
+  tbody#tabel-jadwal tr td[data-label="Aktif"],
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]{
+    display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important; gap:0 !important;
+    padding:14px 18px !important; border-bottom:1px solid rgba(255,255,255,.06) !important;
+    min-height:54px !important; text-align:left !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"]::before,
+  tbody#tabel-jadwal tr td[data-label="Waktu"]::before,
+  tbody#tabel-jadwal tr td[data-label="Durasi"]::before,
+  tbody#tabel-jadwal tr td[data-label="Status"]::before,
+  tbody#tabel-jadwal tr td[data-label="Aktif"]::before,
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]::before{
+    order:1 !important; flex:0 0 22px !important; width:22px !important; min-width:22px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important;
+    font-family:"Font Awesome 6 Free" !important; font-weight:900 !important; font-size:14px !important; color:#8ea0c2 !important; opacity:.95 !important;
+    margin:0 !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"]::after,
+  tbody#tabel-jadwal tr td[data-label="Waktu"]::after,
+  tbody#tabel-jadwal tr td[data-label="Durasi"]::after,
+  tbody#tabel-jadwal tr td[data-label="Status"]::after,
+  tbody#tabel-jadwal tr td[data-label="Aktif"]::after,
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]::after{
+    order:2 !important; flex:0 0 86px !important; width:86px !important; min-width:86px !important; display:inline-flex !important; align-items:center !important;
+    font-size:12px !important; font-weight:600 !important; color:#8a9abb !important; letter-spacing:1px !important; text-align:left !important;
+    margin:0 0 0 10px !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"]::before{ content:"\f0c0" !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"]::after{ content:"KELAS" !important; }
+  tbody#tabel-jadwal tr td[data-label="Waktu"]::before{ content:"\f073" !important; }
+  tbody#tabel-jadwal tr td[data-label="Waktu"]::after{ content:"WAKTU" !important; }
+  tbody#tabel-jadwal tr td[data-label="Durasi"]::before{ content:"\f017" !important; }
+  tbody#tabel-jadwal tr td[data-label="Durasi"]::after{ content:"DURASI" !important; }
+  tbody#tabel-jadwal tr td[data-label="Status"]::before{ content:"\f3ed" !important; }
+  tbody#tabel-jadwal tr td[data-label="Status"]::after{ content:"STATUS" !important; }
+  tbody#tabel-jadwal tr td[data-label="Aktif"]::before{ content:"\f007" !important; }
+  tbody#tabel-jadwal tr td[data-label="Aktif"]::after{ content:"AKTIVASI" !important; }
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]::before{ content:"\f044" !important; }
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]::after{ content:"PEMBUAT" !important; }
+  /* VALUE di kolom 3 — order 3, flex 1, ABSOLUT KANAN seperti request */
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap,
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu,
+  tbody#tabel-jadwal tr td[data-label="Durasi"] .jk-durasi,
+  tbody#tabel-jadwal tr td[data-label="Status"] .badge,
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .jk-aktivasi-wrap,
+  tbody#tabel-jadwal tr td[data-label="Pembuat"] .jk-pembuat{
+    order:3 !important; flex:1 1 0 !important; display:flex !important; justify-content:flex-end !important; align-items:center !important;
+    margin-left:12px !important; grid-column:unset !important; justify-self:unset !important; text-align:right !important;
+  }
+  /* KELAS pills — absolut kanan */
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap{ display:flex !important; justify-content:flex-end !important; width:100% !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badges{ display:flex !important; gap:8px !important; align-items:center !important; justify-content:flex-end !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge{
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    padding:7px 16px !important; border-radius:10px !important; font-size:13px !important; font-weight:700 !important;
+    letter-spacing:.3px !important; white-space:nowrap !important; line-height:1 !important;
+    background:rgba(59,130,246,.14) !important; color:#7eb0ff !important; border:1.5px solid rgba(59,130,246,.38) !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge:nth-child(2){
+    background:rgba(255,255,255,.04) !important; color:#8a9abb !important; border-color:rgba(255,255,255,.1) !important;
+  }
+  /* WAKTU — absolut kanan, rata kanan */
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu{
+    display:flex !important; flex-direction:column !important; align-items:flex-end !important; gap:3px !important; width:auto !important; margin:0 !important; text-align:right !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu-date{
+    font-size:16px !important; font-weight:700 !important; color:#e2e8f0 !important; line-height:1.1 !important; letter-spacing:.2px !important; text-align:right !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu-time{
+    display:flex !important; align-items:center !important; justify-content:flex-end !important; gap:8px !important; font-size:15px !important; font-weight:700 !important; text-align:right !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-t-start{ color:#10b981 !important; font-size:15px !important; font-weight:800 !important; }
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-t-sep{ color:#5a6a85 !important; font-weight:500 !important; font-size:13px !important; }
+  tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-t-end{ color:#f87171 !important; font-size:15px !important; font-weight:800 !important; }
+  /* DURASI — absolut kanan */
+  tbody#tabel-jadwal tr td[data-label="Durasi"] .jk-durasi{
+    display:flex !important; align-items:baseline !important; justify-content:flex-end !important; gap:8px !important; width:auto !important; margin:0 !important; text-align:right !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Durasi"] .jk-durasi strong{
+    color:#10b981 !important; font-size:28px !important; font-weight:800 !important; line-height:1 !important; letter-spacing:-.5px !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Durasi"] .jk-durasi span{
+    font-size:14px !important; color:#8a9abb !important; font-weight:500 !important; letter-spacing:.3px !important;
+  }
+  /* STATUS — pill NONAKTIF fit content + absolut kanan */
+  tbody#tabel-jadwal tr td[data-label="Status"] .badge{
+    display:inline-flex !important; align-items:center !important; justify-content:center !important; gap:6px !important;
+    padding:5px 10px !important; border-radius:999px !important; font-size:12px !important; font-weight:600 !important;
+    letter-spacing:.3px !important; white-space:nowrap !important; width:auto !important; max-width:fit-content !important; min-width:0 !important; flex:0 0 auto !important;
+    background:rgba(255,255,255,.04) !important; color:#9aaabe !important; border:1.2px solid rgba(255,255,255,.08) !important;
+    margin-left:auto !important; margin-right:0 !important; margin-top:0 !important; margin-bottom:0 !important;
+    line-height:1 !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Status"] .badge i{ font-size:11px !important; opacity:.9 !important; }
+  /* AKTIVASI — toggle saja, tanpa teks, absolut kanan */
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .jk-aktivasi-wrap{
+    display:flex !important; align-items:center !important; justify-content:flex-end !important; gap:0 !important;
+    margin-left:auto !important; margin-right:0 !important; flex:0 0 auto !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .jk-aktivasi-text{ display:none !important; }
+  /* hide duplicate rule override */
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .toggle{ margin:0 !important; }
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .toggle-slider{
+    width:52px !important; height:28px !important; background:#2a3446 !important; border-radius:999px !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Aktif"] .toggle-slider:before{
+    width:22px !important; height:22px !important; left:3px !important; bottom:3px !important; background:white !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Aktif"] input:checked + .toggle-slider{ background:#3b82f6 !important; }
+  tbody#tabel-jadwal tr td[data-label="Aktif"] input:checked + .toggle-slider:before{ transform:translateX(24px) !important; }
+  tbody#tabel-jadwal tr td[data-label="Pembuat"]{ font-size:13px !important; color:#7a8aaa !important; font-weight:500 !important; }
+  tbody#tabel-jadwal tr td[data-label="Pembuat"] .jk-pembuat{ display:flex !important; align-items:center !important; justify-content:flex-end !important; width:auto !important; font-size:14px !important; color:#7a8aaa !important; margin:0 !important; text-align:right !important; }
+  tbody#tabel-jadwal tr td[data-label="Pembuat"] .jk-pembuat span{ color:#7a8aaa !important; }
+  /* AKSI footer — 2 tombol besar seperti foto */
+  tbody#tabel-jadwal tr td[data-label="Aksi"]{
+    display:flex !important; gap:12px !important; padding:16px 16px 18px 16px !important; background:transparent !important;
+    border-top:1px solid rgba(255,255,255,.06) !important; justify-content:space-between !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Aksi"]::before{ display:none !important; }
+  tbody#tabel-jadwal tr td[data-label="Aksi"] > div{ display:contents !important; }
+  tbody#tabel-jadwal tr td[data-label="Aksi"] .btn{
+    flex:1 !important; justify-content:center !important; gap:8px !important;
+    padding:13px 10px !important; font-size:15px !important; font-weight:600 !important; border-radius:12px !important; min-height:46px !important;
+    letter-spacing:.2px !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Aksi"] .btn-primary{ background:transparent !important; color:#60a5fa !important; border:1.6px solid rgba(59,130,246,.45) !important; }
+  tbody#tabel-jadwal tr td[data-label="Aksi"] .btn-danger{ background:transparent !important; color:#f87171 !important; border:1.6px solid rgba(239,68,68,.45) !important; }
+  tbody#tabel-jadwal tr td[data-label="Aksi"] .btn i{ display:inline-block !important; font-size:15px !important; opacity:.95 !important; }
+  /* Live Monitoring — CARD RAPI: Nama di header kiri atas sebelah nomor (tbody#tabel-monitoring) */
+  #tabel-monitoring{ display:block; }
+  tbody#tabel-monitoring{ display:block; }
+  tbody#tabel-monitoring tr{
+    display:block; background:#1e2a3a; border:1px solid rgba(255,255,255,.06); border-radius:12px;
+    padding:0 !important; overflow:hidden; position:relative; margin-bottom:12px;
+  }
+  tbody#tabel-monitoring tr::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#3b82f6; border-radius:12px 0 0 12px;
+  }
+  /* override generic padding-top:34px */
+  .card-panel tbody#tabel-monitoring tr{ padding-top:0 !important; }
+  /* sembunyikan kolom No generik – nomor dipindah ke header Nama */
+  tbody#tabel-monitoring tr td[data-label="No"]{ display:none !important; }
+  tbody#tabel-monitoring tr td:nth-child(2){ display:none !important; }
+  /* HEADER CARD: nomor + nama siswa di pojok kiri atas – paksa override generic .card-panel */
+  .card-panel tbody#tabel-monitoring tr td[data-label="Nama Siswa"]{
+    display:flex !important; justify-content:flex-start !important; align-items:center !important; gap:9px !important;
+    padding:13px 44px 13px 14px !important;
+    border:none !important; border-bottom:1px solid rgba(255,255,255,.07) !important;
+    background:rgba(255,255,255,.015) !important;
+    font-size:14px !important; font-weight:700 !important; color:#f8fafc !important; text-align:left !important;
+    line-height:1.35 !important; min-height:48px !important;
+  }
+  .card-panel tbody#tabel-monitoring tr td[data-label="Nama Siswa"]::before{ display:none !important; content:none !important; }
+  tbody#tabel-monitoring tr td[data-label="Nama Siswa"] .mon-no-mobile{
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    width:26px !important; height:26px !important; min-width:26px !important;
+    background:rgba(59,130,246,.14) !important; border:1px solid rgba(59,130,246,.28) !important;
+    color:#93c5fd !important; border-radius:7px !important;
+    font-size:12px !important; font-weight:800 !important; flex-shrink:0 !important; line-height:1 !important;
+  }
+  tbody#tabel-monitoring tr td[data-label="Nama Siswa"] .mon-nama-text{
+    flex:1 !important; min-width:0 !important; display:block !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+    font-size:14px !important; font-weight:700 !important; color:#f1f5f9 !important; letter-spacing:.1px !important;
+  }
+  /* checkbox pojok kanan atas – sejajar tengah header (48px) */
+  tbody#tabel-monitoring tr td[data-label=""]{
+    position:absolute !important; top:16px !important; right:12px !important;
+    padding:0 !important; border:none !important; z-index:2; display:block !important;
+    width:auto !important; height:auto !important; background:transparent !important;
+  }
+  tbody#tabel-monitoring tr td[data-label=""]::before{ display:none !important; content:none !important; }
+  tbody#tabel-monitoring tr td[data-label=""] input[type="checkbox"]{ width:16px !important; height:16px !important; accent-color:#3b82f6; opacity:.7; display:block; }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"],
+  tbody#tabel-monitoring tr td[data-label="Status"],
+  tbody#tabel-monitoring tr td[data-label="Pelanggaran"],
+  tbody#tabel-monitoring tr td[data-label="Waktu Mulai"]{
+    display:flex !important; justify-content:space-between !important; align-items:center !important; gap:12px;
+    padding:10px 12px !important; border-bottom:1px solid rgba(255,255,255,.05) !important; min-height:40px !important;
+  }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"]::before,
+  tbody#tabel-monitoring tr td[data-label="Status"]::before,
+  tbody#tabel-monitoring tr td[data-label="Pelanggaran"]::before,
+  tbody#tabel-monitoring tr td[data-label="Waktu Mulai"]::before{
+    font-size:10px; font-weight:700; color:#64748b; letter-spacing:.5px; flex-shrink:0; min-width:96px; text-align:left;
+  }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"]::before{ content:"KELAS / MAPEL" !important; }
+  tbody#tabel-monitoring tr td[data-label="Status"]::before{ content:"STATUS" !important; }
+  tbody#tabel-monitoring tr td[data-label="Pelanggaran"]::before{ content:"PELANGGARAN" !important; }
+  tbody#tabel-monitoring tr td[data-label="Waktu Mulai"]::before{ content:"WAKTU MULAI" !important; }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"]{ flex-wrap:nowrap !important; gap:8px !important; }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"] > span.badge{ background:rgba(59,130,246,.12) !important; color:#60a5fa !important; border:1px solid rgba(59,130,246,.25) !important; font-size:11px !important; padding:4px 10px !important; border-radius:8px !important; font-weight:700 !important; white-space:nowrap !important; margin-left:auto !important; }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"] > span:last-child{ font-size:13px !important; color:#cbd5e1 !important; font-weight:500 !important; margin-left:0 !important; padding-left:8px !important; border-left:1px solid rgba(255,255,255,.14) !important; text-align:right !important; }
+  tbody#tabel-monitoring tr td[data-label="Kelas / Mapel"] br{ display:none !important; }
+  tbody#tabel-monitoring tr td[data-label="Status"] .badge{ font-size:11px !important; padding:5px 12px !important; border-radius:20px !important; white-space:nowrap !important; }
+  tbody#tabel-monitoring tr td[data-label="Pelanggaran"]{ font-size:12px !important; font-weight:600 !important; }
+  tbody#tabel-monitoring tr td[data-label="Pelanggaran"] span{ color:#10b981 !important; }
+  tbody#tabel-monitoring tr td[data-label="Waktu Mulai"]{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace !important; font-size:13px !important; color:#e2e8f0 !important; letter-spacing:.2px !important; }
+  tbody#tabel-monitoring tr td[data-label="Aksi"]{
+    display:flex !important; justify-content:flex-end !important; padding:10px 12px 12px 12px !important; background:transparent !important; border:none !important; border-top:1px solid rgba(255,255,255,.04) !important;
+  }
+  tbody#tabel-monitoring tr td[data-label="Aksi"]::before{ display:none !important; }
+  tbody#tabel-monitoring tr td[data-label="Aksi"] .btn{ padding:7px 16px !important; font-size:12px !important; border-radius:8px !important; min-height:34px !important; background:transparent !important; color:#f87171 !important; border:1px solid rgba(239,68,68,.35) !important; }
+  /* Laporan Nilai — SAMAKAN dengan Live Monitoring (nama di header sebelah nomor) */
+  #tabel-data-nilai{ display:block; }
+  tbody#tabel-data-nilai{ display:block; }
+  tbody#tabel-data-nilai tr{
+    display:block; background:#1e2a3a; border:1px solid rgba(255,255,255,.06); border-radius:12px;
+    padding:0 !important; overflow:hidden; position:relative; margin-bottom:12px;
+  }
+  tbody#tabel-data-nilai tr::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#3b82f6; border-radius:12px 0 0 12px;
+  }
+  .card-panel tbody#tabel-data-nilai tr{ padding-top:0 !important; }
+  tbody#tabel-data-nilai tr td[data-label="No"]{ display:none !important; }
+  tbody#tabel-data-nilai tr td:nth-child(2){ display:none !important; }
+  .card-panel tbody#tabel-data-nilai tr td[data-label="Nama Siswa"]{
+    display:flex !important; justify-content:flex-start !important; align-items:center !important; gap:9px !important;
+    padding:13px 44px 13px 14px !important;
+    border:none !important; border-bottom:1px solid rgba(255,255,255,.07) !important;
+    background:rgba(255,255,255,.015) !important;
+    font-size:14px !important; font-weight:700 !important; color:#f8fafc !important; text-align:left !important;
+    line-height:1.35 !important; min-height:48px !important;
+  }
+  .card-panel tbody#tabel-data-nilai tr td[data-label="Nama Siswa"]::before{ display:none !important; content:none !important; }
+  tbody#tabel-data-nilai tr td[data-label="Nama Siswa"] .mon-no-mobile{
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    width:26px !important; height:26px !important; min-width:26px !important;
+    background:rgba(59,130,246,.14) !important; border:1px solid rgba(59,130,246,.28) !important;
+    color:#93c5fd !important; border-radius:7px !important;
+    font-size:12px !important; font-weight:800 !important; flex-shrink:0 !important; line-height:1 !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label="Nama Siswa"] .mon-nama-text{
+    flex:1 !important; min-width:0 !important; display:block !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+    font-size:14px !important; font-weight:700 !important; color:#f1f5f9 !important; letter-spacing:.1px !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label=""]{
+    position:absolute !important; top:16px !important; right:12px !important;
+    padding:0 !important; border:none !important; z-index:2; display:block !important;
+    width:auto !important; height:auto !important; background:transparent !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label=""]::before{ display:none !important; content:none !important; }
+  tbody#tabel-data-nilai tr td[data-label=""] input[type="checkbox"]{ width:16px !important; height:16px !important; accent-color:#3b82f6; opacity:.7; display:block; }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"],
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"],
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"],
+  tbody#tabel-data-nilai tr td[data-label="Status"]{
+    display:flex !important; justify-content:space-between !important; align-items:center !important; gap:12px;
+    padding:10px 12px !important; border-bottom:1px solid rgba(255,255,255,.05) !important; min-height:40px !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"]::before,
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"]::before,
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"]::before,
+  tbody#tabel-data-nilai tr td[data-label="Status"]::before{
+    font-size:10px; font-weight:700; color:#64748b; letter-spacing:.5px; flex-shrink:0; min-width:96px; text-align:left;
+  }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"]::before{ content:"KELAS / MAPEL" !important; }
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"]::before{ content:"SKOR PG" !important; }
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"]::before{ content:"DURASI & PELANGGARAN" !important; }
+  tbody#tabel-data-nilai tr td[data-label="Status"]::before{ content:"STATUS" !important; }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"]{ flex-wrap:nowrap !important; gap:8px !important; }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"] > span.badge{ background:rgba(59,130,246,.12) !important; color:#60a5fa !important; border:1px solid rgba(59,130,246,.25) !important; font-size:11px !important; padding:4px 10px !important; border-radius:8px !important; font-weight:700 !important; white-space:nowrap !important; margin-left:auto !important; }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"] > span:last-child{ font-size:13px !important; color:#cbd5e1 !important; font-weight:500 !important; margin-left:0 !important; padding-left:8px !important; border-left:1px solid rgba(255,255,255,.14) !important; text-align:right !important; }
+  tbody#tabel-data-nilai tr td[data-label="Kelas / Mapel"] br{ display:none !important; }
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"] br{ display:none !important; }
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"] > span:first-of-type{ margin-left:auto !important; padding-right:0 !important; text-align:right !important; }
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"] > button,
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"] > span:last-child:not(:first-of-type){
+    border-left:1.5px solid rgba(148,163,184,.38) !important;
+    padding-left:8px !important; margin-left:8px !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"]{ font-weight:700 !important; font-size:14px !important; color:#e2e8f0 !important; justify-content:space-between !important; }
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"] .skor-value{ margin-left:auto !important; text-align:right !important; min-width:32px !important; display:inline-block !important; font-weight:800 !important; color:#38bdf8 !important; }
+  tbody#tabel-data-nilai tr td[data-label="Skor PG"]::after{ content:""; }
+  tbody#tabel-data-nilai tr td[data-label="Durasi & Pelanggaran"]{ font-size:12px !important; }
+  tbody#tabel-data-nilai tr td[data-label="Status"] .badge{ font-size:11px !important; padding:5px 12px !important; border-radius:20px !important; white-space:nowrap !important; }
+  tbody#tabel-data-nilai tr td[data-label="Aksi"]{
+    display:flex !important; justify-content:flex-end !important; padding:10px 12px 12px 12px !important; background:transparent !important; border:none !important; border-top:1px solid rgba(255,255,255,.04) !important;
+  }
+  tbody#tabel-data-nilai tr td[data-label="Aksi"]::before{ display:none !important; }
+  tbody#tabel-data-nilai tr td[data-label="Aksi"] .btn{ padding:7px 16px !important; font-size:12px !important; border-radius:8px !important; min-height:34px !important; background:transparent !important; color:#f87171 !important; border:1px solid rgba(239,68,68,.35) !important; }
+  /* Kelas/Siswa card */
+  #tabel-kelas tbody tr, #tabel-siswa tbody tr{ padding-top:12px; }
+  #tabel-kelas tbody tr td:first-child, #tabel-siswa tbody tr td:first-child{ position:static; display:none; }
+  #tabel-kelas tbody tr td:nth-child(2), #tabel-siswa tbody tr td:nth-child(2){ position:static; background:none; padding:0; }
+  /* Empty state row — jangan jadi card */
+  .card-panel tbody tr td[colspan]{ display:block; text-align:center; justify-content:center; padding:20px 10px; }
+  .card-panel tbody tr td[colspan]::before{ display:none; }
+  .card-panel tbody tr:has(td[colspan]){ padding-top:0; background:transparent; border:1px dashed var(--border); box-shadow:none; }
+  /* Toast lebih kecil di HP */
+  #toast-container{ top:12px !important; right:12px !important; left:12px !important; max-width:none !important; }
+  .toast{ min-width:0 !important; max-width:100% !important; font-size:13px !important; }
+}
+
+/* ================================================================
+   3. Phone kecil ≤480px — extra compact
+   ================================================================ */
+@media (max-width: 480px){
+  .grid-cards{ grid-template-columns:1fr; }
+  .stat-card{ padding:16px; gap:14px; }
+  .stat-card .icon-box{ width:46px; height:46px; font-size:1.1rem; }
+  .stat-info h2{ font-size:1.6rem; }
+  header > div:last-child{ gap:6px !important; }
+  header > div:last-child span{ font-size:11px; }
+  .bottom-nav{ height:60px; left:10px; right:10px; bottom:10px; bottom:calc(10px + env(safe-area-inset-bottom, 0)); border-radius:18px; }
+  .bottom-nav button{ font-size:8px; }
+  .bottom-nav button i{ font-size:16px; }
+  .card-panel{ padding:14px; border-radius:16px; }
+  .panel-title{ font-size:.85rem; }
+  /* Monitoring 3 cards stack 1 col — KECUALI monitoring yang tetap horizontal 3 */
+  div[style*="grid-template-columns:repeat(3,1fr)"]:not(#monitoring div[style*="grid-template-columns:repeat(3,1fr)"]){ grid-template-columns:1fr !important; }
+  #monitoring div[style*="grid-template-columns:repeat(3,1fr)"]{ grid-template-columns:repeat(3,1fr) !important; gap:8px !important; }
+  /* Login modal lebih compact */
+  .login-modal-glass{ padding:28px 20px 20px; border-radius:20px; }
+  /* Data kelas grid 320px 1fr sudah handled di atas */
+  /* Soalku: search full width */
+  #search-mapel, #search-soal{ width:100% !important; }
+  .landing-action .landing-btn{ padding:.9rem 2rem; font-size:1rem; }
+}
+
+/* ================================================================
+   4. Helpers
+   ================================================================ */
+/* Scroll hint untuk wrapper yang masih pakai overflow-x di desktop */
+.table-scroll-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+/* Pastikan switch toggle tetap kelihatan di card */
+.card-panel .toggle{ flex-shrink:0; }
+/* Fix pagination di mobile — center */
+@media (max-width: 768px){
+  #mon-page-info, #lap-page-info{ font-size:12px; }
+  div[style*="justify-content:space-between"][style*="margin-top:16px"]{ flex-direction:column; gap:10px; align-items:stretch; }
+  div[style*="justify-content:space-between"][style*="margin-top:16px"] > div:last-child{ justify-content:center; display:flex; }
+}
+

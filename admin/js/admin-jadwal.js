@@ -230,17 +230,17 @@ async function loadJadwal() {
         } else if (typeof j.kelas === 'string' && j.kelas.includes('::')) {
             const parts = j.kelas.split('::');
             const listKelas = parts[1].split(',').map(k => k.trim()).filter(Boolean);
-            kelasLabel = `<div style="line-height:1.4; display:inline-flex; flex-direction:column; gap:4px;">
-                <div style="font-size:10px; color:var(--gold-light); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${parts[0]}</div>
-                <div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
-                    ${listKelas.map(k => `<span style="background:rgba(59,130,246,0.1); color:#93c5fd; border:1px solid rgba(59,130,246,0.2); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; white-space:nowrap;">${k}</span>`).join('')}
+            kelasLabel = `<div class="jk-kelas-wrap">
+                <div style="font-size:10px; color:var(--gold-light); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:none;">${parts[0]}</div>
+                <div class="jk-kelas-badges">
+                    ${listKelas.map(k => `<span class="jk-kelas-badge">${k}</span>`).join('')}
                 </div>
             </div>`;
         } else {
             const listKelas = j.kelas.split(',').map(k => k.trim()).filter(Boolean);
-            kelasLabel = `<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
-                ${listKelas.map(k => `<span style="background:rgba(59,130,246,0.1); color:#93c5fd; border:1px solid rgba(59,130,246,0.2); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; white-space:nowrap;">${k}</span>`).join('')}
-            </div>`;
+            kelasLabel = `<div class="jk-kelas-wrap"><div class="jk-kelas-badges">
+                ${listKelas.map(k => `<span class="jk-kelas-badge">${k}</span>`).join('')}
+            </div></div>`;
         }
 
         const now = new Date();
@@ -266,40 +266,47 @@ async function loadJadwal() {
 
         const durasiPerSiswa = j.durasi_menit || null;
         const durasiLabel = durasiPerSiswa
-            ? `<div style="text-align:center; line-height:1.4;"><strong style="font-size:18px; color:#10b981;">${durasiPerSiswa}</strong><div style="font-size:10px; color:var(--text-muted); font-weight:600;">menit</div></div>`
+            ? `<div class="jk-durasi"><strong>${durasiPerSiswa}</strong><span>menit</span></div>`
             : `<span style="color:#94a3b8; font-size:11px;">—</span>`;
 
         const displayWaktu = `
-            <div style="line-height:1.6; font-size:12px; white-space:nowrap;">
-                <div style="font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:2px;">📅 Siswa Boleh Masuk:</div>
-                <div style="font-weight:700; color:var(--text-main); font-size:11px;">${tMulai.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                <div>
-                    <span style="color:#10b981; font-weight:700; font-size:13px;">${tMulai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <span style="color:var(--text-muted); margin:0 2px;">s/d</span>
-                    <span style="color:#ef4444; font-weight:700; font-size:13px;">${tSelesai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+            <div class="jk-waktu">
+                <div class="jk-waktu-date">${tMulai.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                <div class="jk-waktu-time">
+                    <span class="jk-t-start">${tMulai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span class="jk-t-sep">s/d</span>
+                    <span class="jk-t-end">${tSelesai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
             </div>
         `;
 
         tbody.innerHTML += `
             <tr>
-                <td style="text-align:center;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
-                <td style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 10px 14px 18px;">${j.mapel}</td>
-                <td style="text-align:center; padding:14px 12px;">${kelasLabel}</td>
-                <td style="text-align:center; white-space:nowrap;">${displayWaktu}</td>
-                <td style="text-align:center;">${durasiLabel}</td>
-                <td style="text-align:center;">${statusAuto}</td>
-                <td style="text-align:center;">
-                    <label class="toggle">
-                        <input type="checkbox" ${checked} onchange="toggleAktifJadwal(${j.id}, this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
+                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
+                <td data-label="Mapel" style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 38px 12px 14px; background:transparent; display:block; width:100%; border:none; border-bottom:1px solid rgba(255,255,255,.05); border-radius:0; position:static; top:auto; left:auto;">
+                    <div style="display:flex; align-items:center; gap:12px; width:100%; background:transparent;">
+                        <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas fa-book-open" style="color:#60a5fa; font-size:16px;"></i></div>
+                        <div style="font-weight:700; color:#f1f5f9; font-size:15px; line-height:1.1; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${j.mapel}</div>
+                    </div>
                 </td>
-                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorName}</td>
-                <td style="text-align:center;">
-                    <div style="display:flex; gap:5px; justify-content:center;">
-                        <button class="btn btn-primary" style="padding:6px 8px; font-size:11px; background:var(--primary);" onclick="mulaiEditJadwal(${j.id})" title="Edit Jadwal"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-danger" style="padding:6px 8px; font-size:11px;" onclick="hapusJadwal(${j.id}, '${j.mapel}')"><i class="fas fa-trash"></i></button>
+                <td data-label="Kelas" style="text-align:center; padding:14px 12px;">${kelasLabel}</td>
+                <td data-label="Waktu" style="text-align:center; white-space:nowrap;">${displayWaktu}</td>
+                <td data-label="Durasi" style="text-align:center;">${durasiLabel}</td>
+                <td data-label="Status" style="text-align:center;">${statusAuto}</td>
+                <td data-label="Aktif" style="text-align:center;">
+                    <div class="jk-aktivasi-wrap">
+                        <label class="toggle">
+                            <input type="checkbox" ${checked} onchange="toggleAktifJadwal(${j.id}, this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="jk-aktivasi-text">${isAktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                    </div>
+                </td>
+                <td data-label="Pembuat" style="text-align:center; font-size:12px; color:var(--text-muted);"><span class="jk-pembuat">${creatorName}</span></td>
+                <td data-label="Aksi" style="text-align:center;">
+                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                        <button class="btn btn-primary" style="padding:8px 14px; font-size:12px; background:transparent; color:#60a5fa; border:1px solid rgba(59,130,246,.35);" onclick="mulaiEditJadwal(${j.id})" title="Edit Jadwal"><i class="fas fa-edit"></i> <span>Edit</span></button>
+                        <button class="btn btn-danger" style="padding:8px 14px; font-size:12px; background:transparent; color:#f87171; border:1px solid rgba(239,68,68,.35);" onclick="hapusJadwal(${j.id}, '${j.mapel}')"><i class="fas fa-trash"></i> <span>Hapus</span></button>
                     </div>
                 </td>
             </tr>

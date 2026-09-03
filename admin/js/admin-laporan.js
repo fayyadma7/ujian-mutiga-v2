@@ -123,33 +123,36 @@ async function loadNilaiSiswa() {
     sortedData.forEach((siswa, index) => {
         const displayNama = highlight(siswa.nama, searchNameLap);
         const hapusBtn = _lapIsAdmin
-            ? `<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="hapusDataNilai(${siswa.id}, '${siswa.nama}')">
-                    <i class="fas fa-trash"></i>
+            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${siswa.id}, '${siswa.nama}')" title="Hapus Data">
+                    <i class="fas fa-trash"></i> Hapus
                </button>`
             : '';
         tbody.innerHTML += `
             <tr>
-                <td style="text-align:center;"><input type="checkbox" class="cb-laporan" value="${siswa.id}"></td>
-                <td style="text-align:center;">${startIdx + index + 1}</td>
-                <td style="font-weight:500;">${displayNama}</td>
-                <td style="text-align:center;">
+                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-laporan" value="${siswa.id}"></td>
+                <td data-label="No" style="text-align:center;">${startIdx + index + 1}</td>
+                <td data-label="Nama Siswa" style="font-weight:600;">
+                    <span class="mon-no-mobile" style="display:none; width:26px; height:26px; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.28); border-radius:7px; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#93c5fd; flex-shrink:0;">${startIdx + index + 1}</span>
+                    <span class="mon-nama-text">${displayNama}</span>
+                </td>
+                <td data-label="Kelas / Mapel" style="text-align:center;">
                     <span class="badge" style="display:inline-block;margin-bottom:4px;">${siswa.kelas.includes('::') ? siswa.kelas.split('::')[1] : siswa.kelas}</span><br>
                     <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${siswa.mapel}</span>
                 </td>
-                <td style="text-align:center;font-weight:700;color:var(--primary);font-size:16px;">${siswa.skor_pg !== null ? siswa.skor_pg : '-'}</td>
-                <td style="text-align:center;">
-                    <span style="font-size:13px;color:var(--text-main);"><i class="fas fa-clock" style="color:var(--text-muted)"></i> ${siswa.durasi || '-'}</span><br>
+                <td data-label="Skor PG" style="text-align:center;font-weight:700;color:var(--primary);font-size:16px;"><span class="skor-value">${siswa.skor_pg !== null ? siswa.skor_pg : '-'}</span></td>
+                <td data-label="Durasi & Pelanggaran" style="text-align:center;">
+                    <span style="font-size:13px;color:var(--text-main);">${siswa.durasi || '-'}</span><br>
                     ${(siswa.pelanggaran || 0) > 0
-                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${siswa.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran <i class="fas fa-chevron-right" style="font-size:9px;opacity:0.6;"></i></button>`
+                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${siswa.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran</button>`
                         : `<span style="font-size:12px;font-weight:600;color:#10b981;"><i class="fas fa-check-circle"></i> Bersih</span>`
                     }
                 </td>
-                <td style="text-align:center;">
+                <td data-label="Status" style="text-align:center;">
                     <span class="badge" style="background:${String(siswa.status).includes('PELANGGARAN') ? '#fee2e2' : '#d1fae5'};color:${String(siswa.status).includes('PELANGGARAN') ? '#ef4444' : '#065f46'};border:none;white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">
                         ${siswa.status || 'SELESAI'}
                     </span>
                 </td>
-                <td style="text-align:center;">${hapusBtn}</td>
+                <td data-label="Aksi" style="text-align:center;">${hapusBtn}</td>
             </tr>
         `;
     });
