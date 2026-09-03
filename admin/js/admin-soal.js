@@ -1040,28 +1040,79 @@ async function downloadTemplateWord() {
             return;
         }
     }
-    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = window.docx;
     const doc = new Document({
         sections: [{
             properties: {},
             children: [
-                new Paragraph({ text: "TEMPLATE DAN PANDUAN FORMAT SOAL WORD", heading: HeadingLevel.HEADING_1, alignment: "center" }),
-                new Paragraph({ children: [new TextRun({ text: "Aturan Penting:", bold: true })], spacing: { before: 200 } }),
-                new Paragraph({ text: "1. Nomor soal harus diawali angka dan titik (Contoh: 1. )" }),
-                new Paragraph({ text: "2. Opsi jawaban (Pilihan Ganda) harus diawali huruf kapital dan titik (Contoh: A. )" }),
-                new Paragraph({ text: "3. Kunci Jawaban ditaruh di paling bawah setiap soal (Contoh: Kunci: A)" }),
-                new Paragraph({ text: "4. Untuk soal Essay, gunakan kode Tipe: ESSAY tepat di bawah pertanyaan." }),
-                new Paragraph({ text: "5. Gambar/Rumus silakan di-paste bebas di posisi pertanyaan atau opsi." }),
-                new Paragraph({ children: [new TextRun({ text: "CONTOH 1 (Pilihan Ganda Biasa):", bold: true })], spacing: { before: 400 } }),
+                new Paragraph({ text: "TEMPLATE DAN PANDUAN FORMAT SOAL WORD", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+                new Paragraph({ children: [new TextRun({ text: "Aturan Penting (WAJIB DIBACA):", bold: true, size: 22 })], spacing: { before: 200 } }),
+                new Paragraph({ children: [new TextRun({ text: "1. Nomor soal harus diawali angka dan titik — Contoh: ", size: 18 }), new TextRun({ text: "1. ", bold: true, size: 18 }), new TextRun({ text: "Apa ibukota...?", size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "2. Opsi PG harus diawali huruf kapital dan titik — Contoh: ", size: 18 }), new TextRun({ text: "A. ", bold: true, size: 18 }), new TextRun({ text: "Jawaban A", size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "3. Kunci PG ditaruh paling bawah setiap soal — Contoh: ", size: 18 }), new TextRun({ text: "Kunci: A", bold: true, size: 18 }), new TextRun({ text: "  (Untuk Essay, TIDAK perlu Kunci)", italics: true, size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "4. Untuk soal ESSAY (tanpa Opsi & tanpa Kunci), tulis kode ", size: 18 }), new TextRun({ text: "Tipe: ESSAY", bold: true, size: 18 }), new TextRun({ text: " di baris sendiri tepat di bawah pertanyaan.", size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "5. GAMBAR di PERTANYAAN — ", bold: true, size: 18 }), new TextRun({ text: "Insert → Pictures → pilih gambar → Format → Wrap Text → ", size: 18 }), new TextRun({ text: "In Line with Text", bold: true, size: 18 }), new TextRun({ text: " → letakkan di baris setelah kalimat pertanyaan.", size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "      Contoh: 1. Perhatikan gambar berikut! [Enter] [Gambar]", italics: true, size: 17, color: "6B7280" })]}),
+                new Paragraph({ children: [new TextRun({ text: "      ⚠ JANGAN tempel gambar DI ATAS angka soal (akan masuk soal sebelumnya).", bold: true, color: "FF0000", size: 16 })]}),
+                new Paragraph({ children: [new TextRun({ text: "6. GAMBAR di OPSI PG — ", bold: true, size: 18 }), new TextRun({ text: "Boleh inline: ", size: 18 }), new TextRun({ text: "A. Teks jawaban [Gambar]", size: 18 }), new TextRun({ text: " atau di baris bawahnya (tanpa huruf).", size: 18 })] }),
+                new Paragraph({ children: [new TextRun({ text: "7. Rumus: paste bebas atau ketik \\( ... \\)  — contoh: \\(x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\\)", size: 17, italics: true })]}),
+
+                // CONTOH 1
+                new Paragraph({ children: [new TextRun({ text: "CONTOH 1 — Pilihan Ganda Biasa (tanpa gambar):", bold: true, color: "1E40AF", size: 20 })], spacing: { before: 400 }, shading: { type: "solid", color: "EFF6FF", fill: "EFF6FF" } }),
                 new Paragraph({ text: "1. Siapakah penemu bola lampu pijar?" }),
                 new Paragraph({ text: "A. Thomas Alva Edison" }), new Paragraph({ text: "B. Albert Einstein" }),
                 new Paragraph({ text: "C. Isaac Newton" }), new Paragraph({ text: "D. Nikola Tesla" }),
                 new Paragraph({ text: "E. Alexander Graham Bell" }), new Paragraph({ text: "Kunci: A" }),
-                new Paragraph({ children: [new TextRun({ text: "--- Silakan hapus panduan di atas dan mulai ketik soal Anda di bawah garis ini ---", italics: true })], spacing: { before: 600, after: 200 } }),
-                new Paragraph({ text: "1. Pertanyaan pertama Anda..." }),
-                new Paragraph({ text: "A. " }), new Paragraph({ text: "B. " }),
-                new Paragraph({ text: "C. " }), new Paragraph({ text: "D. " }),
-                new Paragraph({ text: "E. " }), new Paragraph({ text: "Kunci: A" }),
+
+                // CONTOH 2 — ESSAY murni
+                new Paragraph({ children: [new TextRun({ text: "CONTOH 2 — Essay Murni (tanpa Opsi, tanpa Kunci):", bold: true, color: "7C3AED", size: 20 })], spacing: { before: 300 }, shading: { type: "solid", color: "F5F3FF", fill: "F5F3FF" } }),
+                new Paragraph({ text: "2. Jelaskan proses fotosintesis pada tumbuhan hijau secara singkat!" }),
+                new Paragraph({ children: [new TextRun({ text: "Tipe: ESSAY", bold: true, color: "7C3AED" })] }),
+                new Paragraph({ children: [new TextRun({ text: "[ Essay TIDAK perlu Opsi A-E dan TIDAK perlu Kunci. Siswa menjawab dengan textarea. ]", italics: true, color: "6B7280", size: 17 })]}),
+
+                // CONTOH 3 — PG gambar sesudah kalimat
+                new Paragraph({ children: [new TextRun({ text: "CONTOH 3 — PG : Gambar di Pertanyaan (sesudah kalimat)", bold: true, color: "047857", size: 20 })], spacing: { before: 300 }, shading: { type: "solid", color: "ECFDF5", fill: "ECFDF5" } }),
+                new Paragraph({ text: "3. Perhatikan rangkaian listrik berikut!" }),
+                new Paragraph({ children: [new TextRun({ text: "[ GAMBAR RANGKAIAN — Tempel gambar di sini (sesudah kalimat). Insert → Pictures → In Line with Text ]", italics: true, color: "6B7280", size: 18 })], shading: { type: "solid", color: "F3F4F6", fill: "F3F4F6" } }),
+                new Paragraph({ children: [new TextRun({ text: "     ↑ Cara di Word: Enter setelah kalimat → Insert → Pictures → pilih file → klik gambar → Format → Wrap Text → In Line with Text", italics: true, color: "9CA3AF", size: 16 })]}),
+                new Paragraph({ text: "A. Rangkaian paralel" }),
+                new Paragraph({ text: "B. Rangkaian seri" }),
+                new Paragraph({ text: "C. Rangkaian campuran" }),
+                new Paragraph({ text: "D. Rangkaian terbuka" }),
+                new Paragraph({ text: "Kunci: B" }),
+
+                // CONTOH 4 — Essay dengan gambar sesudah kalimat
+                new Paragraph({ children: [new TextRun({ text: "CONTOH 4 — Essay + Gambar di Pertanyaan:", bold: true, color: "7C3AED", size: 20 })], spacing: { before: 300 }, shading: { type: "solid", color: "F5F3FF", fill: "F5F3FF" } }),
+                new Paragraph({ text: "4. Amati gambar daur hidup kupu-kupu berikut!" }),
+                new Paragraph({ children: [new TextRun({ text: "[ GAMBAR DAUR HIDUP — Tempel di sini (sesudah kalimat) ]", italics: true, color: "6B7280", size: 18 })], shading: { type: "solid", color: "F3F4F6", fill: "F3F4F6" } }),
+                new Paragraph({ text: "Jelaskan urutan metamorfosis yang terjadi!" }),
+                new Paragraph({ children: [new TextRun({ text: "Tipe: ESSAY", bold: true, color: "7C3AED" })] }),
+
+                // CONTOH 5 — PG gambar di opsi
+                new Paragraph({ children: [new TextRun({ text: "CONTOH 5 — PG : Gambar di OPSI jawaban", bold: true, color: "0E7490", size: 20 })], spacing: { before: 300 }, shading: { type: "solid", color: "ECFEFF", fill: "ECFEFF" } }),
+                new Paragraph({ text: "7. Manakah yang merupakan jajaran genjang?" }),
+                new Paragraph({ text: "A. [Gambar A — langsung foto tanpa teks juga boleh]" }),
+                new Paragraph({ children: [new TextRun({ text: "     ↑ Cara inline: Ketik \"A. \" → Insert → Pictures → In Line with Text (boleh tanpa kata, langsung foto)", italics: true, color: "9CA3AF", size: 16 })]}),
+                new Paragraph({ text: "B. [Gambar B — foto saja tanpa teks]" }),
+                new Paragraph({ text: "C. [Gambar C]" }),
+                new Paragraph({ text: "D. [Gambar D]" }),
+                new Paragraph({ children: [new TextRun({ text: "     Alternatif jika gambar besar, letakkan di baris bawah opsi (tanpa huruf, tetap masuk Opsi A):", italics: true, color: "6B7280", size: 16 })]}),
+                new Paragraph({ text: "A. " }),
+                new Paragraph({ children: [new TextRun({ text: "[ GAMBAR OPSI A — Foto di baris bawah \"A. \" (gambar tanpa huruf, otomatis masuk Opsi A) ]", italics: true, color: "6B7280", size: 18 })], shading: { type: "solid", color: "F3F4F6", fill: "F3F4F6" } }),
+                new Paragraph({ text: "B. Foto opsi B di baris bawah" }),
+                new Paragraph({ text: "Kunci: A" }),
+
+                new Paragraph({ children: [new TextRun({ text: "--- Silakan HAPUS semua contoh & panduan di atas, lalu mulai ketik soal Anda di bawah garis ini ---", bold: true, italics: true, color: "DC2626", size: 18 })], spacing: { before: 600, after: 200 }, shading: { type: "solid", color: "FEF2F2", fill: "FEF2F2" } }),
+                new Paragraph({ text: "1. Pertanyaan pertama Anda (boleh langsung tempel gambar sesudah kalimat)..." }),
+                new Paragraph({ text: "A. Opsi A (boleh tempel gambar inline di sini)" }),
+                new Paragraph({ text: "B. Opsi B" }),
+                new Paragraph({ text: "C. Opsi C" }),
+                new Paragraph({ text: "D. Opsi D" }),
+                new Paragraph({ text: "E. Opsi E" }),
+                new Paragraph({ text: "Kunci: A" }),
+                new Paragraph({ children: [new TextRun({ text: "2. Contoh Essay tanpa kunci:", italics: true, color: "6B7280", size: 17 })], spacing: { before: 300 } }),
+                new Paragraph({ text: "2. Jelaskan pendapat Anda tentang..." }),
+                new Paragraph({ children: [new TextRun({ text: "Tipe: ESSAY", bold: true, color: "7C3AED" })] }),
             ]
         }]
     });
@@ -1144,7 +1195,17 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
     const reader = new FileReader();
     reader.onload = function(event) {
         const arrayBuffer = event.target.result;
-        mammoth.convertToHtml({ arrayBuffer }).then(async function(result) {
+        const mammothOpts = {};
+        try {
+            if (mammoth.images && typeof mammoth.images.imgElement === 'function') {
+                mammothOpts.convertImage = mammoth.images.imgElement(function(image) {
+                    return image.read('base64').then(function(b64) {
+                        return { src: 'data:' + image.contentType + ';base64,' + b64 };
+                    });
+                });
+            }
+        } catch(_) {}
+        mammoth.convertToHtml({ arrayBuffer }, mammothOpts).then(async function(result) {
             const htmlContent = result.value;
             const div = document.createElement('div');
             div.innerHTML = htmlContent;
@@ -1160,7 +1221,25 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                     });
                     if (currentBlock.textContent.trim() !== '' || currentBlock.querySelector('img')) blocks.push(currentBlock);
                 } else if (node.nodeName.toLowerCase() === 'ol' || node.nodeName.toLowerCase() === 'ul') {
-                    Array.from(node.children).forEach(li => { let p = document.createElement('p'); p.innerHTML = li.innerHTML; blocks.push(p); });
+                    // Auto-list Word (numbering/bullet) -> mapping berurutan ke opsi jika tanpa prefix huruf
+                    const letters = ['A','B','C','D','E'];
+                    Array.from(node.children).forEach((li, idx) => {
+                        let p = document.createElement('p');
+                        const liText = (li.textContent || '').trim();
+                        const hasLetter = /^[A-E][\.\)]\s*/i.test(liText);
+                        const hasImg = !!li.querySelector('img');
+                        // Jika tanpa huruf tapi ada konten/gambar dan masih dalam urutan opsi, inject huruf agar terdeteksi sebagai opsi
+                        if (!hasLetter && hasImg && idx < letters.length) {
+                            // Hanya inject jika sebelumnya sudah ada soal dan bukan bagian dari pertanyaan awal
+                            p.innerHTML = letters[idx] + '. ' + li.innerHTML;
+                        } else if (!hasLetter && liText === '' && hasImg) {
+                            // fallback sama
+                            p.innerHTML = li.innerHTML;
+                        } else {
+                            p.innerHTML = li.innerHTML;
+                        }
+                        blocks.push(p);
+                    });
                 } else if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim() !== '')) blocks.push(node);
             });
 
@@ -1195,10 +1274,17 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                     else { if (currentMode === null) isNewSoal = true; else isNewSoal = (num === currentQuestionNumber + 1); }
                 }
 
-                let isOpsiA = /^A[\.\)]\s/i.test(textMatch), isOpsiB = /^B[\.\)]\s/i.test(textMatch),
-                    isOpsiC = /^C[\.\)]\s/i.test(textMatch), isOpsiD = /^D[\.\)]\s/i.test(textMatch),
-                    isOpsiE = /^E[\.\)]\s/i.test(textMatch), isKunci = /^Kunci\s*:\s*/i.test(textMatch),
+                // FIX: allow image-only opsi "A. <img>" tanpa kata — gunakan \s* bukan \s
+                let isOpsiA = /^A[\.\)]\s*/i.test(textMatch) && /^A[\.\)]/i.test(textMatch),
+                    isOpsiB = /^B[\.\)]\s*/i.test(textMatch) && /^B[\.\)]/i.test(textMatch),
+                    isOpsiC = /^C[\.\)]\s*/i.test(textMatch) && /^C[\.\)]/i.test(textMatch),
+                    isOpsiD = /^D[\.\)]\s*/i.test(textMatch) && /^D[\.\)]/i.test(textMatch),
+                    isOpsiE = /^E[\.\)]\s*/i.test(textMatch) && /^E[\.\)]/i.test(textMatch),
+                    // Kunci tetap fleksibel
+                    isKunci = /^Kunci\s*:\s*/i.test(textMatch),
                     isTipe = /^Tipe\s*:\s*ESSAY/i.test(textMatch);
+                // Fallback: jika block hanya berisi <img> tanpa teks tapi currentMode sudah di opsi, jangan anggap opsi baru
+                // (akan ditangani di branch else sebagai lanjutan opsi)
 
                 if (isNewSoal) {
                     if (currentSoal) soalArray.push(currentSoal);

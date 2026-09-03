@@ -97,37 +97,64 @@ function stopMonitoring() {
 async function populateFilterKelas() {
     const selectKelas = document.getElementById('filter-kelas-monitoring');
     const selectMapel = document.getElementById('filter-mapel-monitoring');
-    const { data, error } = await db.from('jawaban_ujian').select('kelas, mapel');
+    if (!selectKelas || !selectMapel) return;
+    // Filter HARUS dari data master: kelas dari tabel kelas, mapel dari bank_soal (bukan dari jawaban_ujian)
+    let allowedMapelList = null;
+    try {
+        const sesi = typeof getGuruSession === 'function' ? getGuruSession() : null;
+        const isAdmin = sesi && sesi.isAdmin === true;
+        const guruId = sesi ? sesi.id : null;
+        if (!isAdmin && guruId) {
+            const { data: mySoal } = await db.from('bank_soal').select('mapel').eq('created_by', guruId);
+            if (mySoal) {
+                const s = new Set((mySoal || []).map(r => (r.mapel || '').trim()).filter(Boolean));
+                allowedMapelList = [...s].sort();
+            } else allowedMapelList = [];
+        }
+    } catch (_) { allowedMapelList = null; }
 
-    const kelasSet = new Set();
-    const mapelSet = new Set();
-    if (data && !error) {
-        data.forEach(j => {
-            if (j.kelas) j.kelas.split(',').forEach(k => kelasSet.add(k.trim()));
-            if (j.mapel) mapelSet.add(j.mapel.trim());
-        });
-    }
+    let kelasList = [];
+    try {
+        const { data: kelasRaw } = await db.from('kelas').select('nama').eq('is_aktif', true).order('nama', { ascending: true });
+        const s = new Set();
+        (kelasRaw || []).forEach(r => { if (r.nama) s.add(r.nama.trim()); });
+        kelasList = [...s].sort();
+    } catch (_) { kelasList = []; }
+
+    let mapelList = [];
+    try {
+        if (allowedMapelList !== null) {
+            mapelList = allowedMapelList;
+        } else {
+            const { data: mapelRaw } = await db.from('bank_soal').select('mapel').order('mapel', { ascending: true });
+            const s = new Set();
+            (mapelRaw || []).forEach(r => { if (r.mapel) s.add(r.mapel.trim()); });
+            mapelList = [...s].sort();
+        }
+    } catch (_) { mapelList = allowedMapelList || []; }
 
     const prevKelas = selectKelas.value;
     const prevMapel = selectMapel.value;
 
     selectKelas.innerHTML = '<option value="">Semua Kelas</option>';
-    [...kelasSet].sort().forEach(k => {
+    kelasList.forEach(k => {
         const opt = document.createElement('option');
         opt.value = k;
-        opt.textContent = k.includes('::') ? k.split('::')[1] : k;
+        opt.textContent = k;
         selectKelas.appendChild(opt);
     });
-    if ([...kelasSet].includes(prevKelas)) selectKelas.value = prevKelas;
+    if (kelasList.includes(prevKelas)) selectKelas.value = prevKelas;
+    else selectKelas.value = '';
 
     selectMapel.innerHTML = '<option value="">Semua Mapel</option>';
-    [...mapelSet].sort().forEach(m => {
+    mapelList.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m;
         opt.textContent = m;
         selectMapel.appendChild(opt);
     });
-    if ([...mapelSet].includes(prevMapel)) selectMapel.value = prevMapel;
+    if (mapelList.includes(prevMapel)) selectMapel.value = prevMapel;
+    else selectMapel.value = '';
 
     if (typeof syncCustomSelect === 'function') {
         syncCustomSelect('filter-kelas-monitoring');

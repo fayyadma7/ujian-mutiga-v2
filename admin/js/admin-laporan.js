@@ -16,63 +16,57 @@ async function loadNilaiSiswa() {
     const _lapIsAdmin = _lapSesi && _lapSesi.isAdmin === true;
     const _lapGuruId = _lapSesi ? _lapSesi.id : null;
 
-    const filterMapel = selectMapel ? selectMapel.value : '';
-    const filterKelas = selectKelas ? selectKelas.value : '';
+    let filterMapel = selectMapel ? selectMapel.value : '';
+    let filterKelas = selectKelas ? selectKelas.value : '';
     const searchNameLap = document.getElementById('search-nama-laporan')?.value.toLowerCase() || '';
     const filterTglAwalLap = document.getElementById('filter-tgl-awal-laporan')?.value || '';
     const filterTglAkhirLap = document.getElementById('filter-tgl-akhir-laporan')?.value || '';
 
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</td></tr>';
 
-    // Guru: ambil daftar mapel miliknya untuk filter
+    // Guru: ambil daftar mapel miliknya untuk filter (HARUS dari bank_soal yang terdaftar)
     let allowedMapels = null;
     if (!_lapIsAdmin && _lapGuruId) {
         const { data: mySoal } = await db.from('bank_soal').select('mapel').eq('created_by', _lapGuruId);
-        if (mySoal) allowedMapels = [...new Set(mySoal.map(d => d.mapel))];
+        if (mySoal) allowedMapels = [...new Set(mySoal.map(d => (d.mapel || '').trim()).filter(Boolean))].sort();
+        else allowedMapels = [];
     }
 
-    let filterData;
-    if (allowedMapels && allowedMapels.length > 0) {
-        const { data: d, error: filterErr } = await db.from('jawaban_ujian')
-            .select('mapel, kelas')
-            .in('mapel', allowedMapels)
-            .order('created_at', { ascending: false });
-        filterData = d;
-        if (filterErr) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data database!</td></tr>';
-            return;
-        }
-    } else if (!allowedMapels) {
-        const { data: d, error: filterErr } = await db.from('jawaban_ujian')
-            .select('mapel, kelas')
-            .order('created_at', { ascending: false });
-        filterData = d;
-        if (filterErr) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data database!</td></tr>';
-            return;
-        }
-    } else {
-        filterData = [];
-    }
-
+    // Populate dropdown filter HARUS dari data master: mapel dari bank_soal, kelas dari tabel kelas (bukan dari jawaban_ujian)
     if (selectMapel && selectKelas) {
-        const mapelSet = new Set();
-        const kelasSet = new Set();
-        (filterData || []).forEach(d => {
-            if (d.kelas) d.kelas.split(',').forEach(k => { if (k.trim()) kelasSet.add(k.trim()); });
-            if (d.mapel) mapelSet.add(d.mapel.trim());
-        });
+        let mapelList = [];
+        if (allowedMapels !== null) {
+            mapelList = allowedMapels;
+        } else {
+            try {
+                const { data: allMapel } = await db.from('bank_soal').select('mapel');
+                const s = new Set();
+                (allMapel || []).forEach(d => { if (d.mapel) s.add(d.mapel.trim()); });
+                mapelList = [...s].sort();
+            } catch (_) { mapelList = []; }
+        }
+        let kelasList = [];
+        try {
+            const { data: kelasRaw } = await db.from('kelas').select('nama').eq('is_aktif', true).order('nama', { ascending: true });
+            const s = new Set();
+            (kelasRaw || []).forEach(r => { if (r.nama) s.add(r.nama.trim()); });
+            kelasList = [...s].sort();
+        } catch (_) { kelasList = []; }
 
         selectMapel.innerHTML = '<option value="">Semua Mapel</option>';
-        [...mapelSet].sort().forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; selectMapel.appendChild(opt); });
-        selectMapel.value = filterMapel;
+        mapelList.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; selectMapel.appendChild(opt); });
+        if (mapelList.includes(filterMapel)) selectMapel.value = filterMapel;
+        else { selectMapel.value = ''; filterMapel = ''; }
 
         selectKelas.innerHTML = '<option value="">Semua Kelas</option>';
-        [...kelasSet].sort().forEach(k => { const opt = document.createElement('option'); opt.value = k; opt.textContent = k.includes('::') ? k.split('::')[1] : k; selectKelas.appendChild(opt); });
-        selectKelas.value = filterKelas;
+        kelasList.forEach(k => { const opt = document.createElement('option'); opt.value = k; opt.textContent = k; selectKelas.appendChild(opt); });
+        if (kelasList.includes(filterKelas)) selectKelas.value = filterKelas;
+        else { selectKelas.value = ''; filterKelas = ''; }
 
-        syncCustomSelect('filter-mapel-laporan');
-        syncCustomSelect('filter-kelas-laporan');
+        if (typeof syncCustomSelect === 'function') {
+            syncCustomSelect('filter-mapel-laporan');
+            syncCustomSelect('filter-kelas-laporan');
+        }
     }
 
     let query = db.from('jawaban_ujian').select('*', { count: 'exact' });

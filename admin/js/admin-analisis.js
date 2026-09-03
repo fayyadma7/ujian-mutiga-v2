@@ -11,42 +11,54 @@ let myChart = null;
 async function populateAnalisisFilters() {
     const selectMapel = document.getElementById('ana-filter-mapel');
     const selectKelas = document.getElementById('ana-filter-kelas');
+    if (!selectMapel || !selectKelas) return;
     const sesi = getGuruSession();
     const isAdmin = sesi && sesi.isAdmin === true;
     const guruId = sesi ? sesi.id : null;
 
+    // Mapel HARUS dari bank_soal yang terdaftar (master), bukan dari jawaban_ujian
     let mapelFilter = null;
     if (!isAdmin && guruId) {
         const { data: mySoal } = await db.from('bank_soal').select('mapel').eq('created_by', guruId);
-        if (mySoal) mapelFilter = [...new Set(mySoal.map(d => d.mapel))];
+        if (mySoal) mapelFilter = [...new Set(mySoal.map(d => (d.mapel||'').trim()).filter(Boolean))].sort();
+        else mapelFilter = [];
     }
 
-    let data;
-    if (mapelFilter && mapelFilter.length > 0) {
-        const { data: d } = await db.from('jawaban_ujian').select('mapel, kelas').in('mapel', mapelFilter);
-        data = d;
-    } else if (!mapelFilter) {
-        const { data: d } = await db.from('jawaban_ujian').select('mapel, kelas');
-        data = d;
+    let mapels = [];
+    if (mapelFilter !== null) {
+        mapels = mapelFilter;
     } else {
-        data = [];
+        try {
+            const { data: allMapel } = await db.from('bank_soal').select('mapel').order('mapel', { ascending: true });
+            const s = new Set();
+            (allMapel || []).forEach(d => { if (d.mapel) s.add(d.mapel.trim()); });
+            mapels = [...s].sort();
+        } catch (_) { mapels = []; }
     }
-    if (!data) return;
 
-    const mapels = [...new Set(data.map(d => d.mapel))].sort();
-    const kelass = [...new Set(data.map(d => d.kelas))].sort();
+    // Kelas HARUS dari tabel kelas master (is_aktif true), bukan dari jawaban_ujian
+    let kelass = [];
+    try {
+        const { data: kelasRaw } = await db.from('kelas').select('nama').eq('is_aktif', true).order('nama', { ascending: true });
+        const s = new Set();
+        (kelasRaw || []).forEach(r => { if (r.nama) s.add(r.nama.trim()); });
+        kelass = [...s].sort();
+    } catch (_) { kelass = []; }
 
     const curM = selectMapel.value;
     const curK = selectKelas.value;
 
     selectMapel.innerHTML = '<option value="">Semua Mapel</option>';
-    mapels.forEach(m => { selectMapel.innerHTML += `<option value="${m}">${m}</option>`; });
+    mapels.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; selectMapel.appendChild(opt); });
 
     selectKelas.innerHTML = '<option value="">Semua Kelas</option>';
-    kelass.forEach(k => { const textK = k.includes('::') ? k.split('::')[1] : k; selectKelas.innerHTML += `<option value="${k}">${textK}</option>`; });
+    kelass.forEach(k => { const opt = document.createElement('option'); opt.value = k; opt.textContent = k; selectKelas.appendChild(opt); });
 
-    selectMapel.value = curM;
-    selectKelas.value = curK;
+    if (mapels.includes(curM)) selectMapel.value = curM;
+    else selectMapel.value = '';
+
+    if (kelass.includes(curK)) selectKelas.value = curK;
+    else selectKelas.value = '';
 
     if (typeof initCustomSelect === 'function') {
         initCustomSelect('ana-filter-mapel');
