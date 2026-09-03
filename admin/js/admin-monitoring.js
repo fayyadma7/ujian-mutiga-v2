@@ -132,13 +132,45 @@ async function loadMonitoring() {
     const { data: jadwalAktif } = await db.from('jadwal_ujian').select('id').eq('is_aktif', true);
     const adaUjianAktif = jadwalAktif && jadwalAktif.length > 0;
 
-    let query = db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false });
-    if (filterKelas) query = query.eq('kelas', filterKelas);
-    if (filterMapel) query = query.eq('mapel', filterMapel);
-    if (searchName) query = query.ilike('nama', '%' + searchName + '%');
-    if (filterTglAwal) query = query.gte('created_at', filterTglAwal + 'T00:00:00');
-    if (filterTglAkhir) query = query.lte('created_at', filterTglAkhir + 'T23:59:59');
-    if (currentMonStatus === 'AKTIF') query = query.not().like('status', 'SELESAI%');
+    // helper: apply base filters (kelas, mapel, search, tanggal) — tanpa status
+    const applyBaseFilters = (q) => {
+        if (filterKelas) q = q.eq('kelas', filterKelas);
+        if (filterMapel) q = q.eq('mapel', filterMapel);
+        if (searchName) q = q.ilike('nama', '%' + searchName + '%');
+        if (filterTglAwal) q = q.gte('created_at', filterTglAwal + 'T00:00:00');
+        if (filterTglAkhir) q = q.lte('created_at', filterTglAkhir + 'T23:59:59');
+        return q;
+    };
+
+    // 1) Hitung kartu ringkasan — SELALU pakai base filter saja (tanpa status), agar klik card tidak bikin 0 semua
+    let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
+    try {
+        const [selesaiRes, aktifRes, plgRes] = await Promise.all([
+            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%'),
+            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).not('status', 'like', 'SELESAI%'),
+            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).gt('pelanggaran', 0)
+        ]);
+        cntSelesai = selesaiRes.count || 0;
+        cntAktif = aktifRes.count || 0;
+        cntPelanggaran = plgRes.count || 0;
+    } catch (_) {
+        // fallback tetap hitung jika salah satu gagal
+        try {
+            const r = await applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%');
+            cntSelesai = r.count || 0;
+        } catch(e){ cntSelesai = 0; }
+    }
+    // update kartu segera (tidak tergantung hasil tabel filtered-by-status)
+    const elAktif = document.getElementById('mon-aktif');
+    const elSelesai = document.getElementById('mon-selesai');
+    const elPlg = document.getElementById('mon-pelanggaran');
+    if (elAktif) elAktif.innerText = String(cntAktif);
+    if (elSelesai) elSelesai.innerText = String(cntSelesai);
+    if (elPlg) elPlg.innerText = String(cntPelanggaran);
+
+    // 2) Query tabel — base + status filter (untuk pagination & rows)
+    let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
+    if (currentMonStatus === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
     else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
     else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
 
@@ -151,32 +183,18 @@ async function loadMonitoring() {
     const { data, error } = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
 
     if (error || !data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada siswa yang mengerjakan ujian.</td></tr>';
-        document.getElementById('mon-aktif').innerText = '0';
-        document.getElementById('mon-selesai').innerText = '0';
-        document.getElementById('mon-pelanggaran').innerText = '0';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
         document.getElementById('mon-page-info').innerText = 'Menampilkan 0 dari 0';
-        if (!adaUjianAktif) { banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.'; }
+        // JANGAN reset kartu ke 0 — sudah diisi di atas dari base filter
+        if (!adaUjianAktif && totalItems === 0 && cntAktif === 0 && cntSelesai === 0) {
+            banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.';
+        } else {
+            banner.style.display = 'none';
+        }
+        // tetap pagination info
+        if (typeof updatePaginationMonitoring === 'function') updatePaginationMonitoring(totalItems);
         return;
     }
-
-    let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
-    try {
-        const buildBaseCount = () => {
-            let q = db.from('jawaban_ujian').select('id', { count: 'exact', head: true });
-            if (filterKelas) q = q.eq('kelas', filterKelas);
-            if (filterMapel) q = q.eq('mapel', filterMapel);
-            return q;
-        };
-        const [countSelesai, countPlg] = await Promise.all([
-            buildBaseCount().like('status', 'SELESAI%').then(r => r.count || 0).catch(() => 0),
-            buildBaseCount().gt('pelanggaran', 0).then(r => r.count || 0).catch(() => 0)
-        ]);
-        cntSelesai = countSelesai;
-        cntPelanggaran = countPlg;
-        cntAktif = (totalItems || 0) - cntSelesai;
-        if (cntAktif < 0) cntAktif = 0;
-    } catch (_) {}
 
     tempMonitoringData = data;
     const sortedData = typeof sortMonitoringData === 'function' ? sortMonitoringData(data) : data;
