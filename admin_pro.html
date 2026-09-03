@@ -1919,10 +1919,7 @@
             let el = document.getElementById(targetId);
             if (!el) return;
 
-            // Tutup modal dulu agar fokus kembali ke contenteditable
-            document.getElementById('modalMath').style.display = 'none';
-
-            // Bungkus dengan delimiter \( \)
+            // Bungkus dengan delimiter \( \) — modal TETAP TERBUKA agar bisa sisipkan berulang
             const text = ' \\(' + snippet + '\\) ';
 
             // Langkah 1: Fokuskan ke target contenteditable
@@ -1980,19 +1977,47 @@
                 }
             }
 
+            // Simpan posisi kursor baru untuk sisipan berikutnya (modal tetap terbuka)
+            try {
+                const sel = window.getSelection();
+                if (sel.rangeCount > 0) window.savedMathRange = sel.getRangeAt(0).cloneRange();
+            } catch(e) {}
+
             // Langkah 4: Render KaTeX (visual) — data-latex disimpan untuk save
             setTimeout(() => {
                 if (typeof renderKaTeXInElement === 'function') {
                     renderKaTeXInElement(el);
                 }
-                // Posisikan kursor di akhir
-                el.focus();
-                const sel = window.getSelection();
-                const range = document.createRange();
-                range.selectNodeContents(el);
-                range.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(range);
+                // Posisikan kursor setelah rumus terakhir yang baru dirender
+                try {
+                    const spans = el.querySelectorAll('span.katex-rendered');
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    if (spans.length > 0) {
+                        const last = spans[spans.length - 1];
+                        range.setStartAfter(last);
+                        range.collapse(true);
+                    } else {
+                        range.selectNodeContents(el);
+                        range.collapse(false);
+                    }
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    window.savedMathRange = range.cloneRange();
+                } catch(e) {
+                    try {
+                        const sel = window.getSelection();
+                        const range = document.createRange();
+                        range.selectNodeContents(el);
+                        range.collapse(false);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        window.savedMathRange = range.cloneRange();
+                    } catch(e2) {}
+                }
+                // Kembalikan fokus ke input modal agar bisa sisipkan berulang tanpa buka tutup modal
+                const modalInput = document.getElementById('modalMathCustomInput');
+                if (modalInput) modalInput.focus();
             }, 30);
         }
 
@@ -2000,9 +2025,11 @@
             const input = document.getElementById('modalMathCustomInput');
             if (!input) return;
             const val = input.value.trim();
-            if (!val) return;
+            if (!val) { input.focus(); return; }
             insertMath(val);
             input.value = '';
+            input.focus();
+            if (typeof showToast === 'function') showToast('Rumus disisipkan ✓ — modal tetap terbuka', 'success');
         }
 
         function insertKimia(char) {
