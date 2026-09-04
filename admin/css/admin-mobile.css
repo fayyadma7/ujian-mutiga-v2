@@ -401,7 +401,6 @@
   tbody#tabel-jadwal tr td[data-label="Pembuat"]::before{ content:"\f044" !important; }
   tbody#tabel-jadwal tr td[data-label="Pembuat"]::after{ content:"PEMBUAT" !important; }
   /* VALUE di kolom 3 — order 3, flex 1, ABSOLUT KANAN seperti request */
-  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap,
   tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu,
   tbody#tabel-jadwal tr td[data-label="Durasi"] .jk-durasi,
   tbody#tabel-jadwal tr td[data-label="Status"] .badge,
@@ -410,17 +409,30 @@
     order:3 !important; flex:1 1 0 !important; display:flex !important; justify-content:flex-end !important; align-items:center !important;
     margin-left:12px !important; grid-column:unset !important; justify-self:unset !important; text-align:right !important;
   }
-  /* KELAS pills — absolut kanan */
-  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap{ display:flex !important; justify-content:flex-end !important; width:100% !important; }
-  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badges{ display:flex !important; gap:8px !important; align-items:center !important; justify-content:flex-end !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap{
+    order:3 !important; display:flex !important; align-items:center !important;
+  }
+  /* KELAS — adaptive: 1-2 kelas inline di kanan (compact), 3+ kelas full-width di bawah (lebar) */
+  tbody#tabel-jadwal tr td[data-label="Kelas"]{ flex-wrap:wrap !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap{ flex:1 1 auto !important; justify-content:flex-end !important; margin-left:12px !important; }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap.is-many{
+    flex:1 1 100% !important; width:100% !important; margin-left:0 !important; margin-top:10px !important; justify-content:flex-start !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badges{
+    display:flex !important; flex-wrap:wrap !important; gap:6px !important; align-items:center !important; justify-content:flex-end !important; max-width:100% !important; margin:0 !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-wrap.is-many .jk-kelas-badges{ justify-content:flex-start !important; }
   tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge{
     display:inline-flex !important; align-items:center !important; justify-content:center !important;
-    padding:7px 16px !important; border-radius:10px !important; font-size:13px !important; font-weight:700 !important;
-    letter-spacing:.3px !important; white-space:nowrap !important; line-height:1 !important;
+    padding:6px 12px !important; border-radius:8px !important; font-size:12px !important; font-weight:700 !important;
+    letter-spacing:.2px !important; white-space:nowrap !important; line-height:1 !important; flex:0 0 auto !important;
     background:rgba(59,130,246,.14) !important; color:#7eb0ff !important; border:1.5px solid rgba(59,130,246,.38) !important;
   }
-  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge:nth-child(2){
-    background:rgba(255,255,255,.04) !important; color:#8a9abb !important; border-color:rgba(255,255,255,.1) !important;
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge:nth-child(even){
+    background:rgba(255,255,255,.05) !important; color:#cbd5e1 !important; border-color:rgba(255,255,255,.09) !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Kelas"] .jk-kelas-badge.jk-kelas-more{
+    background:rgba(245,158,11,.14) !important; color:#fcd34d !important; border-color:rgba(245,158,11,.30) !important; cursor:help !important;
   }
   /* WAKTU — absolut kanan, rata kanan */
   tbody#tabel-jadwal tr td[data-label="Waktu"] .jk-waktu{

@@ -226,21 +226,23 @@ async function loadJadwal() {
 
         let kelasLabel = "";
         if (!j.kelas) {
-            kelasLabel = `<span style="color:var(--text-muted); font-size:12px;">Semua kelas</span>`;
+            kelasLabel = `<span class="jk-kelas-empty">Semua kelas</span>`;
         } else if (typeof j.kelas === 'string' && j.kelas.includes('::')) {
             const parts = j.kelas.split('::');
             const listKelas = parts[1].split(',').map(k => k.trim()).filter(Boolean);
-            kelasLabel = `<div class="jk-kelas-wrap">
+            const isMany = listKelas.length > 2;
+            const fullTitle = listKelas.join(', ');
+            const badges = listKelas.map(k => `<span class="jk-kelas-badge" title="${fullTitle}">${k}</span>`).join('');
+            kelasLabel = `<div class="jk-kelas-wrap ${isMany ? 'is-many' : 'is-few'}" title="${fullTitle}">
                 <div style="font-size:10px; color:var(--gold-light); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:none;">${parts[0]}</div>
-                <div class="jk-kelas-badges">
-                    ${listKelas.map(k => `<span class="jk-kelas-badge">${k}</span>`).join('')}
-                </div>
+                <div class="jk-kelas-badges">${badges}</div>
             </div>`;
         } else {
             const listKelas = j.kelas.split(',').map(k => k.trim()).filter(Boolean);
-            kelasLabel = `<div class="jk-kelas-wrap"><div class="jk-kelas-badges">
-                ${listKelas.map(k => `<span class="jk-kelas-badge">${k}</span>`).join('')}
-            </div></div>`;
+            const isMany = listKelas.length > 2;
+            const fullTitle = listKelas.join(', ');
+            const badges = listKelas.map(k => `<span class="jk-kelas-badge" title="${fullTitle}">${k}</span>`).join('');
+            kelasLabel = `<div class="jk-kelas-wrap ${isMany ? 'is-many' : 'is-few'}" title="${fullTitle}"><div class="jk-kelas-badges">${badges}</div></div>`;
         }
 
         const now = new Date();
