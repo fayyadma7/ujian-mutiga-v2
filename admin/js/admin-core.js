@@ -583,6 +583,14 @@ function bukaHalaman(idHalaman, elemenTombol) {
         }
     }
 
+    // stop monitoring jika pindah dari monitoring ke halaman lain (cegah leak channel)
+    const prevActive = document.querySelector('.page-section.active');
+    const prevId = prevActive ? prevActive.id : null;
+    if (prevId === 'monitoring' && idHalaman !== 'monitoring') {
+        if (typeof stopMonitoring === 'function') { try{ stopMonitoring(); }catch(e){} }
+        if (window._monDebounce) { clearTimeout(window._monDebounce); window._monDebounce = null; }
+    }
+
     document.querySelectorAll('.page-section').forEach(page => page.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(idHalaman).classList.add('active');

@@ -13,15 +13,37 @@ const violationTracker = new Map();
 let monitoringChannel = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+let intentionalClose = false;
+let isSubscribing = false;
 function scheduleReconnect(){
+  if(intentionalClose) return;
   if(reconnectTimer) clearTimeout(reconnectTimer);
   const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
   console.warn(`[monitoring] reconnect ${reconnectAttempts} in ${delay}ms`);
   reconnectTimer = setTimeout(()=> startRealtimeMonitoring(), delay);
 }
-function startRealtimeMonitoring() {
+async function startRealtimeMonitoring() {
+    if(isSubscribing) return;
+    // guard: jika sudah joined/joining jangan buat channel baru
+    if(monitoringChannel && ['joined','joining','subscribed'].includes(monitoringChannel.state)){
+        return;
+    }
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
-    if (monitoringChannel) { try{ db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
+    if (monitoringChannel) {
+        intentionalClose = true;
+        try{ await db.removeChannel(monitoringChannel);}catch(e){}
+        monitoringChannel = null;
+        // beri jeda singkat agar server benar-benar close
+        await new Promise(r=>setTimeout(r,80));
+        intentionalClose = false;
+    }
+    // bersihkan stale channel dengan nama sama (jika leak sebelumnya)
+    try{
+        const stale = db.getChannels().filter(c=> c.topic === 'realtime:monitoring-live-v2');
+        for(const ch of stale){ try{ await db.removeChannel(ch);}catch(e){} }
+    }catch(e){}
+    isSubscribing = true;
+    intentionalClose = false;
     monitoringChannel = db.channel('monitoring-live-v2');
     const seenIds = new Set();
 
@@ -77,21 +99,35 @@ function startRealtimeMonitoring() {
         )
         .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
+                isSubscribing = false;
                 reconnectAttempts = 0;
+                intentionalClose = false;
                 console.log('✅ Realtime monitoring terhubung!');
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                isSubscribing = false;
+                if(intentionalClose){
+                    console.log('Realtime monitoring closed intentionally — skip reconnect');
+                    return;
+                }
                 console.error('❌ Realtime monitoring gagal:', status, err || '(no err) — cek publication & RLS');
                 if(status==='CLOSED' && !err) console.warn('Hint: publication supabase_realtime belum ada — sudah difix via migration 20260911000000');
                 scheduleReconnect();
             } else {
+                isSubscribing = false;
                 console.warn('Realtime status:', status, err);
             }
         });
 }
 
-function stopMonitoring() {
+async function stopMonitoring() {
+    intentionalClose = true;
+    isSubscribing = false;
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
-    if (monitoringChannel) { try{ db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
+    if(window._monDebounce){ clearTimeout(window._monDebounce); window._monDebounce=null; }
+    if (monitoringChannel) { try{ await db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
+    reconnectAttempts = 0;
+    // reset intentionalClose setelah channel benar-benar tertutup
+    setTimeout(()=> intentionalClose=false, 600);
 }
 
 async function populateFilterKelas() {
