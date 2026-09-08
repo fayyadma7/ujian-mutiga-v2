@@ -811,18 +811,7 @@ function initLandingSlideshow() {
 function animateCounter(id, targetValue) {
     const el = document.getElementById(id);
     if (!el) return;
-    let start = parseInt(el.innerText) || 0;
-    let duration = 800;
-    let startTime = null;
-    function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / duration, 1);
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        el.innerText = Math.floor(start + easeProgress * (targetValue - start));
-        if (progress < 1) window.requestAnimationFrame(step);
-        else el.innerText = targetValue;
-    }
-    window.requestAnimationFrame(step);
+    el.innerText = targetValue;
 }
 
 async function updateLandingSiswaAktif() {

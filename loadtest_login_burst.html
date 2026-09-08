@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Burst Test 300 Login — Remote Real</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;min-height:100vh}
+h1{font-size:20px;font-weight:800;color:#f1f5f9}
+.sub{color:#64748b;font-size:13px;margin:4px 0 14px;line-height:1.5}
+.sub b{color:#93c5fd}
+.panel{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:18px;display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8}
+.field select,.field input{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px 11px;color:#e2e8f0;font-size:13px;min-width:140px;outline:none}
+.field select:focus,.field input:focus{border-color:#3b82f6}
+.field small{font-size:10px;color:#64748b}
+.btn{background:#3b82f6;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-weight:700;font-size:13px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:#2563eb;transform:translateY(-1px)}
+.btn:disabled{background:#475569;cursor:not-allowed;transform:none}
+.btn.danger{background:#ef4444}
+.btn.ghost{background:#0f172a;border:1px solid #334155;color:#94a3b8}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:10px 16px;min-width:110px;text-align:center;flex:1}
+.stat .num{font-size:22px;font-weight:800;line-height:1}
+.stat .lbl{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.stat.ok .num{color:#22c55e}
+.stat.fail .num{color:#ef4444}
+.stat.run .num{color:#3b82f6}
+.stat.p95 .num{color:#f59e0b;font-size:16px}
+.stat.rps .num{color:#a78bfa;font-size:16px}
+.pbar{background:#1e293b;border-radius:8px;height:8px;overflow:hidden;margin-bottom:6px;border:1px solid #334155}
+.pbar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:8px;transition:width .25s;width:0}
+.plabel{font-size:12px;color:#64748b;margin-bottom:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.log-box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;height:220px;overflow-y:auto;font-size:11px;font-family:ui-monospace,monospace;margin-bottom:14px}
+.log-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-ok{color:#22c55e}.log-fail{color:#ef4444}.log-info{color:#94a3b8}.log-warn{color:#f59e0b}
+.err-box{display:none;margin-bottom:14px}
+.err-box.visible{display:block}
+.err-box table{width:100%;border-collapse:collapse;font-size:11px}
+.err-box th{background:#1e293b;color:#94a3b8;padding:7px 8px;text-align:left;border-bottom:1px solid #334155;position:sticky;top:0}
+.err-box td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+.err-box .err-msg{color:#fca5a5;max-width:420px;word-break:break-word}
+.info-box{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.6;color:#cbd5e1}
+.info-box b{color:#f1f5f9}
+.tag{display:inline-block;background:rgba(59,130,246,.15);color:#60a5fa;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;margin-right:4px}
+.sql-box{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px;margin-bottom:14px;overflow:auto}
+.sql-box pre{font-size:11px;color:#94a3b8;white-space:pre-wrap;word-break:break-word}
+a{color:#60a5fa}
+</style>
+</head>
+<body>
+<h1>⚡ Burst Test — 300 Login Bareng (Remote Real)</h1>
+<p class="sub"><span id="statusSupabase" style="color:#f59e0b">⏳ inisialisasi...</span> — Target <b>bkecjfrwqocguyvjymkn.supabase.co</b> • Soal <b>50 PG</b> • Fokus <b>login bareng detik 0</b>. Hasil real karena hit DB produksi. Data test pakai kelas <b>LOADTEST</b> biar gampang hapus manual.</p>
+
+<div class="info-box">
+<b>🧭 Cara pakai (3 menit):</b><br>
+<span class="tag">1</span> Jalankan SQL setup 50 soal di Supabase SQL Editor (lihat kotak SQL di bawah, 1x saja).<br>
+<span class="tag">2</span> <code>npx serve . -p 3000</code> → buka <code>/loadtest_login_burst.html</code><br>
+<span class="tag">3</span> Pilih Mapel <b>LOADTEST-50-SOAL</b> → <b>300 siswa • Konkurensi 50 • Jitter 0</b> → Mulai.<br>
+<span class="tag">4</span> Lihat <b>Gagal / p95 / RPS</b>. Jika gagal &gt;2% → ada bottleneck login. Ulangi dengan Jitter 0-4dtk untuk lihat efek perbaikan <code>index.html:4317</code>.
+</div>
+
+<div class="panel" id="panel">
+  <div class="field"><label>Mapel</label><select id="selMapel"><option value="">Memuat...</option></select><small id="soalCount" style="color:#64748b"></small></div>
+  <div class="field"><label>Mapel manual (opsional)</label><input id="inpMapelManual" placeholder="LOADTEST-50-SOAL" value="LOADTEST-50-SOAL"><small>isi jika mapel belum muncul di dropdown</small></div>
+  <div class="field"><label>Kelas</label><input id="inpKelas" value="LOADTEST"></div>
+  <div class="field"><label>Jumlah Siswa</label><select id="selJumlah"><option value="10">10</option><option value="50">50</option><option value="100">100</option><option value="300" selected>300</option><option value="500">500</option></select></div>
+  <div class="field"><label>Konkurensi (paralel)</label><select id="selConcur"><option value="10">10</option><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="300">300 — brutal full 300 bareng!</option></select></div>
+  <div class="field"><label>Jitter login bareng</label><select id="selJitter"><option value="0" selected>0 (bareng persis — worst case)</option><option value="2000">0-2 detik (ringan)</option><option value="4000">0-4 detik (seperti index.html)</option></select></div>
+  <div class="field"><label>Mode uji</label><select id="selMode"><option value="login-only" selected>Login only (cek+insert) — fokus login</option><option value="login+soal">Login + Fetch 50 soal</option><option value="full">Full sampai RPC submit</option></select></div>
+  <button class="btn" id="btnStart" onclick="mulai()">🚀 Mulai Burst</button>
+  <button class="btn danger" id="btnStop" onclick="hentikan()" style="display:none">⏹ Stop</button>
+  <button class="btn ghost" onclick="exportCSV()">⬇ CSV</button>
+</div>
+
+<div class="stats">
+  <div class="stat ok"><div class="num" id="stOk">0</div><div class="lbl">✅ Berhasil</div></div>
+  <div class="stat fail"><div class="num" id="stFail">0</div><div class="lbl">❌ Gagal</div></div>
+  <div class="stat run"><div class="num" id="stRun">0</div><div class="lbl">⏳ Berjalan</div></div>
+  <div class="stat p95"><div class="num" id="stP95">-</div><div class="lbl">⏱ p95</div></div>
+  <div class="stat rps"><div class="num" id="stRPS">-</div><div class="lbl">⚡ RPS</div></div>
+  <div class="stat p95"><div class="num" id="stAvg">-</div><div class="lbl">Avg</div></div>
+</div>
+<div class="pbar"><div class="pbar-fill" id="pbarFill"></div></div>
+<div class="plabel"><span id="pLabel">Belum dimulai</span><span id="pElapsed">-</span></div>
+<div class="log-box" id="logBox"></div>
+<div class="err-box" id="errBox"><table><thead><tr><th>#</th><th>Siswa</th><th>Fase</th><th>Error</th><th>Ms</th></tr></thead><tbody id="errBody"></tbody></table></div>
+
+<div class="sql-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap"><b style="color:#e2e8f0;font-size:12px">📋 SQL Setup 50 Soal (jalankan 1x di Supabase → SQL Editor)</b><button class="btn ghost" style="padding:6px 10px;font-size:11px" onclick="copySQL('sqlSetup')">Copy</button></div>
+<pre id="sqlSetup">-- SETUP 300 LOGIN BURST — 50 soal PG — mapel LOADTEST-50-SOAL
+-- Jalankan di Supabase Dashboard > SQL Editor (service_role)
+insert into jadwal_ujian (mapel, kelas, waktu_mulai, waktu_selesai, durasi_menit, is_aktif)
+values ('LOADTEST-50-SOAL','LOADTEST', now() - interval '2 hours', now() + interval '4 hours', 60, true)
+on conflict do nothing;
+
+-- hapus soal lama jika ada (biar pas 50)
+delete from bank_soal where mapel='LOADTEST-50-SOAL';
+
+insert into bank_soal (mapel, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, tipe_soal)
+select 'LOADTEST-50-SOAL',
+  'Soal '||g||': Berapakah hasil dari '||g||' + '||g||' ?',
+  'Jawaban A-'||g, 'Jawaban B-'||g, 'Jawaban C-'||g, 'Jawaban D-'||g, 'Jawaban E-'||g,
+  (array['A','B','C','D','E'])[1+floor(random()*5)::int],
+  'PG'
+from generate_series(1,50) g;
+
+-- verifikasi
+select count(*) as soal_50 from bank_soal where mapel='LOADTEST-50-SOAL';
+select mapel, kelas, waktu_mulai, waktu_selesai from jadwal_ujian where mapel='LOADTEST-50-SOAL';</pre>
+</div>
+<div class="sql-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:#e2e8f0;font-size:12px">🧹 SQL Cleanup (hapus data test setelah selesai)</b><button class="btn ghost" style="padding:6px 10px;font-size:11px" onclick="copySQL('sqlClean')">Copy</button></div>
+<pre id="sqlClean">delete from jawaban_ujian where mapel='LOADTEST-50-SOAL' and kelas='LOADTEST';
+-- jika pakai QUEUETEST juga: delete from jawaban_ujian where mapel='LOADTEST-50-SOAL' and kelas='QUEUETEST';
+delete from bank_soal where mapel='LOADTEST-50-SOAL';
+delete from jadwal_ujian where mapel='LOADTEST-50-SOAL';</pre>
+</div>
+
+<script>
+const SUPABASE_URL='https://bkecjfrwqocguyvjymkn.supabase.co';
+const SUPABASE_KEY='sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+if(!window.supabase||!window.supabase.createClient){document.getElementById('statusSupabase').textContent='❌ CDN gagal';throw new Error('CDN fail')}
+const sup=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+document.getElementById('statusSupabase').textContent='✅ siap — remote connected';
+
+let berjalan=false,stopFlag=false,ok=0,fail=0,running=0,totalReq=0;
+let latencies=[],startTime=0,elapsedTimer=null;
+const logEl=document.getElementById('logBox'),errBody=document.getElementById('errBody');
+
+function copySQL(id){const t=document.getElementById(id).innerText;navigator.clipboard.writeText(t).then(()=>tulis('📋 SQL disalin','ok'))}
+function tulis(m,type='info'){const d=document.createElement('div');d.className='log-entry log-'+type;d.textContent='['+new Date().toLocaleTimeString()+'] '+m;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight}
+function pct(a){if(!a.length)return '-';const s=[...a].sort((x,y)=>x-y);const p95=s[Math.floor(s.length*0.95)]||s[s.length-1];return (p95/1000).toFixed(2)+' dtk'}
+function avg(a){if(!a.length)return '-';return (a.reduce((x,y)=>x+y,0)/a.length/1000).toFixed(2)+' dtk'}
+function updateUI(){
+  document.getElementById('stOk').textContent=ok;
+  document.getElementById('stFail').textContent=fail;
+  document.getElementById('stRun').textContent=running;
+  document.getElementById('stP95').textContent=pct(latencies);
+  document.getElementById('stAvg').textContent=avg(latencies);
+  const target=parseInt(document.getElementById('selJumlah').value)||0;
+  const done=ok+fail;
+  const pctBar=target?Math.min(100,done/target*100):0;
+  document.getElementById('pbarFill').style.width=pctBar+'%';
+  const elapsed=startTime?((performance.now()-startTime)/1000).toFixed(1)+' dtk':'-';
+  const rps=startTime&&elapsed!=='-'? (done / ((performance.now()-startTime)/1000)).toFixed(1) : '-';
+  document.getElementById('stRPS').textContent=rps;
+  document.getElementById('pLabel').textContent=done+'/'+target+' selesai | '+running+' berjalan | 📤 '+totalReq+' req';
+  document.getElementById('pElapsed').textContent='⏱ '+elapsed+' | RPS '+rps;
+}
+function catatErr(nama,fase,msg,ms){
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td>'+(errBody.children.length+1)+'</td><td>'+nama+'</td><td>'+fase+'</td><td class="err-msg">'+(msg||'').toString().substring(0,300)+'</td><td>'+(ms? (ms/1000).toFixed(2)+'s':'-')+'</td>';
+  errBody.appendChild(tr);document.getElementById('errBox').classList.add('visible');
+}
+function withTimeout(promise,ms,label){
+  return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error(label+' timeout '+ms/1000+'dtk')),ms))]);
+}
+async function loadMapel(){
+  const sel=document.getElementById('selMapel');
+  try{
+    const res=await withTimeout(sup.from('jadwal_ujian').select('mapel,waktu_mulai,waktu_selesai,durasi_menit').eq('is_aktif',true),15000,'jadwal');
+    if(res.error) throw new Error(res.error.message);
+    const now=new Date();const set=new Set();
+    (res.data||[]).forEach(j=>{
+      const tM=new Date(j.waktu_mulai);let tS=j.waktu_selesai?new Date(j.waktu_selesai):null;
+      if(!tS||isNaN(tS.getTime())) tS=new Date(tM.getTime()+(j.durasi_menit||90)*60000);
+      if(now>=tM&&now<=tS&&j.mapel) set.add(j.mapel.trim());
+    });
+    const list=[...set].sort();
+    sel.innerHTML='<option value="">— Pilih Mapel —</option>';
+    list.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;if(m==='LOADTEST-50-SOAL') o.selected=true;sel.appendChild(o)});
+    if(list.length===0){sel.innerHTML='<option value="">⚠️ Tidak ada ujian aktif</option>';tulis('⚠️ Tidak ada jadwal aktif. Jalankan SQL setup dulu.','warn')}
+    else{tulis('✅ Mapel aktif: '+list.join(', '),'ok');cekSoalCount();}
+  }catch(e){sel.innerHTML='<option value="">❌ '+e.message.substring(0,60)+'</option>';tulis('❌ loadMapel: '+e.message,'fail')}
+}
+async function cekSoalCount(){
+  const m=getMapel();if(!m) return;
+  try{const r=await sup.from('bank_soal_siswa').select('id',{count:'exact',head:false}).eq('mapel',m).limit(1);
+    // head false but we need count via exact
+    const c=await sup.from('bank_soal_siswa').select('id',{count:'exact',head:true}).eq('mapel',m);
+    const n=c.count||0;
+    document.getElementById('soalCount').textContent=n? n+' soal':'soal kosong';
+    if(n===0) tulis('⚠️ Soal untuk '+m+' kosong — jalankan SQL setup!','warn');
+    else if(n!==50) tulis('ℹ️ Soal '+m+': '+n+' (ideal 50)','info');
+    else tulis('✅ Soal '+m+': 50 siap','ok');
+  }catch(e){document.getElementById('soalCount').textContent='cek gagal'}
+}
+function getMapel(){
+  const manual=document.getElementById('inpMapelManual').value.trim();
+  if(manual) return manual;
+  return document.getElementById('selMapel').value.trim();
+}
+document.getElementById('selMapel').addEventListener('change',cekSoalCount);
+document.getElementById('inpMapelManual').addEventListener('input',cekSoalCount);
+loadMapel();
+
+function onReq(){totalReq++}
+
+async function satuSiswa(idx,nama,kelas,mapel,mode,jitterMs){
+  const t0=performance.now();
+  let fase='init';
+  try{
+    if(jitterMs>0){
+      const d=Math.random()*jitterMs;
+      await new Promise(r=>setTimeout(r,d));
+    }
+    fase='cek';
+    const cek=await withTimeout(sup.from('jawaban_ujian').select('id').eq('nama',nama).eq('kelas',kelas).eq('mapel',mapel).maybeSingle(),15000,fase); onReq();
+    if(cek.error && cek.error.code!=='PGRST116') throw new Error(cek.error.message);
+    let idRow;
+    if(cek.data){
+      fase='update';
+      const upd=await withTimeout(sup.from('jawaban_ujian').update({status:'MENGERJAKAN',skor_pg:null,jawaban_essay:'',jawaban_pg:'',pelanggaran:0,durasi:'-'}).eq('id',cek.data.id),15000,fase); onReq();
+      if(upd.error) throw new Error(upd.error.message);
+      idRow=cek.data.id;
+    }else{
+      fase='insert';
+      const token='burst_'+Date.now()+'_'+idx+'_'+Math.random().toString(36).slice(2,6);
+      const ins=await withTimeout(sup.from('jawaban_ujian').insert([{created_at:new Date().toISOString(),nama,kelas,mapel,skor_pg:null,jawaban_essay:'',jawaban_pg:'',pelanggaran:0,durasi:'-',status:'MENGERJAKAN',device_token:token,urutan_soal:JSON.stringify(Array.from({length:50},(_,i)=>i))}]).select('id').single(),15000,fase); onReq();
+      if(ins.error) throw new Error(ins.error.message);
+      if(!ins.data) throw new Error('insert no data');
+      idRow=ins.data.id;
+    }
+    if(mode!=='login-only'){
+      fase='soal';
+      const s=await withTimeout(sup.from('bank_soal_siswa').select('id').eq('mapel',mapel).limit(60),15000,fase); onReq();
+      if(s.error) throw new Error(s.error.message);
+      if(!s.data||s.data.length===0) throw new Error('soal kosong untuk '+mapel);
+    }
+    if(mode==='full'){
+      fase='rpc';
+      const full=await withTimeout(sup.from('bank_soal_siswa').select('id,tipe_soal').eq('mapel',mapel).order('id'),15000,'soal-full'); onReq();
+      if(full.error) throw new Error(full.error.message);
+      const payload=(full.data||[]).map(x=>({id:x.id,tipe:x.tipe_soal||'PG',jawaban:['A','B','C','D','E'][Math.floor(Math.random()*5)]}));
+      const rpc=await withTimeout(sup.rpc('koreksi_dan_submit',{p_id_row:idRow,p_nama:nama,p_kelas:kelas,p_mapel:mapel,p_jawaban:payload,p_pelanggaran:0,p_durasi:'1 menit',p_status:'SELESAI - '+new Date().toLocaleTimeString('id-ID')}),15000,fase); onReq();
+      if(rpc.error) throw new Error(rpc.error.message);
+      if(rpc.data && rpc.data.success===false) throw new Error(rpc.data.error||'rpc false');
+    }
+    return {ok:true,waktu:performance.now()-t0};
+  }catch(e){return {ok:false,error:fase+': '+(e.message||String(e)),waktu:performance.now()-t0}}
+}
+
+let csvRows=[];
+async function mulai(){
+  if(berjalan) return;
+  const mapel=getMapel();
+  const kelas=document.getElementById('inpKelas').value.trim()||'LOADTEST';
+  const jumlah=parseInt(document.getElementById('selJumlah').value);
+  const concur=parseInt(document.getElementById('selConcur').value);
+  const jitter=parseInt(document.getElementById('selJitter').value);
+  const mode=document.getElementById('selMode').value;
+  if(!mapel){tulis('❌ Pilih/isi mapel dulu!','fail');return}
+  if(!kelas){tulis('❌ Isi kelas!','fail');return}
+  // quick soal check
+  try{
+    const c=await sup.from('bank_soal_siswa').select('id',{count:'exact',head:true}).eq('mapel',mapel);
+    if((c.count||0)===0){tulis('❌ Soal untuk '+mapel+' kosong. Jalankan SQL setup dulu, lalu klik loadMapel lagi.','fail');return}
+    if((c.count||0)<50) tulis('⚠️ Soal hanya '+c.count+' (<50) tapi tetap lanjut','warn');
+  }catch(e){tulis('⚠️ cek soal gagal: '+e.message,'warn')}
+  ok=0;fail=0;running=0;latencies=[];totalReq=0;csvRows=[];stopFlag=false;berjalan=true;
+  errBody.innerHTML='';document.getElementById('errBox').classList.remove('visible');logEl.innerHTML='';
+  startTime=performance.now();
+  updateUI();
+  document.getElementById('btnStart').style.display='none';document.getElementById('btnStop').style.display='inline-flex';
+  tulis('🚀 Burst start: '+jumlah+' siswa | concur '+concur+' | jitter '+jitter+'ms | mode '+mode+' | mapel '+mapel,'info');
+  const siswaList=Array.from({length:jumlah},(_,i)=>({idx:i,nama:'Burst#'+String(i+1).padStart(4,'0'),kelas}));
+  let idx=0;
+  elapsedTimer=setInterval(updateUI,400);
+  function selesai(){
+    berjalan=false;clearInterval(elapsedTimer);
+    document.getElementById('btnStart').style.display='inline-flex';document.getElementById('btnStop').style.display='none';
+    const sec=((performance.now()-startTime)/1000).toFixed(1);
+    const rps=(ok+fail)/sec; const failPct=(fail/jumlah*100).toFixed(1);
+    tulis('🏁 SELESAI — ✅ '+ok+' | ❌ '+fail+' ('+failPct+'%) | ⏱ '+sec+' dtk | RPS '+rps.toFixed(1)+' | p95 '+pct(latencies)+' | avg '+avg(latencies)+' | req '+totalReq,'info');
+    if(fail===0) tulis('✅ LOGIN BARANG 300 AMAN — siap untuk ujian real.','ok');
+    else if(fail/jumlah<0.02) tulis('⚠️ Gagal <2% — masih aman, tapi pertimbangkan jitter 0-4dtk','warn');
+    else tulis('❌ Gagal >2% — butuh mitigasi: tambah jitter / pooler / retry','fail');
+    updateUI();
+  }
+  async function jalankan(s){
+    if(stopFlag) return;
+    const res=await satuSiswa(s.idx,s.nama,s.kelas,mapel,mode,jitter);
+    latencies.push(res.waktu); csvRows.push({nama:s.nama,ok:res.ok,ms:Math.round(res.waktu),err:res.error||''});
+    if(res.ok){ok++;tulis('✅ '+s.nama+' — '+(res.waktu/1000).toFixed(2)+'s','ok')}else{fail++;tulis('❌ '+s.nama+' — '+(res.error||'').substring(0,120)+' ('+(res.waktu/1000).toFixed(2)+'s)','fail');catatErr(s.nama,res.error?res.error.split(':')[0]:'unknown',res.error,res.waktu)}
+    updateUI();
+    if(ok+fail>=jumlah) selesai();
+  }
+  function loop(){
+    while(running<concur && idx < siswaList.length && !stopFlag){
+      const s=siswaList[idx++]; running++;
+      updateUI();
+      jalankan(s).finally(()=>{running--;});
+    }
+  }
+  loop();
+  const ticker=setInterval(()=>{
+    if(!berjalan||stopFlag||ok+fail>=jumlah){clearInterval(ticker);return}
+    loop();
+  },80);
+}
+function hentikan(){stopFlag=true;berjalan=false;clearInterval(elapsedTimer);document.getElementById('btnStart').style.display='inline-flex';document.getElementById('btnStop').style.display='none';tulis('⏹ Dihentikan','warn');updateUI()}
+function exportCSV(){
+  if(!csvRows.length){tulis('Belum ada data','warn');return}
+  const head='nama,ok,ms,error\n';
+  const body=csvRows.map(r=> r.nama+','+ (r.ok?1:0)+','+r.ms+',"'+(r.err||'').replace(/"/g,'""')+'"').join('\n');
+  const blob=new Blob([head+body],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='burst_300_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

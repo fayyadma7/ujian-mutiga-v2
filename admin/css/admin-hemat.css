@@ -1,0 +1,278 @@
+/* ================================================================
+   ADMIN HEMAT — MODE ENTENG PERMANEN (DEFAULT)
+   Tanpa toggle, aktif untuk mobile & desktop, warna tetap dark.
+   Hanya mematikan animasi/blur/filter/transform — tidak ubah warna.
+   Load PALING AKHIR setelah admin-mobile.css
+   ================================================================ */
+
+/* 1. MATIKAN SEMUA ANIMASI & TRANSISI — KECUALI SPINNER */
+*,
+*::before,
+*::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+
+/* Spinner harus tetap muter biar tau loading */
+.loader-ring,
+.fa-spin,
+.fa-circle-notch,
+.fa-spinner,
+.fa-spinner.fa-spin {
+    animation: spin 0.8s linear infinite !important;
+}
+
+/* Toast progress bar — biarkan shrink tipis (opsional, 0.15s) atau matikan total.
+   Untuk maksimal enteng, matikan juga — toast tetap muncul tanpa bar animasi */
+.toast-bar {
+    animation: none !important;
+}
+
+/* 2. MATIKAN BACKDROP-FILTER / FILTER BLUR — PENYEBAB UTAMA LAG */
+header,
+.card-panel,
+.stat-card,
+.landing-card,
+.login-modal-glass,
+.admin-modal-card,
+#landingOverlay,
+#modalConfirmAdmin,
+#loginModalOverlay,
+#modalEditSoal,
+#modalGenerateAI,
+#modalDaftarGuru,
+.bottom-nav,
+.sidebar-backdrop,
+.landing-dim,
+.soal-item,
+.login-glass-input,
+[style*="backdrop-filter"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+}
+
+/* 3. SEMBUNYIKAN DEKORATIF MURNI (GLOW / ORB / GRADIENT) — TIDAK UBAH WARNA CARD */
+.landing-orb,
+.landing-bottom-gradient,
+.stat-card::after,
+.sidebar::before,
+.btn::after,
+.landing-btn::after,
+.landing-btn .ripple,
+.btn-primary::after,
+.btn-login::before,
+.btn-submit::before {
+    display: none !important;
+}
+
+/* Landing bg tetap tampil (warna cakep), cuma orb & gradient yang dihapus */
+
+/* 4. MATIKAN ENTRANCE ANIMATIONS */
+.page-section,
+.page-section.active,
+.landing-panel-left,
+.landing-panel-right,
+.landing-brand,
+.login-modal-glass,
+.admin-modal-card,
+#toast-container,
+.toast,
+.toast.toast-show,
+.toast.toast-hide {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+}
+
+/* Page switch jadi instant — tidak ada slide 0.45s */
+.page-section { display: none !important; }
+.page-section.active { display: block !important; }
+
+/* 5. MATIKAN HOVER LIFT / SCALE / GLOW */
+.stat-card:hover,
+.card-panel:hover,
+.landing-card:hover,
+.btn:hover,
+.btn-primary:hover,
+.btn-success:hover,
+.btn-warning:hover,
+.btn-purple:hover,
+.btn-outline:hover,
+.btn-danger:hover,
+.landing-btn:hover,
+.upload-area:hover,
+.nav-links a:hover,
+.csl-btn:hover,
+.login-glass-btn:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Icon hover scale/rotate mati */
+.stat-card:hover .icon-box,
+.nav-links a:hover i,
+.upload-area:hover i,
+.sidebar-brand:hover img,
+.bottom-nav button:active {
+    transform: none !important;
+    filter: none !important;
+}
+
+/* Matikan active indicator animasi & icon drop-shadow */
+.nav-links a::before,
+.nav-links a.active::before {
+    transition: none !important;
+    animation: none !important;
+}
+.nav-links a.active i,
+.bottom-nav button.active i,
+.sidebar-brand img,
+.landing-logo,
+.icon-box {
+    filter: none !important;
+}
+
+/* 6. FEATURE SLIDE — JADI INSTANT TANPA BLUR */
+.feature-slide {
+    filter: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+.feature-slide.active {
+    filter: none !important;
+    transform: none !important;
+}
+
+/* Dots tetap ganti warna tapi tanpa animasi lebar */
+.dot,
+.dot.active {
+    transition: none !important;
+}
+
+/* 7. LIVE DOT — MATIKAN NEON PULSE */
+.live-dot {
+    animation: none !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+/* 8. SIDEBAR & DRAWER — JADI INSTANT (PALING ENTENG) */
+.sidebar,
+.sidebar.collapsed,
+.main-wrapper,
+header,
+.content-area,
+.sidebar-backdrop,
+.bottom-nav,
+.bottom-nav button,
+.bottom-nav button i {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* 9. FORM & INPUT — FOCUS TANPA TRANSISI */
+.form-control,
+.form-control:focus,
+.login-glass-input,
+.login-glass-input:focus,
+.csl-btn,
+.csl-btn.open,
+.csl-btn:after,
+.csl-dropdown,
+.csl-option,
+.toggle-slider,
+.toggle-slider:before,
+.upload-area,
+.upload-area i {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* 10. TABLE & CARD HOVER — MATIKAN */
+tbody tr,
+tbody tr:hover,
+.card-panel tbody tr:hover {
+    transition: none !important;
+    background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* 11. GLOBAL SCROLL & WILL-CHANGE BERSIHKAN */
+html {
+    scroll-behavior: auto !important;
+}
+.exam-container,
+.sidebar,
+.card-panel,
+.stat-card,
+.landing-card {
+    will-change: auto !important;
+    contain: none !important;
+}
+
+/* 12. PASTIKAN STAT CARD ACCENT LINE TETAP MUNCUL (TIDAK BERAT) */
+.stat-card::before {
+    display: block !important;
+}
+
+/* 13. MOBILE KHUSUS — BACKDROP-FILTER MATI TOTAL */
+@media (max-width: 768px) {
+    .stat-card, .card-panel, header, .landing-card, .login-modal-glass,
+    #landingOverlay, #modalConfirmAdmin, .bottom-nav, .sidebar-backdrop {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+    .sidebar {
+        transition: none !important;
+    }
+    .bottom-nav {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+/* 14. FIX JADWAL CARD — JUDUL MAPEL FLEKSIBEL (WRAP PENUH SESUAI PANJANG) */
+@media (max-width: 768px) {
+  tbody#tabel-jadwal tr td[data-label="Mapel"]{
+    min-height: auto !important;
+    height: auto !important;
+    align-items: flex-start !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div{
+    align-items: flex-start !important;
+  }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #f1f5f9 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.35 !important;
+    letter-spacing: .2px !important;
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* 15. KILL KEYFRAMES SISA — TIDAK PERLU HAPUS FILE, CUKUP OVERRIDE */
+@keyframes pageSlideIn { from { opacity:1 } to { opacity:1 } }
+@keyframes landingFloat { from { transform:none } to { transform:none } }
+@keyframes landingFadeRight { from { opacity:1; transform:none } to { opacity:1; transform:none } }
+@keyframes landingFadeLeft { from { opacity:1; transform:none } to { opacity:1; transform:none } }
+@keyframes landingLogoFloat { from { transform:none } to { transform:none } }
+@keyframes neonPulse { from { opacity:1; box-shadow:none } to { opacity:1; box-shadow:none } }
+@keyframes loginModalIn { from { opacity:1; transform:none; filter:none } to { opacity:1; transform:none; filter:none } }
+@keyframes pulse { from { opacity:1 } to { opacity:1 } }
+@keyframes btnRipple { from { transform:scale(0) } to { transform:scale(0) } }
+@keyframes toastBarShrink { from { transform:scaleX(1) } to { transform:scaleX(1) } }
+@keyframes fadeIn { from { opacity:1 } to { opacity:1 } }
+@keyframes simpleFadeIn { from { opacity:1 } to { opacity:1 } }
