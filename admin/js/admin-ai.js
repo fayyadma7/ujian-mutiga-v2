@@ -260,7 +260,40 @@ Gunakan seluruh informasi yang diberikan pengguna sebagai parameter utama dalam 
 ${referensi ? `7. REFERENSI MATERI / TEKS MODUL:\n${referensi}\n` : ''}
 
 Semua soal yang dibuat HARUS mengikuti parameter tersebut.
-Jika ada Referensi Materi, gunakan referensi tersebut sebagai sumber utama.
+Jika ada Referensi Materi, gunakan referensi tersebut sebagai sumber utama — TAPI JANGAN PERNAH MENYEBUT KEBERADAANNYA DI DALAM SOAL (lihat Aturan Mutlak di bawah).
+
+==================================================
+0. ATURAN MUTLAK: TIDAK BOLEH ADA "JEJAK" REFERENSI DI DALAM SOAL — PRIORITAS #1 TIDAK BOLEH DILANGGAR
+==================================================
+Ini aturan PALING PENTING dan mengalahkan semua instruksi lain dalam kondisi apa pun.
+
+Prinsip dasar:
+- referensi_materi adalah bahan bacaanmu, BUKAN bahan yang boleh kamu tunjuk-tunjuk di dalam soal.
+- Perlakukan referensi itu seperti kamu sedang belajar dari buku, lalu MENUTUP buku itu, dan menulis soal dari pemahamanmu sendiri — persis seperti penulis bank soal profesional bekerja.
+- Hasilnya HARUS terbaca alami dan berdiri sendiri (self-contained), seolah soal itu memang sudah ada di buku cetak / bank soal resmi, bukan soal yang "dibuat dari suatu teks".
+
+FRASA YANG DILARANG KERAS (dan semua variasinya) — JANGAN PERNAH memunculkan pola kalimat seperti ini di badan soal, opsi jawaban, maupun essay:
+- "Berdasarkan referensi materi..." / "Berdasarkan referensi..."
+- "Berdasarkan teks di atas..." / "Berdasarkan modul/artikel di atas..."
+- "Menurut referensi/teks/modul yang diberikan..."
+- "Sesuai dengan materi yang disediakan..." / "Merujuk pada teks referensi..."
+- "Dari bacaan di atas..." / "Sebagaimana dijelaskan dalam referensi..."
+- Kata kunci apa pun yang mengarah ke "referensi", "teks di atas", "modul ini", "bacaan tersebut", "artikel yang diberikan", dsb.
+
+CARA MEMPERBAIKI (WAJIB DIIKUTI):
+- Ekstrak fakta, konsep, istilah, angka, dan konteks konkret dari referensi_materi (misalnya nama lembaga, definisi, data, studi kasus), lalu tuliskan ulang menjadi soal yang berdiri sendiri.
+- Ganti kalimat penunjuk referensi dengan subjek konkret dari materi itu sendiri.
+- Jika referensi_materi kosong, buat soal langsung dari pengetahuan umum sesuai mata_pelajaran dan topik_bab_materi, tanpa menyebut "referensi" sama sekali.
+
+Contoh SALAH vs BENAR:
+❌ SALAH: "Berdasarkan referensi materi, Bank Muamalat adalah..."
+✅ BENAR: "Bank yang tercatat sebagai bank syariah pertama di Indonesia dan berdiri pada tahun 1991 adalah..."
+
+❌ SALAH: "Menurut teks di atas, apa yang dimaksud dengan pendapatan nasional?"
+✅ BENAR: "Total nilai barang dan jasa akhir yang dihasilkan oleh suatu negara dalam satu periode tertentu disebut..."
+
+VALIDASI FINAL SEBELUM OUTPUT:
+Periksa ulang SETIAP soal — jika soal tidak bisa dipahami tanpa mengetahui bahwa ada "referensi" yang diberikan ke AI, soal itu GAGAL dan HARUS ditulis ulang sampai self-contained. Semua soal harus lolos tes ini.
 
 ==================================================
 PRINSIP UTAMA
@@ -360,7 +393,10 @@ Struktur JSON yang WAJIB digunakan:
 
 PRIORITAS UTAMA:
 KUALITAS > KESESUAIAN > KEUNIKAN > VARIASI > JUMLAH
-Selalu pastikan JSON valid dan format opsi tidak bocor ke markdown luar.`;
+Selalu pastikan JSON valid dan format opsi tidak bocor ke markdown luar.
+
+PENGINGAT FINAL — ANTI JEJAK REFERENSI (CEK ULANG WAJIB):
+Sebelum menutup JSON, lakukan self-check: TIDAK ADA SATU PUN soal/opsi/kunci yang mengandung kata "referensi", "teks di atas", "modul ini/di atas", "bacaan tersebut/di atas", "artikel yang diberikan" atau frasa penunjuk referensi apa pun. Jika ada, HAPUS dan tulis ulang menjadi soal self-contained dengan subjek konkret dari materi. Pelanggaran = soal GAGAL. Semua soal harus lolos tes self-contained (bisa dipahami tanpa tahu ada referensi).`;
   },
 
   // --- PARSE AI RESPONSE ---
@@ -392,6 +428,23 @@ Selalu pastikan JSON valid dan format opsi tidak bocor ke markdown luar.`;
     };
     const collapseNewlines = (text) => text ? text.replace(/\n{3,}/g, '<br><br>') : '';
     const smartTrim = (text) => text ? text.replace(/^[\s\n]+|[\s\n]+$/g, '').replace(/\n{3,}/g, '<br><br>') : '';
+    // Anti-jejak referensi: hapus sisa frasa terlarang jika AI masih membandel (defensive sanitizer)
+    const cleanReferenceTraces = (text) => {
+      if (!text) return text;
+      let t = text;
+      // Hapus pola terlarang di awal kalimat (paling umum)
+      t = t.replace(/^\s*(Berdasarkan|Menurut|Sesuai dengan|Merujuk pada|Sebagaimana dijelaskan dalam)\s+[^.!?]*?(referensi|teks di atas|teks tersebut|modul|bacaan di atas|bacaan tersebut|materi yang disediakan|artikel yang diberikan)[^.!?]*?[,:]\s*/gi, '');
+      t = t.replace(/^\s*(Berdasarkan|Menurut)\s+(referensi|teks|modul|artikel)[^.!?]*?[,:]\s*/gi, '');
+      t = t.replace(/^\s*Dari\s+bacaan\s+di\s+atas\s*[,:]?\s*/gi, '');
+      // Hapus di tengah kalimat (inline)
+      t = t.replace(/\s*\(?\s*berdasarkan\s+referensi[^)]*\)?/gi, '');
+      t = t.replace(/\s*\(?\s*menurut\s+teks\s+di\s+atas[^)]*\)?/gi, '');
+      t = t.replace(/\s*\(?\s*sesuai\s+dengan\s+materi[^)]*\)?/gi, '');
+      t = t.replace(/\s{2,}/g, ' ').trim();
+      // Kapitalisasi awal jika terpotong
+      if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+      return t;
+    };
     // Normalisasi rumus: angka sederhana → unwrap, formula pendek → inline $...$, formula panjang → display $$...$$
     const normalizeMath = (text, forceInline) => {
       if (!text) return text;
@@ -462,17 +515,18 @@ Selalu pastikan JSON valid dan format opsi tidak bocor ke markdown luar.`;
 
       pertanyaan = stripOptions(pertanyaan, hasOpsi);
       pertanyaan = collapseNewlines(pertanyaan);
+      pertanyaan = cleanReferenceTraces(pertanyaan);
       pertanyaan = normalizeMath(pertanyaan, false);
       pertanyaan = wrapBareLatex(pertanyaan);
 
       return {
         mapel: s.mapel || mapel,
         pertanyaan,
-        opsi_a: wrapBareLatex(normalizeMath(opsiA, true)),
-        opsi_b: wrapBareLatex(normalizeMath(opsiB, true)),
-        opsi_c: wrapBareLatex(normalizeMath(opsiC, true)),
-        opsi_d: wrapBareLatex(normalizeMath(opsiD, true)),
-        opsi_e: wrapBareLatex(normalizeMath(opsiE, true)),
+        opsi_a: cleanReferenceTraces(wrapBareLatex(normalizeMath(opsiA, true))),
+        opsi_b: cleanReferenceTraces(wrapBareLatex(normalizeMath(opsiB, true))),
+        opsi_c: cleanReferenceTraces(wrapBareLatex(normalizeMath(opsiC, true))),
+        opsi_d: cleanReferenceTraces(wrapBareLatex(normalizeMath(opsiD, true))),
+        opsi_e: cleanReferenceTraces(wrapBareLatex(normalizeMath(opsiE, true))),
         kunci_jawaban: jawaban,
         tipe_soal: tipe,
       };
