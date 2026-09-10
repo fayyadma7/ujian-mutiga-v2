@@ -3,6 +3,7 @@
 // admin-ai.js — AI Soal Generator Module
 // Supports: Gemini, Cerebras, Groq, Mistral (multi-provider)
 // Features: KaTeX math rendering, RTL Arabic detection
+// + Lampiran Referensi Word/PDF (single file, 10MB, mutually exclusive with textarea)
 // ============================================================
 
 const PROVIDERS = [
@@ -14,6 +15,10 @@ const PROVIDERS = [
 
 const AIGenerator = {
   modalEl: null,
+  _attachedText: "",
+  _attachedFileName: "",
+  _isFileActive: false,
+  _pdfJsLoading: null,
 
   init() { if (!document.getElementById('ai-generator-modal')) this._buildModal(); },
 
@@ -25,7 +30,12 @@ const AIGenerator = {
     const btn = document.getElementById('ai-generate-btn');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Generate Soal'; }
   },
-  closeModal() { if (this.modalEl) this.modalEl.style.display = 'none'; },
+  closeModal() {
+    if (this.modalEl) this.modalEl.style.display = 'none';
+    // reset lampiran on close to keep modal fresh (optional but prevents stale lock)
+    // keep data until next open? we clear to avoid confusion
+    this._clearAttachment(true);
+  },
 
   // --- WEIGHTED RANDOM PROVIDER SELECTOR ---
   _selectProvider() {
@@ -72,6 +82,262 @@ const AIGenerator = {
       }
     }
     throw new Error(`Semua AI provider gagal. Terakhir: ${lastError?.message}`);
+  },
+
+  // ============================================================
+  // LAMPIRAN REFERENSI — WORD / PDF
+  // ============================================================
+  _setReferensiDisabled(locked) {
+    const ta = document.getElementById('ai-referensi');
+    const label = document.getElementById('ai-referensi-label');
+    if (!ta) return;
+    ta.disabled = locked;
+    if (locked) {
+      ta.style.opacity = '0.45';
+      ta.style.pointerEvents = 'none';
+      ta.style.background = 'rgba(255,255,255,0.04)';
+      ta.placeholder = 'Nonaktif — hapus lampiran untuk input manual...';
+      if (label) label.innerHTML = '<i class="fas fa-lock" style="color:#f59e0b;"></i> Referensi Materi / Teks Modul <span style="font-size:10px;font-weight:600;color:#f59e0b;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);padding:2px 7px;border-radius:999px;margin-left:6px;"><i class="fas fa-paperclip"></i> Terkunci oleh lampiran</span>';
+    } else {
+      ta.style.opacity = '';
+      ta.style.pointerEvents = '';
+      ta.style.background = '';
+      ta.placeholder = 'Tempel teks referensi atau modul di sini sebagai konteks AI...';
+      if (label) label.innerHTML = 'Referensi Materi / Teks Modul';
+    }
+  },
+
+  _formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1048576).toFixed(2) + ' MB';
+  },
+
+  _truncateReferensi(text, max = 15000) {
+    if (!text) return { text: '', truncated: false };
+    if (text.length <= max) return { text, truncated: false };
+    return { text: text.slice(0, max) + '\n\n[...teks dipangkas ke ' + max.toLocaleString('id-ID') + ' karakter karena terlalu panjang — sisa diabaikan...]', truncated: true };
+  },
+
+  _getEffectiveReferensi() {
+    if (this._isFileActive && this._attachedText) return this._attachedText;
+    const ta = document.getElementById('ai-referensi');
+    return ta ? ta.value.trim() : '';
+  },
+
+  async _loadMammoth() {
+    if (typeof mammoth !== 'undefined') return;
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js');
+    if (typeof mammoth === 'undefined') throw new Error('Gagal memuat mammoth');
+  },
+
+  async _loadPdfJs() {
+    if (typeof window.pdfjsLib !== 'undefined') return;
+    if (this._pdfJsLoading) return this._pdfJsLoading;
+    this._pdfJsLoading = (async () => {
+      // pdf.js legacy build (non-module) yang expose window.pdfjsLib
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      if (typeof window.pdfjsLib === 'undefined' && typeof window.pdfjsLib === 'undefined') {
+        // fallback CDN
+        await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+      }
+      if (typeof window.pdfjsLib === 'undefined') throw new Error('Gagal memuat pdf.js');
+      // set worker
+      try {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      } catch {}
+    })();
+    return this._pdfJsLoading;
+  },
+
+  async _extractTextFromDocx(arrayBuffer) {
+    await this._loadMammoth();
+    // prefer extractRawText (clean text) untuk AI
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    let text = (result.value || '').trim();
+    // fallback: if raw empty but HTML has content, try HTML then strip
+    if (!text) {
+      const htmlRes = await mammoth.convertToHtml({ arrayBuffer });
+      const tmp = document.createElement('div');
+      tmp.innerHTML = htmlRes.value || '';
+      text = (tmp.textContent || tmp.innerText || '').trim();
+    }
+    return text.replace(/\r/g, '').replace(/\u00A0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  },
+
+  async _extractTextFromPdf(arrayBuffer) {
+    await this._loadPdfJs();
+    const pdfjsLib = window.pdfjsLib;
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    let fullText = '';
+    const totalPages = pdf.numPages;
+    const statusEl = document.getElementById('ai-file-extract-status');
+    for (let i = 1; i <= totalPages; i++) {
+      if (statusEl) statusEl.textContent = `Mengekstrak halaman ${i}/${totalPages}...`;
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(it => it.str).join(' ');
+      fullText += pageText + '\n\n';
+      // yield to UI every 10 pages for large PDFs
+      if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    return fullText.replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  },
+
+  _updateFileUIAfterExtract(file, charCount, truncated) {
+    const dropEl = document.getElementById('ai-file-drop');
+    const statusBox = document.getElementById('ai-file-status');
+    const previewBox = document.getElementById('ai-file-preview');
+    const ta = document.getElementById('ai-referensi');
+    if (dropEl) dropEl.style.display = 'none';
+    if (statusBox) {
+      statusBox.style.display = 'flex';
+      const truncatedBadge = truncated ? '<span style="font-size:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);padding:2px 6px;border-radius:999px;margin-left:6px;">dipangkas 15k</span>' : '';
+      statusBox.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;color:#34d399;flex-shrink:0;"><i class="fas ${file.name.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-word'}"></i></div>
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${file.name}</div>
+            <div style="font-size:11px;color:#94a3b8;">${this._formatBytes(file.size)} · ${charCount.toLocaleString('id-ID')} karakter ${truncatedBadge}</div>
+          </div>
+        </div>
+        <button type="button" id="ai-file-remove-btn" style="flex-shrink:0;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#f87171;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-trash-alt"></i> Hapus</button>
+      `;
+      const btnRemove = document.getElementById('ai-file-remove-btn');
+      if (btnRemove) btnRemove.onclick = () => this._clearAttachment(false);
+    }
+    if (previewBox) {
+      const snippet = this._attachedText.slice(0, 700);
+      const more = this._attachedText.length > 700 ? '...' : '';
+      previewBox.style.display = 'block';
+      previewBox.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:0.3px;text-transform:uppercase;"><i class="fas fa-eye" style="margin-right:4px;"></i> Preview Ekstrak</span>
+          <span style="font-size:11px;color:#64748b;">${this._attachedText.length > 700 ? '700/' + this._attachedText.length.toLocaleString('id-ID') : charCount.toLocaleString('id-ID') + ' char'}</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;color:#cbd5e1;max-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;">${this._escapeHtml(snippet + more) || '<span style="color:#64748b;font-style:italic;">(tidak ada teks terekstrak)</span>'}</div>
+        ${this._attachedText.length > 700 ? '<div style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">Teks lengkap ('+this._attachedText.length.toLocaleString('id-ID')+' karakter) akan dikirim ke AI</div>' : ''}
+      `;
+    }
+    this._setReferensiDisabled(true);
+  },
+
+  _escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  },
+
+  _clearAttachment(silent = false) {
+    this._attachedText = "";
+    this._attachedFileName = "";
+    this._isFileActive = false;
+    const input = document.getElementById('ai-referensi-file');
+    if (input) input.value = '';
+    const dropEl = document.getElementById('ai-file-drop');
+    const statusBox = document.getElementById('ai-file-status');
+    const previewBox = document.getElementById('ai-file-preview');
+    const extractStatus = document.getElementById('ai-file-extract-status');
+    if (dropEl) dropEl.style.display = 'flex';
+    if (statusBox) { statusBox.style.display = 'none'; statusBox.innerHTML = ''; }
+    if (previewBox) { previewBox.style.display = 'none'; previewBox.innerHTML = ''; }
+    if (extractStatus) extractStatus.textContent = '';
+    this._setReferensiDisabled(false);
+    if (!silent) {
+      const ta = document.getElementById('ai-referensi');
+      if (ta) ta.focus();
+    }
+  },
+
+  async _handleAttachmentChange(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const MAX_BYTES = 10 * 1024 * 1024;
+    const statusBox = document.getElementById('ai-file-status');
+    const previewBox = document.getElementById('ai-file-preview');
+    const extractStatus = document.getElementById('ai-file-extract-status');
+    const dropEl = document.getElementById('ai-file-drop');
+
+    // validations
+    if (file.size > MAX_BYTES) {
+      showToast('File terlalu besar! Maksimal 10 MB. File Anda: ' + this._formatBytes(file.size), 'error');
+      input.value = '';
+      return;
+    }
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (!['pdf','docx'].includes(ext)) {
+      showToast('Format tidak didukung. Gunakan .docx atau .pdf', 'error');
+      input.value = '';
+      return;
+    }
+    // if already has file, replace silently (no confirm needed — single file policy)
+    if (this._isFileActive) {
+      // quick visual feedback that replacing
+      if (extractStatus) extractStatus.textContent = 'Mengganti lampiran...';
+    }
+
+    // show extracting state
+    if (dropEl) dropEl.style.opacity = '0.6';
+    if (dropEl) dropEl.style.pointerEvents = 'none';
+    if (statusBox) { statusBox.style.display = 'none'; }
+    if (previewBox) { previewBox.style.display = 'none'; }
+    if (extractStatus) {
+      extractStatus.style.display = 'block';
+      extractStatus.innerHTML = '<span style="color:#8b5cf6;"><i class="fas fa-spinner fa-spin"></i> Mengekstrak teks dari ' + this._escapeHtml(file.name) + '...</span>';
+    }
+
+    try {
+      const ab = await file.arrayBuffer();
+      let rawText = '';
+      if (ext === 'docx') {
+        rawText = await this._extractTextFromDocx(ab);
+      } else {
+        rawText = await this._extractTextFromPdf(ab);
+      }
+
+      if (!rawText || rawText.trim().length < 10) {
+        // PDF scan / empty
+        if (extractStatus) extractStatus.innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-exclamation-triangle"></i> File tidak mengandung teks yang bisa dibaca. PDF mungkin hasil scan/gambar. Hapus lampiran untuk pakai input manual.</span>';
+        // still lock textarea but show empty state, user must delete to unlock
+        const truncatedRes = this._truncateReferensi('', 15000);
+        this._attachedText = truncatedRes.text;
+        this._attachedFileName = file.name;
+        this._isFileActive = true;
+        this._updateFileUIAfterExtract(file, 0, false);
+        // override preview to warn
+        if (previewBox) {
+          previewBox.innerHTML = '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 12px;font-size:12px;color:#fbbf24;"><i class="fas fa-exclamation-circle"></i> Tidak ada teks terekstrak. Jika ini PDF scan, ubah ke PDF text-based atau ketik manual setelah menghapus lampiran.</div>';
+          previewBox.style.display = 'block';
+        }
+        showToast('Lampiran tidak mengandung teks. Gunakan PDF text-based atau .docx', 'error');
+        return;
+      }
+
+      const trunc = this._truncateReferensi(rawText, 15000);
+      this._attachedText = trunc.text;
+      this._attachedFileName = file.name;
+      this._isFileActive = true;
+      if (extractStatus) extractStatus.style.display = 'none';
+      this._updateFileUIAfterExtract(file, rawText.length, trunc.truncated);
+      if (trunc.truncated) {
+        showToast('Teks lampiran dipangkas ke 15.000 karakter agar muat di AI (' + rawText.length.toLocaleString('id-ID') + ' → 15.000)', 'info');
+      } else {
+        showToast('Lampiran berhasil dibaca (' + rawText.length.toLocaleString('id-ID') + ' karakter)', 'success');
+      }
+    } catch (err) {
+      console.error('[AI attachment]', err);
+      if (extractStatus) extractStatus.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Gagal mengekstrak: ' + this._escapeHtml(err.message) + '</span>';
+      showToast('Gagal membaca file: ' + err.message, 'error');
+      input.value = '';
+      this._clearAttachment(true);
+      // re-enable drop
+      if (dropEl) { dropEl.style.opacity = ''; dropEl.style.pointerEvents = ''; }
+      return;
+    } finally {
+      if (dropEl) { dropEl.style.opacity = ''; dropEl.style.pointerEvents = ''; }
+      if (extractStatus && this._isFileActive) extractStatus.style.display = 'none';
+    }
   },
 
   // --- BUILD MODAL UI ---
@@ -125,9 +391,30 @@ const AIGenerator = {
           </div>
         </div>
 
-        <div class="form-group" style="margin-bottom:15px;">
-          <label style="color:var(--text-subtle,#94a3b8);">Referensi Materi / Teks Modul</label>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label id="ai-referensi-label" style="color:var(--text-subtle,#94a3b8);">Referensi Materi / Teks Modul</label>
           <textarea id="ai-referensi" class="form-control" rows="5" placeholder="Tempel teks referensi atau modul di sini sebagai konteks AI..."></textarea>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:6px;"><i class="fas fa-info-circle"></i> Isi manual <b>atau</b> upload 1 file di bawah — tidak bisa bersamaan.</div>
+        </div>
+
+        <!-- Upload Lampiran Referensi (Word/PDF) — Single File 10MB -->
+        <div style="margin-bottom:15px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+            <label style="margin:0;color:var(--text-subtle,#94a3b8);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;"><i class="fas fa-paperclip" style="color:var(--accent,#8b5cf6);"></i> Lampiran Referensi <span style="font-weight:400;font-size:11px;color:#64748b;">(opsional)</span></label>
+            <span style="font-size:10px;font-weight:600;color:#94a3b8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);padding:3px 8px;border-radius:999px;letter-spacing:0.3px;"><i class="fas fa-file-alt"></i> 1 file · max 10MB · .docx / .pdf</span>
+          </div>
+
+          <div id="ai-file-drop" style="border:1.5px dashed rgba(139,92,246,0.35);background:rgba(139,92,246,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.25);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:18px;"><i class="fas fa-cloud-upload-alt"></i></div>
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0;">Klik atau seret file ke sini</div>
+            <div style="font-size:11px;color:#94a3b8;">Word (.docx) atau PDF text-based</div>
+            <div style="font-size:11px;color:#64748b;font-style:italic;">Jika lampiran diisi, kolom teks manual akan terkunci otomatis</div>
+            <input type="file" id="ai-referensi-file" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;">
+          </div>
+
+          <div id="ai-file-extract-status" style="display:none;margin-top:10px;font-size:12px;text-align:center;min-height:18px;"></div>
+          <div id="ai-file-status" style="display:none;margin-top:10px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.12);border-radius:12px;padding:10px 12px;align-items:center;justify-content:space-between;gap:10px;"></div>
+          <div id="ai-file-preview" style="display:none;margin-top:10px;"></div>
         </div>
 
         <button id="ai-generate-btn" class="btn btn-purple" style="width:100%;justify-content:center;font-size:16px;">
@@ -140,6 +427,37 @@ const AIGenerator = {
     document.getElementById('ai-modal-close').onclick = () => this.closeModal();
     this.modalEl.addEventListener('click', (e) => { if (e.target === this.modalEl) this.closeModal(); });
     document.getElementById('ai-generate-btn').onclick = () => this.generateSoal();
+
+    // --- Lampiran file handlers ---
+    const fileInput = document.getElementById('ai-referensi-file');
+    const dropEl = document.getElementById('ai-file-drop');
+    if (fileInput && dropEl) {
+      dropEl.onclick = () => fileInput.click();
+      fileInput.onchange = () => this._handleAttachmentChange(fileInput);
+      // drag & drop
+      dropEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropEl.style.borderColor = 'rgba(139,92,246,0.65)';
+        dropEl.style.background = 'rgba(139,92,246,0.12)';
+      });
+      dropEl.addEventListener('dragleave', () => {
+        dropEl.style.borderColor = 'rgba(139,92,246,0.35)';
+        dropEl.style.background = 'rgba(139,92,246,0.06)';
+      });
+      dropEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropEl.style.borderColor = 'rgba(139,92,246,0.35)';
+        dropEl.style.background = 'rgba(139,92,246,0.06)';
+        const files = e.dataTransfer.files;
+        if (files && files[0]) {
+          // validate via DataTransfer
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          fileInput.files = dt.files;
+          this._handleAttachmentChange(fileInput);
+        }
+      });
+    }
   },
 
   // --- GENERATE SOAL ---
@@ -150,7 +468,7 @@ const AIGenerator = {
     const diff = document.getElementById('ai-diff').value;
     const jmlPg = parseInt(document.getElementById('ai-jml-pg').value) || 0;
     const jmlEssay = parseInt(document.getElementById('ai-jml-essay').value) || 0;
-    const referensi = document.getElementById('ai-referensi').value.trim();
+    const referensi = this._getEffectiveReferensi();
     const statusEl = document.getElementById('ai-status');
     const btn = document.getElementById('ai-generate-btn');
 
