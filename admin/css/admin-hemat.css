@@ -5,22 +5,70 @@
    Load PALING AKHIR setelah admin-mobile.css
    ================================================================ */
 
-/* 1. MATIKAN SEMUA ANIMASI & TRANSISI — KECUALI SPINNER */
-*,
-*::before,
-*::after {
+/* 1. MATIKAN SEMUA ANIMASI & TRANSISI — KECUALI SPINNER (ANTI-LAG) */
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring),
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring)::before,
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring)::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
 }
 
-/* Spinner harus tetap muter biar tau loading */
+/* Spinner harus tetap muter biar tau loading — GPU ACCELERATED, ANTI-JANK */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fa-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Inline border-spinner (Swal loading div dengan style animation:spin) */
+[style*="animation:spin"],
+[style*="animation: spin"] {
+    animation: spin 1s linear infinite !important;
+    -webkit-animation: spin 1s linear infinite !important;
+    animation-play-state: running !important;
+    -webkit-animation-play-state: running !important;
+    will-change: transform !important;
+    transform-origin: 50% 50% !important;
+}
+
 .loader-ring,
 .fa-spin,
 .fa-circle-notch,
 .fa-spinner,
-.fa-spinner.fa-spin {
-    animation: spin 0.8s linear infinite !important;
+.fa-spinner.fa-spin,
+.fa-pulse,
+i.fa-spin,
+i.fa-spinner,
+svg.fa-spin {
+    animation: fa-spin 0.8s linear infinite !important;
+    -webkit-animation: fa-spin 0.8s linear infinite !important;
+    animation-delay: 0s !important;
+    animation-play-state: running !important;
+    -webkit-animation-play-state: running !important;
+    will-change: transform !important;
+    transform-origin: 50% 50% !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    transform: translateZ(0);
+    display: inline-block;
+    visibility: visible !important;
+    opacity: 1 !important;
+    contain: none !important;
+}
+
+/* Ikon spinner di dalam button disabled / status tetap jalan */
+button:disabled .fa-spin,
+button:disabled .fa-spinner,
+button:disabled .fa-circle-notch,
+.btn:disabled .fa-spin,
+#ai-generate-btn:disabled .fa-spin,
+#ai-status .fa-spin,
+#status-upload .fa-spin,
+.swal2-popup .fa-spin {
+    animation: fa-spin 0.8s linear infinite !important;
+    -webkit-animation: fa-spin 0.8s linear infinite !important;
+    animation-play-state: running !important;
+    -webkit-animation-play-state: running !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* Toast progress bar — biarkan shrink tipis (opsional, 0.15s) atau matikan total.
@@ -111,10 +159,10 @@ header,
     box-shadow: none !important;
 }
 
-/* Icon hover scale/rotate mati */
-.stat-card:hover .icon-box,
-.nav-links a:hover i,
-.upload-area:hover i,
+/* Icon hover scale/rotate mati — KECUALI SPINNER */
+.stat-card:hover .icon-box:not(.fa-spin):not(.fa-spinner),
+.nav-links a:hover i:not(.fa-spin):not(.fa-spinner),
+.upload-area:hover i:not(.fa-spin):not(.fa-spinner),
 .sidebar-brand:hover img,
 .bottom-nav button:active {
     transform: none !important;
@@ -127,11 +175,11 @@ header,
     transition: none !important;
     animation: none !important;
 }
-.nav-links a.active i,
-.bottom-nav button.active i,
+.nav-links a.active i:not(.fa-spin):not(.fa-spinner),
+.bottom-nav button.active i:not(.fa-spin):not(.fa-spinner),
 .sidebar-brand img,
 .landing-logo,
-.icon-box {
+.icon-box:not(.fa-spin) {
     filter: none !important;
 }
 
@@ -168,7 +216,7 @@ header,
 .sidebar-backdrop,
 .bottom-nav,
 .bottom-nav button,
-.bottom-nav button i {
+.bottom-nav button i:not(.fa-spin):not(.fa-spinner) {
     transition: none !important;
     animation: none !important;
 }
@@ -186,7 +234,7 @@ header,
 .toggle-slider,
 .toggle-slider:before,
 .upload-area,
-.upload-area i {
+.upload-area i:not(.fa-spin):not(.fa-spinner) {
     transition: none !important;
     animation: none !important;
 }
@@ -199,7 +247,7 @@ tbody tr:hover,
     background-color: rgba(255,255,255,0.02) !important;
 }
 
-/* 11. GLOBAL SCROLL & WILL-CHANGE BERSIHKAN */
+/* 11. GLOBAL SCROLL & WILL-CHANGE BERSIHKAN — KECUALI SPINNER */
 html {
     scroll-behavior: auto !important;
 }
@@ -209,6 +257,11 @@ html {
 .stat-card,
 .landing-card {
     will-change: auto !important;
+    contain: none !important;
+}
+/* Spinner tetap GPU layer */
+.fa-spin, .fa-spinner, .fa-circle-notch, .loader-ring {
+    will-change: transform !important;
     contain: none !important;
 }
 
@@ -263,7 +316,7 @@ html {
   }
 }
 
-/* 15. KILL KEYFRAMES SISA — TIDAK PERLU HAPUS FILE, CUKUP OVERRIDE */
+/* 15. KILL KEYFRAMES SISA — TIDAK PERLU HAPUS FILE, CUKUP OVERRIDE — KECUALI SPIN */
 @keyframes pageSlideIn { from { opacity:1 } to { opacity:1 } }
 @keyframes landingFloat { from { transform:none } to { transform:none } }
 @keyframes landingFadeRight { from { opacity:1; transform:none } to { opacity:1; transform:none } }
@@ -276,3 +329,7 @@ html {
 @keyframes toastBarShrink { from { transform:scaleX(1) } to { transform:scaleX(1) } }
 @keyframes fadeIn { from { opacity:1 } to { opacity:1 } }
 @keyframes simpleFadeIn { from { opacity:1 } to { opacity:1 } }
+
+/* 16. SPINNER KEYFRAMES — WAJIB TETAP AKTIF DI AKHIR (JANGAN DI-OVERRIDE) */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fa-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

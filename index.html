@@ -3056,6 +3056,298 @@
             input, textarea, select{font-size:16px !important}
         }
 
+        /* ========== FIX: KONTRAST TEKS MODAL & NOTIFIKASI DI SEMUA TEMA SISWA ========== */
+        /* Light & Hemat: modal/overlay harus putih, teks gelap — tombol tetap putih di atas biru */
+        html[data-theme="light"] .modal-card,
+        html[data-theme="low"] .modal-card,
+        html[data-theme="light"] .overlay-card,
+        html[data-theme="low"] .overlay-card,
+        html[data-theme="light"] #start-overlay .modal-card,
+        html[data-theme="low"] #start-overlay .modal-card {
+            background:#FFFFFF !important;
+            border-color:#E2E8F0 !important;
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] .modal-card .modal-title,
+        html[data-theme="low"] .modal-card .modal-title,
+        html[data-theme="light"] .overlay-card .overlay-title,
+        html[data-theme="low"] .overlay-card .overlay-title,
+        html[data-theme="light"] #start-overlay .modal-title,
+        html[data-theme="low"] #start-overlay .modal-title {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] .modal-card .modal-text,
+        html[data-theme="low"] .modal-card .modal-text,
+        html[data-theme="light"] .overlay-card .overlay-text,
+        html[data-theme="low"] .overlay-card .overlay-text,
+        html[data-theme="light"] #start-overlay .modal-text,
+        html[data-theme="low"] #start-overlay .modal-text {
+            color:#475569 !important;
+        }
+        /* Override inline putih di atas putih — semua teks di modal light/hemat jadi gelap */
+        html[data-theme="light"] .modal-card [style*="color:white"],
+        html[data-theme="low"] .modal-card [style*="color:white"],
+        html[data-theme="light"] .modal-card [style*="color: white"],
+        html[data-theme="low"] .modal-card [style*="color: white"],
+        html[data-theme="light"] .modal-card [style*="color:#fff"],
+        html[data-theme="low"] .modal-card [style*="color:#fff"],
+        html[data-theme="light"] .modal-card [style*="255,255,255"],
+        html[data-theme="low"] .modal-card [style*="255,255,255"],
+        html[data-theme="light"] .modal-card [style*="255, 255, 255"],
+        html[data-theme="low"] .modal-card [style*="255, 255, 255"],
+        html[data-theme="light"] .overlay-card [style*="color:white"],
+        html[data-theme="low"] .overlay-card [style*="color:white"],
+        html[data-theme="light"] .overlay-card [style*="255,255,255"],
+        html[data-theme="low"] .overlay-card [style*="255,255,255"],
+        html[data-theme="light"] #start-overlay [style*="color:white"],
+        html[data-theme="low"] #start-overlay [style*="color:white"],
+        html[data-theme="light"] #start-overlay [style*="255,255,255"],
+        html[data-theme="low"] #start-overlay [style*="255,255,255"] {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] .modal-card [style*="rgba(255"],
+        html[data-theme="low"] .modal-card [style*="rgba(255"],
+        html[data-theme="light"] .overlay-card [style*="rgba(255"],
+        html[data-theme="low"] .overlay-card [style*="rgba(255"],
+        html[data-theme="light"] #start-overlay [style*="rgba(255"],
+        html[data-theme="low"] #start-overlay [style*="rgba(255"] {
+            color:#475569 !important;
+        }
+        html[data-theme="light"] #start-overlay div[style*="#94A3B8"],
+        html[data-theme="low"] #start-overlay div[style*="#94A3B8"],
+        html[data-theme="light"] #start-overlay div[style*="#94a3b8"],
+        html[data-theme="low"] #start-overlay div[style*="#94a3b8"] {
+            color:#64748B !important;
+        }
+        html[data-theme="light"] [style*="gold-light"],
+        html[data-theme="low"] [style*="gold-light"] {
+            color:#1E40AF !important;
+        }
+        html[data-theme="light"] #countdown-angka,
+        html[data-theme="low"] #countdown-angka {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #countdown-angka[style*="white"],
+        html[data-theme="low"] #countdown-angka[style*="white"],
+        html[data-theme="light"] #modalWaktuHabis .modal-text [style*="white"],
+        html[data-theme="low"] #modalWaktuHabis .modal-text [style*="white"],
+        html[data-theme="light"] #modalWaktuHabis div[style*="rgba(255"],
+        html[data-theme="low"] #modalWaktuHabis div[style*="rgba(255"] {
+            color:#475569 !important;
+        }
+        html[data-theme="light"] #modalPeringatan5Menit strong,
+        html[data-theme="low"] #modalPeringatan5Menit strong {
+            color:#92400E !important;
+        }
+        html[data-theme="light"] #modalSudahSelesai div[style*="rgba(239,68,68,0.08)"],
+        html[data-theme="low"] #modalSudahSelesai div[style*="rgba(239,68,68,0.08)"] {
+            background:#FEF2F2 !important;
+            border-color:#FECACA !important;
+            color:#475569 !important;
+        }
+        html[data-theme="light"] #modalSudahSelesai strong,
+        html[data-theme="low"] #modalSudahSelesai strong {
+            color:#991B1B !important;
+        }
+        html[data-theme="light"] #modalLoginGuru .modal-card div[style*="color:white"],
+        html[data-theme="low"] #modalLoginGuru .modal-card div[style*="color:white"],
+        html[data-theme="light"] #modalDaftarGuru .modal-card div[style*="color:white"],
+        html[data-theme="low"] #modalDaftarGuru .modal-card div[style*="color:white"],
+        html[data-theme="light"] #modalLoginGuru [style*="rgba(255"],
+        html[data-theme="low"] #modalLoginGuru [style*="rgba(255"],
+        html[data-theme="light"] #modalDaftarGuru [style*="rgba(255"],
+        html[data-theme="low"] #modalDaftarGuru [style*="rgba(255"] {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #modalLoginGuru [style*="rgba(255,255,255,0.45)"],
+        html[data-theme="low"] #modalLoginGuru [style*="rgba(255,255,255,0.45)"],
+        html[data-theme="light"] #modalDaftarGuru [style*="rgba(255,255,255,0.45)"],
+        html[data-theme="low"] #modalDaftarGuru [style*="rgba(255,255,255,0.45)"] {
+            color:#64748B !important;
+        }
+        /* Tombol di modal tetap putih di atas gradient */
+        html[data-theme="light"] .modal-card .btn-modal-confirm,
+        html[data-theme="low"] .modal-card .btn-modal-confirm,
+        html[data-theme="light"] .modal-card .btn-overlay,
+        html[data-theme="low"] .modal-card .btn-overlay,
+        html[data-theme="light"] .overlay-card .btn-overlay,
+        html[data-theme="low"] .overlay-card .btn-overlay,
+        html[data-theme="light"] #start-overlay .btn-modal-confirm,
+        html[data-theme="low"] #start-overlay .btn-modal-confirm,
+        html[data-theme="light"] .modal-card .btn-login,
+        html[data-theme="low"] .modal-card .btn-login {
+            color:white !important;
+        }
+        html[data-theme="light"] .modal-card .btn-modal-cancel,
+        html[data-theme="low"] .modal-card .btn-modal-cancel {
+            color:#334155 !important;
+            background:#FFFFFF !important;
+            border-color:#E2E8F0 !important;
+        }
+        /* SweetAlert2 — tema-aware */
+        html[data-theme="light"] .modern-swal-popup,
+        html[data-theme="low"] .modern-swal-popup {
+            background:#FFFFFF !important;
+            border-color:#E2E8F0 !important;
+        }
+        html[data-theme="light"] .modern-swal-title,
+        html[data-theme="low"] .modern-swal-title,
+        html[data-theme="light"] .swal2-title,
+        html[data-theme="low"] .swal2-title {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container,
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container span,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container span,
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container div,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container div,
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container p,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container p {
+            color:#475569 !important;
+        }
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container strong,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container strong,
+        html[data-theme="light"] .modern-swal-popup .swal2-html-container b,
+        html[data-theme="low"] .modern-swal-popup .swal2-html-container b {
+            color:#0F172A !important;
+        }
+        html[data-theme="dark"] .modern-swal-popup .swal2-html-container span {
+            color:#94A3B8 !important;
+        }
+        html[data-theme="dark"] .modern-swal-popup .swal2-html-container strong,
+        html[data-theme="dark"] .modern-swal-popup .swal2-html-container b {
+            color:#F1F5F9 !important;
+        }
+        html[data-theme="dark"] .modern-swal-popup .swal2-html-container {
+            color:#94A3B8 !important;
+        }
+        /* Autocomplete dropdown — light/hemat jadi putih */
+        html[data-theme="light"] .autocomplete-dropdown,
+        html[data-theme="low"] .autocomplete-dropdown {
+            background:#FFFFFF !important;
+            border-color:#E2E8F0 !important;
+            box-shadow:0 8px 24px rgba(15,23,42,0.08) !important;
+        }
+        html[data-theme="light"] .ac-item,
+        html[data-theme="low"] .ac-item {
+            border-bottom-color:#F1F5F9 !important;
+        }
+        html[data-theme="light"] .ac-item:hover,
+        html[data-theme="low"] .ac-item:hover,
+        html[data-theme="light"] .ac-item.active,
+        html[data-theme="low"] .ac-item.active {
+            background:#F1F5F9 !important;
+        }
+        html[data-theme="light"] .ac-item-name,
+        html[data-theme="low"] .ac-item-name {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] .ac-item-kelas,
+        html[data-theme="low"] .ac-item-kelas {
+            background:#EFF6FF !important;
+            border-color:#BFDBFE !important;
+            color:#1D4ED8 !important;
+        }
+        html[data-theme="light"] .ac-empty,
+        html[data-theme="low"] .ac-empty {
+            color:#64748B !important;
+        }
+        html[data-theme="light"] .ac-hint,
+        html[data-theme="low"] .ac-hint {
+            color:#94A3B8 !important;
+            border-top-color:#F1F5F9 !important;
+        }
+        /* Dark autocomplete tetap kontras: isi tetap putih di atas navy */
+        html[data-theme="dark"] .autocomplete-dropdown {
+            background:rgba(15,23,42,0.98) !important;
+            border-color:rgba(255,255,255,0.12) !important;
+        }
+        html[data-theme="dark"] .ac-item-name { color:white !important; }
+        html[data-theme="dark"] .ac-empty, html[data-theme="dark"] .ac-hint { color:rgba(255,255,255,0.55) !important; }
+        /* OverlaySubmit loader */
+        html[data-theme="light"] #overlaySubmit .submit-loader-wrap,
+        html[data-theme="low"] #overlaySubmit .submit-loader-wrap {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #overlaySubmit .modal-title,
+        html[data-theme="low"] #overlaySubmit .modal-title {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #overlaySubmit .modal-text,
+        html[data-theme="low"] #overlaySubmit .modal-text {
+            color:#475569 !important;
+        }
+        html[data-theme="dark"] #overlaySubmit .modal-title { color:white !important; }
+        html[data-theme="dark"] #overlaySubmit .modal-text { color:rgba(255,255,255,0.65) !important; }
+        /* Jawaban terkirim card (style inline border-radius) */
+        html[data-theme="light"] #app-section > div[style*="border-radius"],
+        html[data-theme="low"] #app-section > div[style*="border-radius"] {
+            background:#FFFFFF !important;
+            border-color:#E2E8F0 !important;
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #app-section [style*="color:white"],
+        html[data-theme="low"] #app-section [style*="color:white"],
+        html[data-theme="light"] #app-section [style*="255,255,255"],
+        html[data-theme="low"] #app-section [style*="255,255,255"] {
+            color:#0F172A !important;
+        }
+        html[data-theme="light"] #app-section [style*="rgba(255,255,255,0.55)"],
+        html[data-theme="low"] #app-section [style*="rgba(255,255,255,0.55)"],
+        html[data-theme="light"] #app-section [style*="rgba(255,255,255,0.35)"],
+        html[data-theme="low"] #app-section [style*="rgba(255,255,255,0.35)"] {
+            color:#475569 !important;
+        }
+        html[data-theme="light"] #app-section [style*="rgba(16,185,129"],
+        html[data-theme="low"] #app-section [style*="rgba(16,185,129"] {
+            background:#ECFDF5 !important;
+            border-color:#A7F3D0 !important;
+            color:#065F46 !important;
+        }
+        html[data-theme="light"] #app-section [style*="rgba(16,185,129"] *,
+        html[data-theme="low"] #app-section [style*="rgba(16,185,129"] * {
+            color:#065F46 !important;
+        }
+        html[data-theme="light"] #app-section .btn-submit,
+        html[data-theme="low"] #app-section .btn-submit,
+        html[data-theme="light"] #app-section .btn-submit *,
+        html[data-theme="low"] #app-section .btn-submit * {
+            color:white !important;
+        }
+        /* Dark app-section result tetap terang */
+        html[data-theme="dark"] #app-section > div[style*="border-radius"] {
+            background:rgba(15,23,42,0.6) !important;
+            border-color:rgba(255,255,255,0.12) !important;
+            color:white !important;
+        }
+        /* Pastikan modal-icon & overlay-icon tetap accent dan tidak tertimpa */
+        html[data-theme="light"] .modal-icon,
+        html[data-theme="low"] .modal-icon,
+        html[data-theme="light"] .overlay-icon,
+        html[data-theme="low"] .overlay-icon {
+            /* biarkan border/background accent tetap, hanya pastikan icon terlihat */
+            filter:none !important;
+        }
+        /* Swal confirm/cancel buttons tetap kontras */
+        html[data-theme="light"] .swal2-confirm,
+        html[data-theme="low"] .swal2-confirm,
+        html[data-theme="light"] .modern-swal-btn,
+        html[data-theme="low"] .modern-swal-btn {
+            color:white !important;
+        }
+        /* Hemat: jangan matikan spinner inline Swal (div border spinner) */
+        html[data-theme="low"] [style*="animation:spin"],
+        html[data-theme="low"] [style*="animation: spin"],
+        html[data-theme="light"] [style*="animation:spin"],
+        html[data-theme="light"] [style*="animation: spin"] {
+            animation:spin 1s linear infinite !important;
+            -webkit-animation:spin 1s linear infinite !important;
+            animation-play-state:running !important;
+            -webkit-animation-play-state:running !important;
+            will-change:transform !important;
+        }
+
     </style>
     <script>(function(){try{var t=localStorage.getItem("exam_theme");if(!t||["dark","light","low"].indexOf(t)===-1)t="dark";document.documentElement.setAttribute("data-theme",t);if(t==="low"){["font-main","font-jawa","font-arab"].forEach(function(id){var el=document.getElementById(id);if(el) el.setAttribute("media","none");});}}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
 </head>
