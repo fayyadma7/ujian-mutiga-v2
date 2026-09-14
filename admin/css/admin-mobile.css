@@ -294,14 +294,15 @@
   }
   #panel-daftar-mapel tbody tr td[data-label="Jumlah Soal"]::before, #panel-daftar-mapel tbody tr td[data-label="Jumlah Soal"]::after{ display:none !important; }
   #panel-daftar-mapel tbody tr td[data-label="Dibuat Oleh"]{ display:none !important; }
-  /* Footer aksi: 2 tombol full */
+  /* Footer aksi: 3 tombol (Lihat/Rename/Hapus) */
   #panel-daftar-mapel tbody tr td[data-label="Aksi"]{
-    display:flex; gap:10px; padding:10px 12px 12px 12px; background:transparent; border:none; justify-content:space-between;
+    display:flex; gap:8px; padding:10px 12px 12px 12px; background:transparent; border:none; justify-content:space-between; flex-wrap:wrap;
   }
   #panel-daftar-mapel tbody tr td[data-label="Aksi"]::before{ display:none; }
   #panel-daftar-mapel tbody tr td[data-label="Aksi"] .action-buttons{ display:contents; }
-  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn{ flex:1; justify-content:center; padding:9px 10px; font-size:12px; font-weight:600; border-radius:8px; min-height:36px; background:transparent; }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn{ flex:1; justify-content:center; padding:9px 6px; font-size:11px; font-weight:600; border-radius:8px; min-height:36px; background:transparent; min-width:0; }
   #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn:first-child{ color:#60a5fa; border:1px solid rgba(59,130,246,.35); background:rgba(59,130,246,.06); }
+  #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn:nth-child(2){ color:#fbbf24 !important; border:1px solid rgba(245,158,11,.35) !important; background:rgba(245,158,11,.08) !important; }
   #panel-daftar-mapel tbody tr td[data-label="Aksi"] .btn:last-child{ color:#f87171; border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.06); }
   /* Jadwal card — EXACT FOTO REFERENSI (tbody#tabel-jadwal) — Pro Max pixel-perfect */
   #tabel-jadwal{ display:block; }
@@ -672,9 +673,9 @@
   .card-panel tbody tr td[colspan]{ display:block; text-align:center; justify-content:center; padding:20px 10px; }
   .card-panel tbody tr td[colspan]::before{ display:none; }
   .card-panel tbody tr:has(td[colspan]){ padding-top:0; background:transparent; border:1px dashed var(--border); box-shadow:none; }
-  /* Toast lebih kecil di HP */
-  #toast-container{ top:12px !important; right:12px !important; left:12px !important; max-width:none !important; }
-  .toast{ min-width:0 !important; max-width:100% !important; font-size:13px !important; }
+  /* Toast lebih kecil di HP — tetap di kanan atas, tidak full-width agar tidak pindah posisi */
+  #toast-container{ top:12px !important; right:12px !important; left:auto !important; bottom:auto !important; max-width:calc(100vw - 24px) !important; }
+  .toast{ min-width:0 !important; max-width:420px !important; width:calc(100vw - 24px) !important; font-size:13px !important; }
 }
 
 /* ================================================================

@@ -79,11 +79,11 @@ async function populatePreviewMapel() {
     let optHtml = '<option value="">— Pilih Mapel dari Bank Soal —</option>';
     uniqueMapels.forEach(mapel => {
         const info = mapelInfo[mapel];
-        const creatorLabel = _sIsAdmin
-            ? [...info.creators].join(', ')
-            : '<span style="color:var(--text-muted);font-size:11px;">Milik Saya</span>';
-        const creatorPlain = _sIsAdmin ? [...info.creators].join(', ') : 'Milik Saya';
-        const creatorHtml = _sIsAdmin ? creatorPlain : '<span style="color:var(--text-muted)">Milik Saya</span>';
+        const rawCreators = [...info.creators].filter(Boolean);
+        const creatorPlainAdmin = rawCreators.length ? rawCreators.join(', ') : 'Admin';
+        const creatorPlain = _sIsAdmin ? creatorPlainAdmin : 'Milik Saya';
+        const creatorHtml = _sIsAdmin ? creatorPlainAdmin : '<span style="color:var(--text-muted)">Milik Saya</span>';
+        const mapelEsc = mapel.replace(/'/g, "\\'");
         html += `
             <tr>
                 <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-mapel" value="${mapel}"></td>
@@ -99,11 +99,14 @@ async function populatePreviewMapel() {
                 <td data-label="Jumlah Soal" style="text-align:center;"><span class="badge" style="background:rgba(15,23,42,.7); color:#94a3b8; border:1px solid rgba(255,255,255,.07); display:inline-flex; align-items:center; gap:6px;"><i class="far fa-file" style="font-size:11px; opacity:.7;"></i> ${info.count} SOAL</span></td>
                 <td data-label="Dibuat Oleh" style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorHtml}</td>
                 <td data-label="Aksi" style="text-align:center;">
-                    <div class="action-buttons" style="display:flex; justify-content:center; gap:8px;">
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="bukaDetailSoal('${mapel}')">
-                            <i class="fas fa-eye"></i> Lihat Soal
+                    <div class="action-buttons" style="display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="bukaDetailSoal('${mapelEsc}')">
+                            <i class="fas fa-eye"></i> Lihat
                         </button>
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fecaca;" onclick="hapusSatuMapel('${mapel}')">
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #fbbf24; border-color: rgba(245,158,11,0.35); background:rgba(245,158,11,0.06);" onclick="renameMapel('${mapelEsc}')" title="Rename Mapel">
+                            <i class="fas fa-pen"></i> Rename
+                        </button>
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fecaca;" onclick="hapusSatuMapel('${mapelEsc}')">
                             <i class="fas fa-trash-alt"></i> Hapus
                         </button>
                     </div>
@@ -320,6 +323,113 @@ async function hapusSatuMapel(mapel) {
         showToast(`Seluruh soal untuk mapel "${mapel}" berhasil dihapus`, 'success', undoFunc, 'Undo');
         populatePreviewMapel();
     }
+}
+
+async function renameMapel(oldMapel) {
+    const sesi = getGuruSession();
+    const isAdmin = sesi && sesi.isAdmin === true;
+    const guruId = sesi ? sesi.id : null;
+    if (!sesi) return showToast('Sesi tidak valid, silakan login ulang', 'error');
+    // Cek kepemilikan & hitung soal
+    let rows, errFetch;
+    try {
+        const q = await db.from('bank_soal').select('id, created_by').eq('mapel', oldMapel);
+        rows = q.data; errFetch = q.error;
+    } catch (e) { errFetch = e; }
+    if (errFetch) return showToast('Gagal cek data mapel: ' + (errFetch.message || errFetch), 'error');
+    const total = (rows || []).length;
+    if (total === 0) return showToast('Mapel tidak ditemukan', 'error');
+    const own = isAdmin ? total : (rows || []).filter(r => String(r.created_by) === String(guruId)).length;
+    const others = total - own;
+    if (!isAdmin && own === 0) {
+        return showToast('Anda tidak memiliki akses rename untuk mapel ini (hanya milik Anda)', 'error');
+    }
+    // Prompt nama baru
+    const { value: newMapelRaw, isDismissed } = await Swal.fire({
+        title: 'Rename Mata Pelajaran',
+        html: `<div style="text-align:left; font-size:13px; line-height:1.6;">
+            <div style="margin-bottom:8px;">Mapel lama: <b style="color:#60a5fa;">${oldMapel.replace(/</g,'&lt;')}</b></div>
+            <div style="padding:8px 10px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:8px; font-size:12px;">
+                ${isAdmin ? `Akan mengubah <b>${total} soal</b> (semua pemilik)` : `Anda memiliki <b>${own} dari ${total} soal</b>${others ? `, <span style="color:#f59e0b;">${others} soal milik guru lain tidak akan diubah</span>` : ' (semua milik Anda)'}`}
+            </div>
+        </div>`,
+        input: 'text',
+        inputValue: oldMapel,
+        inputPlaceholder: 'Nama mapel baru (2-80 karakter)',
+        showCancelButton: true,
+        confirmButtonText: 'Rename',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#3b82f6',
+        background: 'rgba(15,23,42,0.98)',
+        color: '#f1f5f9',
+        inputValidator: (v) => {
+            const t = (v || '').trim();
+            if (!t) return 'Nama tidak boleh kosong';
+            if (t === oldMapel) return 'Nama baru sama dengan lama';
+            if (t.length < 2) return 'Minimal 2 karakter';
+            if (t.length > 80) return 'Maksimal 80 karakter';
+        }
+    });
+    if (isDismissed || !newMapelRaw) return;
+    const newMapel = newMapelRaw.trim();
+    if (newMapel === oldMapel) return;
+    // Cek apakah nama baru sudah ada
+    try {
+        const { data: exists } = await db.from('bank_soal').select('id').eq('mapel', newMapel).limit(1);
+        if (exists && exists.length > 0) {
+            const mergeOk = await asyncConfirm(`Mapel "<b>${newMapel.replace(/</g,'&lt;')}</b>" sudah ada. Rename akan <b>menggabungkan</b> soal ke mapel tersebut.<br>Lanjutkan?`, 'Gabungkan Mapel?');
+            if (!mergeOk) return;
+        }
+    } catch (_) {}
+    // Cek jadwal pakai oldMapel (warning saja)
+    try {
+        const { data: jadwalPakai } = await db.from('jadwal_ujian').select('id').eq('mapel', oldMapel).limit(1);
+        if (jadwalPakai && jadwalPakai.length > 0) {
+            const lanjut = await asyncConfirm(`Mapel "<b>${oldMapel.replace(/</g,'&lt;')}</b>" sedang dipakai di <b>Jadwal Ujian</b>. Rename bank soal tidak otomatis mengubah jadwal.<br>Anda perlu ubah jadwal manual jika ingin sinkron.<br>Lanjutkan rename bank soal?`, 'Perhatian Jadwal');
+            if (!lanjut) return;
+        }
+    } catch (_) {}
+    // Konfirmasi akhir
+    const finalOk = await asyncConfirm(`Yakin rename "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"?<br>${isAdmin ? `Mengubah ${total} soal` : `Mengubah ${own} soal milik Anda`}`, 'Konfirmasi Rename');
+    if (!finalOk) return;
+    // Eksekusi via admin-proxy (pakai updateWhere agar tidak butuh deploy edge baru; fallback ke rename-mapel jika sudah deploy)
+    Swal.fire({ title: 'Menyimpan...', html: `Merename ${isAdmin ? total : own} soal...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9' });
+    let resData, rnErr;
+    try {
+        const updRes = await adminDb.updateWhere('bank_soal', { mapel: oldMapel }, { mapel: newMapel });
+        resData = updRes.data; rnErr = updRes.error;
+        if (rnErr && String(rnErr.message).includes('Unknown action')) {
+            const fb = await adminDb.renameMapel(oldMapel, newMapel);
+            resData = fb.data; rnErr = fb.error;
+        }
+    } catch (e) {
+        rnErr = e;
+    }
+    if (rnErr) {
+        Swal.fire({ icon: 'error', title: 'Gagal Rename', text: rnErr.message || String(rnErr), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+        return;
+    }
+    if (resData && resData.error) {
+        Swal.fire({ icon: 'error', title: 'Gagal Rename', text: resData.error.message || JSON.stringify(resData.error), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+        return;
+    }
+    const affected = Array.isArray(resData) ? resData.length : (resData && typeof resData === 'object' && 'length' in resData ? resData.length : (isAdmin ? total : own));
+    if (affected === 0) {
+        Swal.fire({ icon: 'warning', title: 'Tidak ada perubahan', text: isAdmin ? 'Mapel tidak ditemukan atau sudah di-rename' : 'Tidak ada soal milik Anda dengan mapel tersebut', background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#f59e0b' });
+        return;
+    }
+    Swal.fire({ icon: 'success', title: 'Berhasil', html: `Mapel "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"<br>${affected} soal berhasil di-rename`, background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#10b981', timer: 2500, showConfirmButton: false });
+    showToast(`Mapel "${oldMapel}" → "${newMapel}" berhasil di-rename`, 'success');
+    await populatePreviewMapel();
+    // Refresh detail jika sedang buka mapel yang di-rename
+    const previewVal = document.getElementById('preview-mapel')?.value;
+    if (previewVal === oldMapel) {
+        document.getElementById('preview-mapel').value = newMapel;
+        document.getElementById('detail-mapel-title').innerText = 'Mata Pelajaran: ' + newMapel;
+        loadPreviewSoal();
+    }
+    if (typeof populateManualMapel === 'function') populateManualMapel();
+    if (typeof populateFilterKelas === 'function') { try{ populateFilterKelas(); }catch(e){} }
 }
 
 async function bulkActionMapel(action) {

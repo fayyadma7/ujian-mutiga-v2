@@ -2985,12 +2985,16 @@
             flex-direction:column;align-items:center;justify-content:center;text-align:center;
             padding:32px;color:white;
         }
+        #rotate-warning.show{display:flex !important}
         #rotate-warning i{font-size:48px;color:#FCD34D;margin-bottom:20px;animation:spin 2s linear infinite}
         #rotate-warning h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px}
         #rotate-warning p{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.6}
-        @media (orientation: landscape) and (max-height: 500px){
-            #rotate-warning{display:flex !important}
-        }
+        /* Hapus media query orientation:landscape yang false-positive saat keyboard portrait terbuka.
+           Deteksi landscape sekarang via JS (cek screen.orientation + visualViewport + kb-open) agar
+           tidak muncul padahal sudah portrait. Lihat updateRotateWarning() di JS. */
+        html[data-theme="light"] #rotate-warning{background:#F1F5F9 !important;color:#0F172A !important}
+        html[data-theme="low"] #rotate-warning{background:#F8FAFC !important;color:#0F172A !important}
+        html[data-theme="light"] #rotate-warning p, html[data-theme="low"] #rotate-warning p{color:#475569 !important}
         /* FIX KEYBOARD: jangan pakai 100vh fix di mobile, pakai dvh + scrollable */
         @supports (height: 100dvh){
             #landing-page{min-height:100dvh}
@@ -3029,6 +3033,28 @@
             body.kb-open .login-card{transform: translateY(0) !important}
             /* Chrome fullscreen bubble "To exit full screen..." muncul ~3 detik di atas — beri jarak agar tidak nutup input nama */
             #identitas{padding-top: 12px !important; scroll-padding-top: 80px}
+        }
+        /* ========== FIX PORTRAIT HP: cegah horizontal scroll & layout pecah di portrait sempit ========== */
+        @media (max-width: 768px) and (orientation: portrait), (max-width: 480px){
+            html, body{overflow-x:hidden !important; max-width:100vw !important; width:100% !important}
+            #landing-page{overflow-x:hidden}
+            .hero{padding:20px 16px !important; gap:24px !important}
+            .hero-right, .hero-left{max-width:100% !important; width:100% !important}
+            .rules-card{padding:20px !important; border-radius:20px !important}
+            .landing-bg-image{left:0 !important; right:0 !important; top:0 !important; bottom:0 !important}
+            .top-bar{padding:14px 16px !important; gap:8px !important}
+            .exam-container{padding:16px 12px 100px !important; max-width:100% !important}
+            .soal-item{padding:16px !important; border-radius:16px !important}
+            .option-item{padding:12px !important}
+            .option-key{width:30px !important; height:30px !important; font-size:11px !important}
+            .pagination-nav{gap:8px !important}
+            #navbar-ujian{padding:8px 12px !important}
+        }
+        @media (max-width: 380px){
+            .hero-title{font-size:2.2rem !important; line-height:1.2 !important}
+            .hero-desc{font-size:14px !important}
+            .top-bar-brand-text .line2{font-size:11px !important}
+            .login-card-header .login-title{font-size:18px !important}
         }
         /* base overlay - tema aware biar tidak flash hitam di terang/hemat */
         #start-overlay{background:rgba(6,14,31,0.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
@@ -3917,6 +3943,38 @@
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isAndroid = /Android/.test(navigator.userAgent);
         const isMobile = isIOS || isAndroid;
+        // ===== FIX iPhone ZOOM: jangan anggap pinch-zoom sebagai pelanggaran =====
+        let isZooming = false;
+        let zoomTimeout = null;
+        function updateZoomState(){
+            try{
+                const vv = window.visualViewport;
+                const scale = vv ? vv.scale : 1;
+                const isZoomed = scale && Math.abs(scale - 1) > 0.02;
+                if(isZoomed){
+                    isZooming = true;
+                    if(zoomTimeout) clearTimeout(zoomTimeout);
+                    zoomTimeout = setTimeout(()=>{ isZooming = false; }, 1200);
+                } else {
+                    if(zoomTimeout) clearTimeout(zoomTimeout);
+                    zoomTimeout = setTimeout(()=>{ isZooming = false; }, 500);
+                }
+            }catch(e){}
+        }
+        if(window.visualViewport){
+            window.visualViewport.addEventListener('resize', updateZoomState);
+            window.visualViewport.addEventListener('scroll', updateZoomState);
+        }
+        window.addEventListener('gesturestart', ()=>{ isZooming = true; if(zoomTimeout) clearTimeout(zoomTimeout); });
+        window.addEventListener('gesturechange', ()=>{ isZooming = true; });
+        window.addEventListener('gestureend', ()=>{ if(zoomTimeout) clearTimeout(zoomTimeout); zoomTimeout = setTimeout(()=> isZooming=false, 1000); });
+        // fallback touch 2 jari
+        let lastTouchCount = 0;
+        document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length >= 2){ isZooming = true; lastTouchCount = e.touches.length; }});
+        document.addEventListener('touchend', (e)=>{ if(lastTouchCount >= 2){ if(zoomTimeout) clearTimeout(zoomTimeout); zoomTimeout = setTimeout(()=>{ isZooming=false; lastTouchCount=0; }, 1000); }});
+        function isZoomActive(){
+            return isZooming;
+        }
 
         // ===== THEME SWITCHER + FONT HEMAT (putih simpel tanpa Google Fonts) =====
         function toggleGoogleFonts(disable){
@@ -4139,21 +4197,79 @@
 
         // ===== AKHIR WRITE QUEUE =====
 
-        // Helper: kunci orientasi ke portrait (selalu portrait, jangan landscape)
+        // Helper: kunci orientasi ke portrait (selalu portrait, jangan landscape) - anti false-positive saat keyboard
         async function lockPortrait(){
+            if(isIOS) return;
+            if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.fullscreen) return;
             try{
                 if(screen.orientation && screen.orientation.lock){
-                    await screen.orientation.lock('portrait').catch(function(e){ console.warn('Orientation lock gagal:', e.message); });
+                    await screen.orientation.lock('portrait').catch(async function(e){
+                        try{ await screen.orientation.lock('portrait-primary'); }catch(e2){}
+                    });
                 }
-                // fallback: coba lock portrait-primary
-                if(screen.orientation && screen.orientation.lock && screen.orientation.type && screen.orientation.type.indexOf('landscape')!==-1){
-                    try{ await screen.orientation.lock('portrait-primary'); }catch(e){}
-                }
-            }catch(e){ console.warn('lockPortrait error', e); }
+            }catch(e){}
+            setTimeout(function(){
+                try{
+                    if(screen.orientation && screen.orientation.type && screen.orientation.type.includes('landscape')){
+                        screen.orientation.lock('portrait').catch(function(){});
+                    }
+                }catch(e){}
+                if(typeof updateRotateWarning==='function') updateRotateWarning();
+            }, 300);
         }
         function unlockOrientation(){
             try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
         }
+        // ===== FIX PORTRAIT FALSE POSITIVE: deteksi landscape perangkat (bukan viewport keyboard) =====
+        function isDeviceLandscape(){
+            try{
+                if(screen.orientation && screen.orientation.type){
+                    return screen.orientation.type.includes('landscape');
+                }
+            }catch(e){}
+            if(window.screen && window.screen.width && window.screen.height){
+                return window.screen.width > window.screen.height;
+            }
+            return window.matchMedia('(orientation: landscape)').matches && window.innerWidth > window.innerHeight;
+        }
+        function shouldShowRotateWarning(){
+            var isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent) || window.innerWidth <= 900;
+            if(!isMobileDevice) return false;
+            if(document.body.classList.contains('kb-open')) return false;
+            if(window.visualViewport){
+                var vvH = window.visualViewport.height;
+                var winH = window.innerHeight;
+                if(winH - vvH > 120) return false;
+            }
+            var deviceLandscape = isDeviceLandscape();
+            var viewportLandscape = window.innerWidth > window.innerHeight;
+            if(!deviceLandscape) return false;
+            if(!viewportLandscape) return false;
+            if(window.innerHeight > 550) return false;
+            return true;
+        }
+        function updateRotateWarning(){
+            var el = document.getElementById('rotate-warning');
+            if(!el) return;
+            if(shouldShowRotateWarning()){
+                el.classList.add('show');
+                el.style.display = 'flex';
+                el.setAttribute('aria-hidden','false');
+            } else {
+                el.classList.remove('show');
+                el.style.display = 'none';
+                el.setAttribute('aria-hidden','true');
+            }
+        }
+        window.addEventListener('resize', updateRotateWarning);
+        window.addEventListener('orientationchange', function(){ setTimeout(updateRotateWarning, 200); setTimeout(updateRotateWarning, 600); });
+        if(window.visualViewport) window.visualViewport.addEventListener('resize', updateRotateWarning);
+        document.addEventListener('DOMContentLoaded', updateRotateWarning);
+        setTimeout(updateRotateWarning, 500);
+        setInterval(updateRotateWarning, 1000);
+        document.addEventListener('fullscreenchange', updateRotateWarning);
+        document.addEventListener('webkitfullscreenchange', updateRotateWarning);
+        try{ if(screen.orientation) screen.orientation.addEventListener('change', updateRotateWarning); }catch(e){}
         // Fungsi awal untuk masuk aplikasi dari start-overlay — SELALU PORTRAIT + FULLSCREEN (klik Masuk Layar Penuh langsung fullscreen)
         async function masukAplikasi() {
             const elem = document.documentElement;
@@ -4176,24 +4292,28 @@
                     overlay.style.display = 'none';
                     // Mulai animasi landing page setelah overlay hilang
                     document.body.classList.add('anim-started');
+                    updateRotateWarning();
                 }, 500);
             }
+            setTimeout(updateRotateWarning, 600);
         }
-        // jika user sudah fullscreen lalu putar HP ke landscape, paksa kembali portrait + tampilkan warning
+        // jika user sudah fullscreen lalu putar HP ke landscape, paksa kembali portrait + update warning
         try{
             if(screen.orientation) screen.orientation.addEventListener('change', function(){
-                if(screen.orientation.type && screen.orientation.type.indexOf('landscape')!==-1){
-                    // coba kunci balik ke portrait
+                updateRotateWarning();
+                if(screen.orientation.type && screen.orientation.type.includes('landscape')){
                     lockPortrait();
                 }
             });
         }catch(e){}
-        // juga dengarkan fullscreenchange untuk re-lock
+        // juga dengarkan fullscreenchange untuk re-lock portrait + update warning
         document.addEventListener('fullscreenchange', function(){
-            if(document.fullscreenElement) setTimeout(lockPortrait, 200);
+            if(document.fullscreenElement) setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 200);
+            else setTimeout(updateRotateWarning, 200);
         });
         document.addEventListener('webkitfullscreenchange', function(){
-            if(document.webkitFullscreenElement) setTimeout(lockPortrait, 200);
+            if(document.webkitFullscreenElement) setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 200);
+            else setTimeout(updateRotateWarning, 200);
         });
         // ===== FIX KEYBOARD BUG HP: keyboard menutup input / bar putih menutupi form =====
         function handleNamaFocus(el){
@@ -4220,35 +4340,31 @@
                 if(!vv) return;
                 var curH = vv.height;
                 var diff = lastH - curH;
-                // jika keyboard muncul (viewport mengecil > 120px), tandai kb-open
                 if(diff > 120){
                     document.body.classList.add('kb-open');
+                    updateRotateWarning();
                     var active = document.activeElement;
                     if(active && active.id === 'nama'){
                         setTimeout(function(){ try{ active.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} }, 150);
                     }
                 } else if (diff < 80){
-                    // keyboard hilang
                     document.body.classList.remove('kb-open');
+                    setTimeout(updateRotateWarning, 100);
                 }
             }
             if(vv){
                 vv.addEventListener('resize', onVV);
                 vv.addEventListener('scroll', onVV);
             }
-            // fallback focus/blur
-            var namaEl = document.getElementById('nama');
-            // listener dipasang setelah DOM ready (namaEl mungkin null saat parse awal)
             function attach(){
                 var el = document.getElementById('nama');
                 if(!el) return;
-                el.addEventListener('blur', function(){ setTimeout(function(){ document.body.classList.remove('kb-open'); }, 300); });
-                el.addEventListener('focus', function(){ document.body.classList.add('kb-open'); handleNamaFocus(el); });
+                el.addEventListener('blur', function(){ setTimeout(function(){ document.body.classList.remove('kb-open'); updateRotateWarning(); }, 300); });
+                el.addEventListener('focus', function(){ document.body.classList.add('kb-open'); updateRotateWarning(); handleNamaFocus(el); });
             }
             if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
             else attach();
-            // cegah scroll bounce saat keyboard aktif di iOS
-            window.addEventListener('orientationchange', function(){ setTimeout(function(){ window.scrollTo(0,0); }, 200); });
+            window.addEventListener('orientationchange', function(){ setTimeout(function(){ window.scrollTo(0,0); updateRotateWarning(); }, 200); });
         })();
 
         const supabaseUrl = 'https://bkecjfrwqocguyvjymkn.supabase.co';
@@ -4622,7 +4738,8 @@
                     console.log("Fullscreen request failed:", e);
                 }
                 await lockPortrait();
-                setTimeout(lockPortrait, 300);
+                setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 300);
+                setTimeout(updateRotateWarning, 600);
             }
             const mapelSelect = document.getElementById('mapel');
             const selectedOption = mapelSelect.options[mapelSelect.selectedIndex];
@@ -5004,8 +5121,9 @@
         function tutupModal5Menit() {
             document.getElementById('modalPeringatan5Menit').style.display = 'none';
             if (!isIOS) {
-                try { document.documentElement.requestFullscreen?.().then(function(){ lockPortrait(); }).catch(function(){}); setTimeout(lockPortrait, 250); } catch (e) { }
+                try { document.documentElement.requestFullscreen?.().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){}); setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250); } catch (e) { }
             }
+            setTimeout(updateRotateWarning, 300);
         }
 
         // Modal Waktu Habis + Countdown 5 Detik
@@ -5649,12 +5767,13 @@
             const elem = document.documentElement;
             if (!isIOS) {
                 try {
-                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-                setTimeout(lockPortrait, 250);
+                setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250);
             } catch (e) { }
             }
+            setTimeout(updateRotateWarning, 350);
             // Lompat ke soal kosong pertama (pagination mode)
             if (window.targetScrollBelumLengkap !== undefined) {
                 lompatKeSoal(window.targetScrollBelumLengkap);
@@ -5668,12 +5787,13 @@
             const elem = document.documentElement;
             if (!isIOS) {
                 try {
-                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-                setTimeout(lockPortrait, 250);
+                setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250);
             } catch (e) { }
             }
+            setTimeout(updateRotateWarning, 350);
         }
 
         function tampilkanErrorJaringan(pesan) {
@@ -5686,12 +5806,13 @@
             if (!isIOS) {
                 const elem = document.documentElement;
                 try {
-                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){});
                     else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                     else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-                    setTimeout(lockPortrait, 250);
+                    setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250);
                 } catch (e) { }
             }
+            setTimeout(updateRotateWarning, 350);
         }
 
         // ===== FITUR TAKEOVER SESI =====
@@ -5817,11 +5938,12 @@ ${JSON.stringify(payloadJawaban)}`;
             document.getElementById('modalKonfirmasiSubmit').style.display = 'none';
             const elem = document.documentElement;
             try {
-                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){});
                 else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-                setTimeout(lockPortrait, 250);
+                setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250);
             } catch (e) { }
+            setTimeout(updateRotateWarning, 400);
             if (window._submitting) return;
             window._submitting = true;
             let jwb = jwbParam || [];
@@ -5971,6 +6093,8 @@ let aktifSignalSent = false;
         function catatPelanggaran(alasan, pesanOverlay) {
             const isUjianMulai = document.getElementById('formUjian').style.display === 'block';
             if (!isUjianMulai || isViolating) return;
+            // FIX iPhone zoom: jangan hitung pinch-zoom sebagai pelanggaran (hanya saat gesture aktif, bukan saat tetap zoom)
+            try{ if(typeof isZoomActive === 'function' && isZoomActive()){ setTimeout(()=>{ isViolating=false; }, 300); return; } }catch(e){}
 
             isViolating = true;
             const n = document.getElementById('nama').value;
@@ -6197,30 +6321,37 @@ let aktifSignalSent = false;
             }
         });
 
-        // 1. Deteksi Keluar Halaman/Tab
+        // 1. Deteksi Keluar Halaman/Tab (iPhone zoom dikecualikan)
         document.addEventListener("visibilitychange", () => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
+            try{ if(typeof isZoomActive==='function' && isZoomActive()) return; if(isZooming) return; }catch(e){}
             if (document.hidden) {
                 setTimeout(() => {
-                    if (document.hidden) {
+                    try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
+                    if (document.hidden && document.visibilityState === 'hidden') {
                         catatPelanggaran(
                             "Keluar Tab", 
                             "Kamu meninggalkan halaman ujian. Pelanggaran ini telah dicatat dan dilaporkan ke pengawas."
                         );
                     }
-                }, 100);
+                }, 300);
             }
         });
 
-        // 2. Deteksi Kehilangan Fokus (Window Blur)
+        // 2. Deteksi Kehilangan Fokus (Window Blur) - iPhone zoom dikecualikan
         window.addEventListener("blur", () => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
+            try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>{isViolating=false},300); return; } if(isZooming) return; }catch(e){}
+            // iPhone: blur saat pinch-zoom sering terjadi, beri jeda lebih lama dan cek ulang fokus
+            const blurDelay = isIOS ? 400 : 100;
             setTimeout(() => {
+                try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
+                if(document.hasFocus && document.hasFocus()){ isViolating=false; return; }
                 catatPelanggaran(
                     "Kehilangan Fokus", 
                     "Jendela ujian kehilangan fokus (kamu membuka aplikasi lain atau mengklik area luar browser). Pelanggaran dicatat!"
                 );
-            }, 100);
+            }, blurDelay);
         });
 
         // 3. Deteksi Keluar Mode Fullscreen (Tidak berlaku di iOS)
@@ -6264,23 +6395,19 @@ let aktifSignalSent = false;
 
         function tutupOverlay() {
             document.getElementById('overlay').style.display = 'none';
-
-            // Paksa masuk mode fullscreen kembali + portrait (skip di iOS)
             if (!isIOS) {
                 const elem = document.documentElement;
                 try {
-                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); }).catch(function(){});
+                    if (elem.requestFullscreen) elem.requestFullscreen().then(function(){ lockPortrait(); updateRotateWarning(); }).catch(function(){});
                     else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                     else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-                    setTimeout(lockPortrait, 250);
+                    setTimeout(function(){ lockPortrait(); updateRotateWarning(); }, 250);
                 } catch (e) {
                     console.log("Fullscreen request failed:", e);
                 }
             }
-
-            // Kembalikan status ke AKTIF di database agar admin tahu siswa sudah kembali
+            setTimeout(updateRotateWarning, 350);
             kirimSinyalAktif(false);
-
             setTimeout(() => { isViolating = false; }, 1000);
         }
 

@@ -10,11 +10,15 @@
 // ============================================================
 
 const violationTracker = new Map();
+const seenIdsGlobal = new Set();
 let monitoringChannel = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let intentionalClose = false;
 let isSubscribing = false;
+let isLoadingMonitoring = false;
+const violationCooldownMs = 60000;
+const violationLastToastAt = new Map();
 function scheduleReconnect(){
   if(intentionalClose) return;
   if(reconnectTimer) clearTimeout(reconnectTimer);
@@ -45,7 +49,6 @@ async function startRealtimeMonitoring() {
     isSubscribing = true;
     intentionalClose = false;
     monitoringChannel = db.channel('monitoring-live-v2');
-    const seenIds = new Set();
 
     monitoringChannel = monitoringChannel
         .on('postgres_changes',
@@ -58,29 +61,43 @@ async function startRealtimeMonitoring() {
                 const overlay = document.getElementById('landingOverlay');
                 if (overlay && typeof updateLandingSiswaAktif === 'function') updateLandingSiswaAktif();
 
-                if (ev === 'INSERT' && s.id && seenIds.has(s.id)) {
-                    if ((s.status || '').startsWith('SELESAI')) { seenIds.delete(s.id); violationTracker.delete(s.id); }
+                if (ev === 'INSERT' && s.id && seenIdsGlobal.has(s.id)) {
+                    if ((s.status || '').startsWith('SELESAI')) { seenIdsGlobal.delete(s.id); violationTracker.delete(s.id); violationLastToastAt.delete(s.id); }
                     return;
                 }
-                if (ev === 'INSERT' && s.id && !((s.status || '').startsWith('SELESAI'))) seenIds.add(s.id);
+                if (ev === 'INSERT' && s.id && !((s.status || '').startsWith('SELESAI'))) seenIdsGlobal.add(s.id);
 
                 if (ev === 'UPDATE') {
                     const currentPlg = parseInt(s.pelanggaran) || 0;
-                    const prevPlg = violationTracker.get(s.id) || 0;
-                    if (currentPlg > prevPlg) {
-                        if (!document.hidden) showToast(`Pelanggaran! ${s.nama} (${s.kelas}) — ${currentPlg}x`, 'plg');
-                        violationTracker.set(s.id, currentPlg);
+                    const prevPlg = violationTracker.get(s.id);
+                    const hasPrev = violationTracker.has(s.id);
+                    const isIncrement = hasPrev ? (currentPlg > prevPlg) : (currentPlg > 0 && (parseInt(prev.pelanggaran)||0) < currentPlg);
+                    if (isIncrement) {
+                        const lastToast = violationLastToastAt.get(s.id) || 0;
+                        const nowTs = Date.now();
+                        if (nowTs - lastToast > violationCooldownMs) {
+                            if (!document.hidden) showToast(`Pelanggaran! ${s.nama} (${s.kelas}) — ${currentPlg}x`, 'plg');
+                            violationLastToastAt.set(s.id, nowTs);
+                        }
                     }
+                    if (hasPrev || currentPlg>0) violationTracker.set(s.id, currentPlg);
+                    else if (!hasPrev && currentPlg===0) violationTracker.set(s.id, 0);
                     if ((s.status || '').startsWith('SELESAI')) {
-                        if (!document.hidden) showToast(`${s.nama} (${s.kelas}) — Selesai!`, 'selesai');
+                        if (!document.hidden && !seenIdsGlobal.has('selesai-'+s.id)) {
+                            showToast(`${s.nama} (${s.kelas}) — Selesai!`, 'selesai');
+                            seenIdsGlobal.add('selesai-'+s.id);
+                            setTimeout(()=> seenIdsGlobal.delete('selesai-'+s.id), 30000);
+                        }
                         if (typeof loadRecentActivity === 'function') loadRecentActivity();
-                        seenIds.delete(s.id); violationTracker.delete(s.id);
+                        seenIdsGlobal.delete(s.id); violationTracker.delete(s.id); violationLastToastAt.delete(s.id);
                     }
                 }
                 if (ev === 'INSERT') {
                     if ((s.status || '').startsWith('SELESAI')) {
                         if (typeof loadRecentActivity === 'function') loadRecentActivity();
-                        seenIds.delete(s.id); violationTracker.delete(s.id);
+                        seenIdsGlobal.delete(s.id); violationTracker.delete(s.id); violationLastToastAt.delete(s.id);
+                    } else {
+                        if(!violationTracker.has(s.id)) violationTracker.set(s.id, parseInt(s.pelanggaran)||0);
                     }
                 }
 
@@ -199,15 +216,18 @@ async function populateFilterKelas() {
 }
 
 async function loadMonitoring() {
+    if(isLoadingMonitoring) return;
+    isLoadingMonitoring = true;
+    try{
     const tbody = document.getElementById('tabel-monitoring');
-    const filterKelas = document.getElementById('filter-kelas-monitoring').value;
-    const filterMapel = document.getElementById('filter-mapel-monitoring').value;
-    const filterTglAwal = document.getElementById('filter-tgl-awal-monitoring').value;
-    const filterTglAkhir = document.getElementById('filter-tgl-akhir-monitoring').value;
-    const searchName = document.getElementById('search-nama-monitoring').value.toLowerCase();
+    if(!tbody){ isLoadingMonitoring=false; return; }
+    const filterKelas = document.getElementById('filter-kelas-monitoring')?.value || '';
+    const filterMapel = document.getElementById('filter-mapel-monitoring')?.value || '';
+    const filterTglAwal = document.getElementById('filter-tgl-awal-monitoring')?.value || '';
+    const filterTglAkhir = document.getElementById('filter-tgl-akhir-monitoring')?.value || '';
+    const searchName = (document.getElementById('search-nama-monitoring')?.value || '').toLowerCase();
     const banner = document.getElementById('mon-status-banner');
-
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
 
     const { data: jadwalAktif } = await db.from('jadwal_ujian').select('id').eq('is_aktif', true);
     const adaUjianAktif = jadwalAktif && jadwalAktif.length > 0;
@@ -264,15 +284,14 @@ async function loadMonitoring() {
 
     if (error || !data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
-        document.getElementById('mon-page-info').innerText = 'Menampilkan 0 dari 0';
-        // JANGAN reset kartu ke 0 — sudah diisi di atas dari base filter
+        const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
         if (!adaUjianAktif && totalItems === 0 && cntAktif === 0 && cntSelesai === 0) {
             banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.';
         } else {
             banner.style.display = 'none';
         }
-        // tetap pagination info
-        if (typeof updatePaginationMonitoring === 'function') updatePaginationMonitoring(totalItems);
+        if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(totalItems); }catch(e){}
+        isLoadingMonitoring=false;
         return;
     }
 
@@ -335,16 +354,24 @@ async function loadMonitoring() {
             </tr>`;
     });
 
-    document.getElementById('mon-aktif').innerText = cntAktif;
-    document.getElementById('mon-selesai').innerText = cntSelesai;
-    document.getElementById('mon-pelanggaran').innerText = cntPelanggaran;
-
+    const _elAktif2=document.getElementById('mon-aktif'); if(_elAktif2) _elAktif2.innerText = String(cntAktif);
+    const _elSelesai2=document.getElementById('mon-selesai'); if(_elSelesai2) _elSelesai2.innerText = String(cntSelesai);
+    const _elPlg2=document.getElementById('mon-pelanggaran'); if(_elPlg2) _elPlg2.innerText = String(cntPelanggaran);
     if (cntAktif === 0 && !adaUjianAktif) {
         banner.style.display = 'flex';
         banner.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp; Semua siswa sudah selesai & tidak ada ujian yang sedang berlangsung.';
     } else {
         banner.style.display = 'none';
     }
+    try{
+        data.forEach(s=>{
+            const cur=parseInt(s.pelanggaran)||0;
+            if(!violationTracker.has(s.id)) violationTracker.set(s.id, cur);
+            else if(cur > violationTracker.get(s.id)) violationTracker.set(s.id, cur);
+            if(String(s.status||'').startsWith('SELESAI')) seenIdsGlobal.delete(s.id); else seenIdsGlobal.add(s.id);
+        });
+    }catch(e){}
+    }catch(e){ console.warn('[monitoring] load error',e); }finally{ isLoadingMonitoring=false; }
 }
 
 // --- SORTING ---

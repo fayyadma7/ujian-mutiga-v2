@@ -69,10 +69,17 @@ function validasiSession() {
 }
 
 // ==================== TOAST SYSTEM ====================
-const TOAST_DURATION = 6000;
+const TOAST_DURATION = 4000;
 const undoHistory = new Map();
-
+const toastDedupMap = new Map();
+const toastCooldownMs = 8000;
 function showToast(message, type = 'success', undoAction = null, undoLabel = 'Undo') {
+    const dedupKey = type + '::' + message;
+    const now = Date.now();
+    const last = toastDedupMap.get(dedupKey);
+    if (last && (now - last) < toastCooldownMs) return;
+    toastDedupMap.set(dedupKey, now);
+    setTimeout(() => { if (toastDedupMap.get(dedupKey) === now) toastDedupMap.delete(dedupKey); }, toastCooldownMs);
     const icons = {
         success: 'fa-check-circle',
         error: 'fa-times-circle',
@@ -82,63 +89,53 @@ function showToast(message, type = 'success', undoAction = null, undoLabel = 'Un
         plg: 'fa-exclamation-triangle'
     };
     const container = document.getElementById('toast-container');
-    const MAX_TOASTS = 4;
-    if (container.children.length >= MAX_TOASTS) {
+    if (!container) return;
+    const MAX_TOASTS = 3;
+    while (container.children.length >= MAX_TOASTS) {
         const first = container.firstElementChild;
-        if (first) {
-            first.classList.remove('toast-show');
-            first.classList.add('toast-hide');
-            first.addEventListener('transitionend', () => {
-                if (first.parentElement) first.remove();
-            }, { once: true });
-        }
+        if (first) first.remove();
+        else break;
     }
-
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-
     let contentHTML = `
         <div class="toast-content">
             <i class="fas ${icons[type] || 'fa-info-circle'}" style="flex-shrink:0; font-size:1.1rem;"></i>
             <span class="toast-message">${message}</span>
         </div>
     `;
-
     let undoId = null;
     if (undoAction && type === 'success') {
-        undoId = 'undo_' + Date.now();
+        undoId = 'undo_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
         contentHTML += `
             <div class="toast-actions">
                 <button class="toast-btn" onclick="executeUndo('${undoId}')" style="color: #fcd34d;"><i class="fas fa-undo" style="margin-right:4px;"></i>${undoLabel}</button>
             </div>
         `;
     }
-
     toast.innerHTML = contentHTML + `
         <div class="toast-bar" style="animation: toastBarShrink ${TOAST_DURATION}ms linear forwards;"></div>
     `;
     container.appendChild(toast);
-
     if (undoId) {
         toast.dataset.undoId = undoId;
         undoHistory.set(undoId, { action: undoAction, toastElement: toast });
     }
-
     requestAnimationFrame(() => {
         requestAnimationFrame(() => { toast.classList.add('toast-show'); });
     });
-
-    const hideDelay = setTimeout(() => {
-        if (toast.parentElement) {
-            toast.classList.remove('toast-show');
-            toast.classList.add('toast-hide');
-            toast.addEventListener('transitionend', () => {
-                if (toast.parentElement) toast.remove();
-                if (undoId) undoHistory.delete(undoId);
-            }, { once: true });
-        }
-    }, TOAST_DURATION);
-
+    let removed = false;
+    const doRemove = () => {
+        if (removed || !toast.parentElement) return;
+        removed = true;
+        toast.classList.remove('toast-show');
+        toast.classList.add('toast-hide');
+        setTimeout(() => {
+            if (toast.parentElement) toast.remove();
+            if (undoId) undoHistory.delete(undoId);
+        }, 420);
+    };
+    const hideDelay = setTimeout(doRemove, TOAST_DURATION);
     const actions = toast.querySelector('.toast-actions');
     if (actions) {
         actions.addEventListener('click', (e) => {
@@ -146,23 +143,71 @@ function showToast(message, type = 'success', undoAction = null, undoLabel = 'Un
             clearTimeout(hideDelay);
         });
     }
+    toast.addEventListener('click', () => { clearTimeout(hideDelay); doRemove(); });
 }
 
 function executeUndo(undoId) {
     const undoData = undoHistory.get(undoId);
     if (undoData) {
         const { action, toastElement } = undoData;
-        action();
+        try{ action(); }catch(e){}
         if (toastElement && toastElement.parentElement) {
             toastElement.classList.remove('toast-show');
             toastElement.classList.add('toast-hide');
-            toastElement.addEventListener('transitionend', () => {
-                if (toastElement.parentElement) toastElement.remove();
-            }, { once: true });
+            setTimeout(()=>{ if(toastElement.parentElement) toastElement.remove(); }, 400);
         }
         undoHistory.delete(undoId);
     }
 }
+// ==================== WATCHDOG: ANTI BLOCK UI (admin tidak bisa diklik) ====================
+function clearStuckOverlays(){
+    ['landingOverlay','loginModalOverlay','modalConfirmAdmin','modalEditSoal','modalDaftarGuru'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        const cs=getComputedStyle(el);
+        const isHiddenClass = el.classList.contains('hidden') || el.classList.contains('show')===false && (id==='loginModalOverlay'||id==='modalConfirmAdmin');
+        if(cs.display!=='none' && (cs.opacity==='0' || cs.visibility==='hidden')){
+            el.style.display='none';
+            el.style.pointerEvents='none';
+        }
+        if(el.id==='landingOverlay' && el.classList.contains('hidden')){
+            el.style.pointerEvents='none';
+        }
+    });
+    const bd=document.getElementById('sidebar-backdrop');
+    const sb=document.querySelector('.sidebar');
+    if(bd && !sb?.classList.contains('open') && bd.classList.contains('show')){
+        bd.classList.remove('show');
+    }
+    if(!document.querySelector('.sidebar.open') && document.body.style.overflow==='hidden'){
+        const activeModal = document.querySelector('#loginModalOverlay.show, #modalConfirmAdmin.show, #modalEditSoal[style*="display: flex"], #modalEditSoal[style*="display:flex"]');
+        if(!activeModal) document.body.style.overflow='';
+    }
+    try{
+        const x=window.innerWidth/2, y=window.innerHeight/2;
+        const topEl=document.elementFromPoint(x,y);
+        if(topEl){
+            const ov=topEl.closest('#landingOverlay, #loginModalOverlay, #modalConfirmAdmin, #modalEditSoal, #modalDaftarGuru, .sidebar-backdrop, .swal2-container');
+            if(ov){
+                const cs=getComputedStyle(ov);
+                const shouldHide = (cs.display!=='none' && (cs.opacity==='0' || cs.visibility==='hidden')) || ov.classList.contains('hidden') && cs.display!=='none';
+                if(shouldHide){ ov.style.display='none'; ov.style.pointerEvents='none'; ov.classList.remove('show'); ov.classList.remove('hidden'); }
+                if(ov.id==='sidebar-backdrop' && !document.querySelector('.sidebar.open') && ov.classList.contains('show')) ov.classList.remove('show');
+            }
+        }
+    }catch(e){}
+    const tc=document.getElementById('toast-container');
+    if(tc && tc.children.length>3){
+        while(tc.children.length>3) tc.firstElementChild.remove();
+    }
+    if(tc && tc.children.length>0){
+        const csTc=getComputedStyle(tc);
+        if(csTc.display==='none' || csTc.visibility==='hidden') tc.style.display='flex';
+    }
+}
+setInterval(clearStuckOverlays, 3000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(clearStuckOverlays, 500); });
+window.addEventListener('resize', clearStuckOverlays);
 
 // ==================== ASYNC CONFIRM ====================
 function asyncConfirm(pesan, judul = 'Konfirmasi') {
@@ -422,7 +467,7 @@ async function scheduleNextAutoDeactivate() {
         }
 
         if (nextEndTime !== Infinity) {
-            const delayMs = Math.max(500, nextEndTime - Date.now() + 300);
+            const delayMs = Math.max(5000, nextEndTime - Date.now() + 500);
             _autoDeactivateTimer = setTimeout(scheduleNextAutoDeactivate, delayMs);
         }
     } catch (err) {
@@ -431,12 +476,13 @@ async function scheduleNextAutoDeactivate() {
 }
 
 let _safetyCheckIntervalId = setInterval(() => {
+    if (document.hidden) return;
     if (_watchedJadwal.length === 0) return;
     const now = Date.now();
     if (_watchedJadwal.some(j => now >= j.endTime)) {
         scheduleNextAutoDeactivate();
     }
-}, 10000);
+}, 30000);
 
 // ==================== REALTIME CHANNELS (JADWAL & SOAL) ====================
 let _jadwalRealtimeChannel = null;

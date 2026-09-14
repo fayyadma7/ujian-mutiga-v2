@@ -105,10 +105,10 @@ serve(async (req: Request) => {
         break;
 
       case 'insert':
-        if (!isAdmin && OWNED_TABLES.includes(table)) {
+        if (OWNED_TABLES.includes(table)) {
           const withOwner = Array.isArray(data)
-            ? data.map(row => ({ ...row, created_by: guru.id }))
-            : { ...data, created_by: guru.id };
+            ? data.map(row => ({ ...row, created_by: row.created_by ?? guru.id }))
+            : { ...data, created_by: (data as any).created_by ?? guru.id };
           result = await supabase.from(table).insert(withOwner);
         } else {
           result = await supabase.from(table).insert(data);
@@ -118,6 +118,45 @@ serve(async (req: Request) => {
       case 'rpc':
         result = await supabase.rpc(data.function_name, data.params);
         break;
+
+      case 'rename-mapel': {
+        const oldMapel = (data?.oldMapel || '').trim();
+        const newMapel = (data?.newMapel || '').trim();
+        if (!oldMapel || !newMapel) {
+          return new Response(JSON.stringify({ error: 'Nama mapel lama dan baru wajib diisi' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        if (oldMapel === newMapel) {
+          return new Response(JSON.stringify({ error: 'Nama baru sama dengan nama lama' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        if (newMapel.length < 2 || newMapel.length > 80) {
+          return new Response(JSON.stringify({ error: 'Nama mapel 2-80 karakter' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        // Cek kepemilikan untuk guru
+        let countQuery = supabase.from('bank_soal').select('id', { count: 'exact', head: true }).eq('mapel', oldMapel);
+        if (!isAdmin) countQuery = countQuery.eq('created_by', guru.id);
+        const { count: ownCount, error: cntErr } = await countQuery;
+        if (cntErr) {
+          result = { error: cntErr };
+          break;
+        }
+        if (!ownCount || ownCount === 0) {
+          return new Response(JSON.stringify({ error: isAdmin ? 'Mapel tidak ditemukan' : 'Anda tidak memiliki soal dengan mapel tersebut' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        if (!isAdmin) {
+          result = await supabase.from('bank_soal').update({ mapel: newMapel }).eq('mapel', oldMapel).eq('created_by', guru.id);
+        } else {
+          result = await supabase.from('bank_soal').update({ mapel: newMapel }).eq('mapel', oldMapel);
+        }
+        break;
+      }
 
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {

@@ -55,6 +55,16 @@ const adminDb = {
     return callProxy('update', { table, id, data: { set: setObj } });
   },
 
+  // Update banyak baris by filter (untuk rename mapel)
+  async updateWhere(table, filter, setObj) {
+    return callProxy('update', { table, filter, data: { set: setObj } });
+  },
+
+  // Rename mapel di bank_soal (RBAC: admin semua, guru hanya miliknya)
+  async renameMapel(oldMapel, newMapel) {
+    return callProxy('rename-mapel', { table: 'bank_soal', data: { oldMapel, newMapel } });
+  },
+
   // Insert array of objects — dikirim sekaligus ke Edge Function
   async insert(table, dataArr) {
     return callProxy('insert', { table, data: dataArr });

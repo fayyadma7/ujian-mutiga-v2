@@ -1690,3 +1690,10 @@ header, .card-panel, .soal-item,
 /* Hapus decorative glow yang tidak kelihatan tapi mahal */
 .stat-card::after { display: none; }
 .landing-bottom-gradient { opacity: 0.5; }
+/* HARDEN: hidden overlays tidak boleh block klik setelah idle menit */
+#landingOverlay.hidden, #landingOverlay[style*="display: none"]{pointer-events:none !important}
+#loginModalOverlay:not(.show), #modalConfirmAdmin:not(.show){pointer-events:none !important}
+#modalEditSoal[style*="display: none"], #modalDaftarGuru[style*="display: none"]{pointer-events:none !important}
+.sidebar-backdrop:not(.show){pointer-events:none !important; display:none !important}
+#toast-container{pointer-events:none !important}
+#toast-container .toast{pointer-events:auto !important}
