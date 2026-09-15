@@ -194,6 +194,19 @@
         .sheet-overlay {
             touch-action: manipulation;
         }
+        /* FIX Android gagal muat soal: kartu error tema-aware (gelap/terang/hemat tetap kontras) */
+        .error-fallback-card{
+            background:rgba(11,29,58,0.96); border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(16px);
+            border-radius:20px; padding:32px 24px; max-width:520px; margin:0 auto; text-align:center;
+            box-shadow:0 20px 60px rgba(0,0,0,0.35);
+        }
+        .error-fallback-card h3{ color:#f1f5f9; font-size:18px; font-weight:800; margin-bottom:8px; }
+        .error-fallback-card p{ color:rgba(255,255,255,0.65); font-size:13px; line-height:1.6; }
+        .error-fallback-card .error-detail{ margin-top:14px; font-size:11px; color:rgba(255,255,255,0.35); word-break:break-all; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:left; max-height:120px; overflow:auto; }
+        html[data-theme="light"] .error-fallback-card, html[data-theme="low"] .error-fallback-card{ background:#FFFFFF !important; border-color:#E2E8F0 !important; box-shadow:0 16px 40px rgba(15,23,42,0.08) !important; }
+        html[data-theme="light"] .error-fallback-card h3, html[data-theme="low"] .error-fallback-card h3{ color:#0F172A !important; }
+        html[data-theme="light"] .error-fallback-card p, html[data-theme="low"] .error-fallback-card p{ color:#475569 !important; }
+        html[data-theme="light"] .error-fallback-card .error-detail, html[data-theme="low"] .error-fallback-card .error-detail{ background:#F8FAFC !important; border-color:#E2E8F0 !important; color:#64748b !important; }
 
         /* ===================== CUSTOM SCROLLBAR ===================== */
         * {
@@ -4829,24 +4842,27 @@
                 }
 
                 const savedUrutan = localStorage.getItem(keyUrutan);
+                // FIX Android: validasi urutan & guard quota
+                function _safeSetLS(k,v){ try{ localStorage.setItem(k,v); }catch(e){ console.warn('LS set gagal',k,e); try{ localStorage.removeItem(k); }catch(_){} try{ localStorage.setItem(k,v); }catch(__){} } }
+                function _isValidUrutan(arr, len){ return Array.isArray(arr) && arr.length===len && arr.every(function(v){ return typeof v==='number' && v>=0 && v<len; }) && new Set(arr).size===len; }
                 if (savedUrutan) {
                     let urutanIndeks;
                     try { urutanIndeks = JSON.parse(savedUrutan); } catch (e) { urutanIndeks = null; }
-                    if (urutanIndeks && urutanIndeks.length === data.length) {
-                        s_data = urutanIndeks.map(idx => data[idx]);
-                        window._currentUrutan = urutanIndeks;
-                    } else {
-                        let idxBaru = data.map((_, i) => i);
+                    if (_isValidUrutan(urutanIndeks, data.length)) {
+                        try{ s_data = urutanIndeks.map(function(idx){ return data[idx]; }); window._currentUrutan = urutanIndeks; }catch(e){ console.warn('map urutan gagal',e); urutanIndeks=null; }
+                    }
+                    if(!_isValidUrutan(urutanIndeks, data.length)){
+                        let idxBaru = data.map(function(_, i){ return i; });
                         kocokSoal(idxBaru);
-                        localStorage.setItem(keyUrutan, JSON.stringify(idxBaru));
-                        s_data = idxBaru.map(idx => data[idx]);
+                        _safeSetLS(keyUrutan, JSON.stringify(idxBaru));
+                        s_data = idxBaru.map(function(idx){ return data[idx]; });
                         window._currentUrutan = idxBaru;
                     }
                 } else {
-                    let indeks = data.map((_, i) => i);
+                    let indeks = data.map(function(_, i){ return i; });
                     kocokSoal(indeks);
-                    localStorage.setItem(keyUrutan, JSON.stringify(indeks));
-                    s_data = indeks.map(idx => data[idx]);
+                    _safeSetLS(keyUrutan, JSON.stringify(indeks));
+                    s_data = indeks.map(function(idx){ return data[idx]; });
                     window._currentUrutan = indeks;
                 }
 
@@ -4866,15 +4882,13 @@
                     renderSoal(s_data);
                 } catch (e) {
                     console.error("Fatal renderSoal error:", e);
+                    try{ if(typeof logErrorToDb==='function') logErrorToDb('Fatal renderSoal outer: '+(e.message||e), e.stack||'no stack'); }catch(_){}
+                    const dmsg = (e && e.message ? e.message : String(e)).slice(0,600);
+                    const dstack = (e && e.stack ? e.stack : '').slice(0,800);
                     document.getElementById('containerSoal').innerHTML =
-                        `<div style="text-align:center;padding:80px 20px;color:rgba(255,255,255,0.5);">
-                            <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;margin-bottom:16px;display:block;"></i>
-                            <h3 style="color:#f1f5f9;">Terjadi kesalahan saat memuat soal</h3>
-                            <p style="margin-top:8px;">Silakan laporkan ke pengawas dan klik tombol di bawah.</p>
-                            <button class="btn-overlay" onclick="location.reload()" style="margin-top:20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;">
-                                <i class="fas fa-redo me-2"></i>Muat Ulang Halaman
-                            </button>
-                        </div>`;
+                        `<div style="padding:40px 20px"><div class="error-fallback-card"><i class="fas fa-exclamation-triangle" style="font-size:42px;color:#ef4444;margin-bottom:14px;display:block;"></i><h3>Terjadi kesalahan saat memuat soal</h3><p>Silakan laporkan ke pengawas dan klik tombol di bawah. Jika terus gagal, gunakan tombol Bersihkan Cache.</p><div class="error-detail"><b>${dmsg}</b><br><br>${dstack}<br><br>Mapel:${(document.getElementById('mapel')?document.getElementById('mapel').value:'-')} | s_data:${(s_data? s_data.length:'-')} | UA:${navigator.userAgent.slice(0,140)}</div><button class="btn-overlay" onclick="location.reload()" style="margin-top:16px;width:100%"><i class="fas fa-redo me-2"></i>Muat Ulang Halaman</button><button class="btn-overlay" onclick="try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('urutan_')||k.startsWith('asas_')||k.startsWith('waktu_')) localStorage.removeItem(k)});}catch(e){} location.reload()" style="margin-top:10px;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#fca5a5;width:100%"><i class="fas fa-broom me-2"></i>Bersihkan Cache &amp; Muat Ulang</button></div></div>`;
+                    try{ document.getElementById('progress-count').innerText = `0 / ${s_data? s_data.length:0} soal`; }catch(_){}
+                    try{ window.currentSoalIndex=0; updatePaginationUI(); }catch(_){}
                 }
                 
                 // Render grid nomor soal
@@ -5219,94 +5233,110 @@
         }
 
         function renderSoal(data) {
+            // FIX Android: guard data kosong / bukan array — jangan throw, tampilkan kartu error tema-aware
+            if(!data || !Array.isArray(data) || data.length===0){
+                const msgKosong = (!data ? 'Data soal tidak terbaca' : (Array.isArray(data)&&data.length===0 ? 'Soal belum tersedia untuk mapel ini' : 'Format soal tidak valid'));
+                const detailKosong = 'Mapel: '+(document.getElementById('mapel')?document.getElementById('mapel').value:'-')+' | Kelas: '+(document.getElementById('kelas')?document.getElementById('kelas').value:'-')+' | UA: '+navigator.userAgent.slice(0,120);
+                try{
+                    document.getElementById('containerSoal').innerHTML = `<div style="padding:40px 20px"><div class="error-fallback-card"><i class="fas fa-database" style="font-size:42px;color:#ef4444;margin-bottom:14px;display:block;"></i><h3>${msgKosong}</h3><p>Silakan laporkan ke pengawas. Coba muat ulang atau hapus cache lokal lalu login ulang.</p><div class="error-detail">${detailKosong}</div><button class="btn-overlay" onclick="try{localStorage.clear();}catch(e){} location.reload()" style="margin-top:18px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd; width:100%"><i class="fas fa-broom me-2"></i>Bersihkan Cache &amp; Muat Ulang</button><button class="btn-overlay" onclick="location.reload()" style="margin-top:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7); width:100%"><i class="fas fa-redo me-2"></i>Muat Ulang Saja</button></div></div>`;
+                }catch(e){}
+                try{ document.getElementById('progress-count').innerText = `0 / 0 soal`; }catch(e){}
+                window.currentSoalIndex = 0;
+                try{ updatePaginationUI(); }catch(e){}
+                try{ if(typeof logErrorToDb==='function') logErrorToDb('renderSoal data kosong: '+msgKosong, detailKosong); }catch(e){}
+                return;
+            }
             let h = '';
             let errorCount = 0;
-            data.forEach((s, i) => {
-                // Proteksi: lewati soal yang rusak, jangan crash semua render
-                if (!s || typeof s[0] === 'undefined') {
-                    errorCount++;
-                    h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}" style="border-color:rgba(239,68,68,0.3);">
+            try{
+                // Gunakan for loop kompatibel (bukan forEach NodeList) untuk Android lama
+                for(let i=0;i<data.length;i++){
+                    const s = data[i];
+                    if (!s || typeof s[0] === 'undefined' || s[0]===null) {
+                        errorCount++;
+                        h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}" style="border-color:rgba(239,68,68,0.3);">
         <div class="soal-header-row">
             <div class="soal-num-badge" id="badge-${i}" style="background:rgba(239,68,68,0.2);color:#fca5a5;">Soal ${i + 1} ⚠️</div>
         </div>
-        <div class="soal-text" style="color:rgba(255,255,255,0.4);font-style:italic;">
+        <div class="soal-text" style="color:rgba(255,255,255,0.45);font-style:italic;">
             <i class="fas fa-exclamation-triangle" style="color:#fca5a5;margin-right:8px;"></i>Soal ini rusak — laporkan ke pengawas.
         </div>
     </div>`;
-                    return;
-                }
-                const isRagu = window.stateRagu && window.stateRagu[i];
-                const raguClass = isRagu ? 'btn-ragu ragu-active' : 'btn-ragu';
-                const raguIcon = isRagu ? 'fas fa-bookmark' : 'far fa-bookmark';
-
-                h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}">
+                        continue;
+                    }
+                    const isRagu = window.stateRagu && window.stateRagu[i];
+                    const raguClass = isRagu ? 'btn-ragu ragu-active' : 'btn-ragu';
+                    const raguIcon = isRagu ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}">
         <div class="soal-header-row">
             <div class="soal-num-badge" id="badge-${i}">Soal ${i + 1}</div>
-            <button type="button" class="${raguClass}" id="btn-ragu-${i}" onclick="toggleRaguRagu(${i})">
+            <button type="button" class="${raguClass}" id="btn-ragu-${i}" onclick="toggleRaguRagu(${i})" style="touch-action:manipulation">
                 <i class="${raguIcon}"></i> Ragu-Ragu
             </button>
         </div>
-        <div class="soal-text" dir="auto">${s[0]}</div>`;
-                if (s[8] === "PG") {
-                    h += `<div class="option-list">`;
-                    ['A', 'B', 'C', 'D', 'E'].forEach((o, idx) => {
-                        try {
-                            const teksOpsi = s[idx + 1];
-                            let isEmpty = true;
-                            if (teksOpsi) {
-                                let str = teksOpsi.toString().trim();
-                                let stripped = str.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, '').trim();
-                                let hasMedia = /<(img|audio|video|iframe)/i.test(str);
-                                if (stripped !== "" || hasMedia) {
-                                    isEmpty = false;
+        <div class="soal-text" dir="auto">${s[0]||''}</div>`;
+                    if (s[8] === "PG") {
+                        h += `<div class="option-list">`;
+                        const opts = ['A','B','C','D','E'];
+                        for(let oi=0; oi<opts.length; oi++){
+                            const o = opts[oi]; const idx = oi;
+                            try {
+                                const teksOpsi = s[idx + 1];
+                                let isEmpty = true;
+                                if (teksOpsi) {
+                                    let str = teksOpsi.toString().trim();
+                                    let stripped = str.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, '').trim();
+                                    let hasMedia = /<(img|audio|video|iframe)/i.test(str);
+                                    if (stripped !== "" || hasMedia) isEmpty = false;
                                 }
-                            }
-                            
-                            if (!isEmpty) {
-                                h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}',event)" style="touch-action:manipulation">
+                                if (!isEmpty) {
+                                    h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}',event)" style="touch-action:manipulation">
               <input type="radio" name="q${i}" value="${o}" id="r${i}${o}" onchange="saveProgress(); updateProgressBar();">
               <div class="option-key">${o}</div>
               <div class="option-label"><div class="option-label-inner" dir="auto">${teksOpsi}</div></div>
             </label>`;
-                            }
-                        } catch (_) { /* skip opsi rusak */ }
-                    });
+                                }
+                            } catch (_e) { /* skip opsi rusak */ }
+                        }
+                        h += `</div>`;
+                    } else {
+                        h += `<textarea name="q${i}" id="essay-${i}" class="essay-textarea" rows="4" dir="auto" oninput="debouncedEssaySave(this, ${i})" placeholder="Ketik jawaban essay kamu di sini..."></textarea>`;
+                    }
                     h += `</div>`;
-                } else {
-                    h += `<textarea name="q${i}" id="essay-${i}" class="essay-textarea" rows="4" dir="auto" oninput="debouncedEssaySave(this, ${i})" placeholder="Ketik jawaban essay kamu di sini..."></textarea>`;
                 }
-                h += `</div>`;
-            });
-            // Jika SEMUA soal rusak, beri fallback
-            if (errorCount === data.length) {
-                h = `<div style="text-align:center;padding:80px 20px;color:rgba(255,255,255,0.5);">
-                    <i class="fas fa-database" style="font-size:48px;color:#ef4444;margin-bottom:16px;display:block;"></i>
-                    <h3 style="color:#f1f5f9;">Semua soal gagal dimuat</h3>
-                    <p style="margin-top:8px;">Silakan laporkan ke pengawas ujian.</p>
-                    <button class="btn-overlay" onclick="location.reload()" style="margin-top:20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;">
-                        <i class="fas fa-redo me-2"></i>Muat Ulang Halaman
-                    </button>
-                </div>`;
+            }catch(e){
+                // Jika loop utama throw (Android lama), fallback ke error card
+                try{ if(typeof logErrorToDb==='function') logErrorToDb('renderSoal loop fatal: '+e.message, e.stack); }catch(_){}
+                document.getElementById('containerSoal').innerHTML = `<div style="padding:40px 20px"><div class="error-fallback-card"><i class="fas fa-exclamation-triangle" style="font-size:42px;color:#ef4444;margin-bottom:14px;display:block;"></i><h3>Terjadi kesalahan saat memuat soal</h3><p>Gagal merender soal di perangkat ini. Silakan laporkan ke pengawas.</p><div class="error-detail">${(e.message||e).toString().slice(0,400)}<br>${(e.stack||'').toString().slice(0,600)}</div><button class="btn-overlay" onclick="location.reload()" style="margin-top:18px;width:100%"><i class="fas fa-redo me-2"></i>Muat Ulang Halaman</button></div></div>`;
+                try{ document.getElementById('progress-count').innerText = `0 / ${data.length} soal`; }catch(_){}
+                window.currentSoalIndex = 0; try{ updatePaginationUI(); }catch(_){}
+                return;
             }
-            document.getElementById('containerSoal').innerHTML = h;
-
-            // Bungkus tabel dengan wadah responsif untuk horizontal scrolling
-            document.querySelectorAll('.soal-text table').forEach(tbl => {
-                if (!tbl.parentElement.classList.contains('table-responsive-wrapper')) {
+            if (errorCount === data.length) {
+                h = `<div style="padding:40px 20px"><div class="error-fallback-card"><i class="fas fa-database" style="font-size:42px;color:#ef4444;margin-bottom:14px;display:block;"></i><h3>Semua soal gagal dimuat</h3><p>Semua soal untuk mapel ini rusak atau format tidak valid. Laporkan ke pengawas.</p><div class="error-detail">Mapel: ${(document.getElementById('mapel')?document.getElementById('mapel').value:'-')} | Jumlah: ${data.length} | ErrorCount: ${errorCount}</div><button class="btn-overlay" onclick="location.reload()" style="margin-top:18px;width:100%"><i class="fas fa-redo me-2"></i>Muat Ulang Halaman</button></div></div>`;
+            }
+            try{ document.getElementById('containerSoal').innerHTML = h; }catch(e){
+                try{ if(typeof logErrorToDb==='function') logErrorToDb('containerSoal innerHTML gagal: '+e.message, e.stack); }catch(_){}
+                document.getElementById('containerSoal').innerHTML = `<div style="padding:40px 20px"><div class="error-fallback-card"><h3>Gagal menampilkan soal</h3><p>${e.message}</p><button class="btn-overlay" onclick="location.reload()" style="margin-top:18px;width:100%">Muat Ulang</button></div></div>`;
+            }
+            // Bungkus tabel — kompatibel Android lama via Array.from / loop
+            try{
+                const tbls = document.querySelectorAll('.soal-text table');
+                // forEach kadang tidak ada di WebView lama → pakai for
+                for(let ti=0; ti<tbls.length; ti++){
+                    const tbl = tbls[ti];
+                    if(!tbl.parentElement || tbl.parentElement.classList.contains('table-responsive-wrapper')) continue;
                     const wrapper = document.createElement('div');
                     wrapper.className = 'table-responsive-wrapper';
                     tbl.parentNode.insertBefore(wrapper, tbl);
                     wrapper.appendChild(tbl);
                 }
-            });
+            }catch(e){ console.warn('table wrap gagal', e); }
 
-            if (window.MathJax) MathJax.typesetPromise().catch(() => {});
-            // Update progress count
-            document.getElementById('progress-count').innerText = `0 / ${data.length} soal`;
-
-            // === PAGINATION: Set soal pertama aktif ===
+            try{ if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise().catch(function(){}) }catch(e){}
+            try{ const pc=document.getElementById('progress-count'); if(pc) pc.innerText = `0 / ${data.length} soal`; }catch(e){}
             window.currentSoalIndex = 0;
-            updatePaginationUI();
+            try{ updatePaginationUI(); }catch(e){ console.warn('updatePaginationUI gagal', e); }
         }
 
         // ===== PAGINATION: Fungsi Ganti Soal — FIX iPhone loncat misterius 10→5 =====
