@@ -4,7 +4,7 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
     <meta name="screen-orientation" content="portrait">
     <meta name="orientation" content="portrait">
     <meta name="x5-orientation" content="portrait">
@@ -171,6 +171,28 @@
         /* Disable scroll smoothing for exam context */
         .exam-container {
             scroll-behavior: auto !important;
+        }
+        /* FIX iPhone LONCAT 10->5: cegah double-tap zoom & ghost-click */
+        html, body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-pagination, .btn-nav-no, .option-item, .fab-nav-mobile, .btn-ragu {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        /* Bottom sheet hidden = tidak menerima touch */
+        .bottom-sheet-navigasi:not(.active) {
+            pointer-events: none;
+            visibility: hidden;
+        }
+        .bottom-sheet-navigasi.active {
+            pointer-events: auto;
+            visibility: visible;
+        }
+        .sheet-overlay {
+            touch-action: manipulation;
         }
 
         /* ===================== CUSTOM SCROLLBAR ===================== */
@@ -3802,15 +3824,15 @@
 
                         <div id="containerSoal"></div>
 
-                        <!-- Pagination Navigation -->
+                        <!-- Pagination Navigation — FIX iPhone ghost-click -->
                         <div class="pagination-nav" id="paginationNav">
-                            <button type="button" class="btn-pagination" id="btnPrev" onclick="gantiSoal(-1)" disabled>
+                            <button type="button" class="btn-pagination" id="btnPrev" onclick="gantiSoal(-1, event)" style="touch-action:manipulation" disabled>
                                 <i class="fas fa-chevron-left"></i> Sebelumnya
                             </button>
                             <div class="pagination-info" id="paginationInfo">
                                 <span>1</span> / 0
                             </div>
-                            <button type="button" class="btn-pagination" id="btnNext" onclick="gantiSoal(1)">
+                            <button type="button" class="btn-pagination" id="btnNext" onclick="gantiSoal(1, event)" style="touch-action:manipulation">
                                 Selanjutnya <i class="fas fa-chevron-right"></i>
                             </button>
                         </div>
@@ -3854,13 +3876,13 @@
             </div>
         </form>
 
-        <!-- Floating Action Button (FAB) Mobile -->
-        <button type="button" class="fab-nav-mobile" id="fab-nav" onclick="bukaSheetNavigasi()" title="Buka Navigasi Soal" style="display: none;">
+        <!-- Floating Action Button (FAB) Mobile — FIX iPhone -->
+        <button type="button" class="fab-nav-mobile" id="fab-nav" onclick="bukaSheetNavigasi(event)" style="display: none; touch-action:manipulation">
             <i class="fas fa-th-large"></i>
         </button>
 
         <!-- Overlay Gelap Bottom Sheet -->
-        <div class="sheet-overlay" id="sheet-overlay" onclick="tutupSheetNavigasi()"></div>
+        <div class="sheet-overlay" id="sheet-overlay" onclick="tutupSheetNavigasi(event)"></div>
 
         <!-- Bottom Sheet Mobile -->
         <div class="bottom-sheet-navigasi" id="bottom-sheet-nav">
@@ -3968,6 +3990,9 @@
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isAndroid = /Android/.test(navigator.userAgent);
         const isMobile = isIOS || isAndroid;
+        // FIX iPhone loncat 10→5: cegah scrollRestoration otomatis browser mengembalikan ke tengah
+        try{ if('scrollRestoration' in history) history.scrollRestoration='manual'; }catch(e){}
+        // FIX iPhone: cegah double-tap zoom trigger ghost navigation (tunggu 350ms debounce sudah di pagination)
         // ===== FIX iPhone ZOOM: jangan anggap pinch-zoom sebagai pelanggaran =====
         let isZooming = false;
         let zoomTimeout = null;
@@ -5238,7 +5263,7 @@
                             }
                             
                             if (!isEmpty) {
-                                h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}')">
+                                h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}',event)" style="touch-action:manipulation">
               <input type="radio" name="q${i}" value="${o}" id="r${i}${o}" onchange="saveProgress(); updateProgressBar();">
               <div class="option-key">${o}</div>
               <div class="option-label"><div class="option-label-inner" dir="auto">${teksOpsi}</div></div>
@@ -5284,45 +5309,47 @@
             updatePaginationUI();
         }
 
-        // ===== PAGINATION: Fungsi Ganti Soal =====
-        function gantiSoal(arah) {
+        // ===== PAGINATION: Fungsi Ganti Soal — FIX iPhone loncat misterius 10→5 =====
+        let _navLock = false;
+        let _navLast = 0;
+        function _safeScrollTop(){
+            try{ window.scrollTo({top:0, left:0, behavior:'auto'}); }catch(e){ try{ window.scrollTo(0,0);}catch(_){} }
+            try{ document.documentElement.scrollTop = 0; document.body.scrollTop = 0; }catch(e){}
+            // iPhone visualViewport kadang masih di offset; reset juga
+            try{ if(window.visualViewport && window.visualViewport.offsetTop) window.scrollTo(0,0); }catch(e){}
+        }
+        function gantiSoal(arah, ev) {
+            if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
+            else if(window.event){ try{window.event.preventDefault(); window.event.stopPropagation();}catch(e){} }
+            if(_navLock) return;
+            const now = Date.now();
+            if(now - _navLast < 350) return;
+            _navLast = now;
+            // Jangan navigasi saat pinch-zoom aktif — tunda 650ms
+            try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>gantiSoal(arah), 650); return; } if(typeof isZooming!=='undefined' && isZooming){ setTimeout(()=>gantiSoal(arah), 650); return; } }catch(e){}
             const total = s_data.length;
             const newIndex = window.currentSoalIndex + arah;
             if (newIndex < 0 || newIndex >= total) return;
-
-            // Sembunyikan soal saat ini
+            _navLock = true;
             const soalLama = document.getElementById('soal-wrap-' + window.currentSoalIndex);
             if (soalLama) soalLama.classList.remove('soal-aktif');
-
-            // Tampilkan soal baru
             window.currentSoalIndex = newIndex;
             const soalBaru = document.getElementById('soal-wrap-' + newIndex);
-            if (soalBaru) {
-                soalBaru.classList.add('soal-aktif');
-            }
-
-            // Scroll ke atas agar soal baru terlihat dari atas
-            window.scrollTo(0, 0);
-
-            // MathJax sudah di-render sekali di renderSoal(); tidak perlu re-typeset setiap navigasi
+            if (soalBaru) soalBaru.classList.add('soal-aktif');
+            _safeScrollTop();
             updatePaginationUI();
+            setTimeout(()=>{ _navLock=false; }, 380);
         }
 
         function updatePaginationUI() {
             const total = s_data.length;
             const idx = window.currentSoalIndex;
-
-            // Update tombol Prev/Next
             const btnPrev = document.getElementById('btnPrev');
             const btnNext = document.getElementById('btnNext');
             if (btnPrev) btnPrev.disabled = (idx === 0);
             if (btnNext) btnNext.disabled = (idx >= total - 1);
-
-            // Update info "X / total"
             const pgInfo = document.getElementById('paginationInfo');
             if (pgInfo) pgInfo.innerHTML = `<span>${idx + 1}</span> / ${total}`;
-
-            // Update status-aktif di grid navigasi
             for (let i = 0; i < total; i++) {
                 const btnD = document.getElementById(`nav-no-desktop-${i}`);
                 const btnM = document.getElementById(`nav-no-mobile-${i}`);
@@ -5334,71 +5361,80 @@
                     if (btnM) btnM.classList.remove('status-aktif');
                 }
             }
-
-            // Tampilkan/sembunyikan tombol Selesai & Kirim
             const btnSelesai = document.getElementById('btnSelesaiKirim');
-            if (btnSelesai) {
-                btnSelesai.style.display = (idx >= total - 1) ? 'flex' : 'none';
-            }
-        }        // ===== FUNGSI BOTTOM SHEET NAVIGASI MOBILE =====
-        function bukaSheetNavigasi() {
+            if (btnSelesai) btnSelesai.style.display = (idx >= total - 1) ? 'flex' : 'none';
+        }
+        // ===== FUNGSI BOTTOM SHEET NAVIGASI MOBILE — anti ghost-click iPhone =====
+        function bukaSheetNavigasi(ev) {
+            if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
             const sheet = document.getElementById('bottom-sheet-nav');
             const overlay = document.getElementById('sheet-overlay');
-            if (sheet) sheet.classList.add('active');
+            if (sheet){ sheet.classList.add('active'); sheet.style.pointerEvents='auto'; sheet.style.visibility='visible'; }
             if (overlay) {
                 overlay.style.display = 'block';
+                // paksa reflow biar transisi opacity jalan di iOS
+                void overlay.offsetWidth;
                 overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
             }
         }
 
-        function tutupSheetNavigasi() {
+        function tutupSheetNavigasi(ev) {
+            if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
             const sheet = document.getElementById('bottom-sheet-nav');
             const overlay = document.getElementById('sheet-overlay');
-            if (sheet) sheet.classList.remove('active');
+            if (sheet){ sheet.classList.remove('active'); setTimeout(()=>{ if(!sheet.classList.contains('active')){ sheet.style.pointerEvents='none'; sheet.style.visibility='hidden'; } }, 320); }
             if (overlay) {
-                overlay.style.display = 'none';
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                setTimeout(()=>{ if(overlay.style.opacity==='0') overlay.style.display = 'none'; }, 300);
             }
         }
 
-        // ===== FUNGSI RENDER GRID NAVIGASI =====
+        // ===== FUNGSI RENDER GRID NAVIGASI — pakai event biar tidak ghost =====
         function renderNavigasiGrid() {
             const gridDesktop = document.getElementById('grid-nav-desktop');
             const gridMobile = document.getElementById('grid-nav-mobile');
             if (!gridDesktop || !gridMobile) return;
             if (!s_data || !s_data.length) return;
-
             let hD = '';
             for (let i = 0; i < s_data.length; i++) {
-                hD += `<button type="button" class="btn-nav-no status-kosong" id="nav-no-desktop-${i}" onclick="lompatKeSoal(${i})">${i + 1}</button>`;
+                hD += `<button type="button" class="btn-nav-no status-kosong" id="nav-no-desktop-${i}" onclick="lompatKeSoal(${i}, event)" style="touch-action:manipulation">${i + 1}</button>`;
             }
             gridDesktop.innerHTML = hD;
-
             let hM = '';
             for (let i = 0; i < s_data.length; i++) {
-                hM += `<button type="button" class="btn-nav-no status-kosong" id="nav-no-mobile-${i}" onclick="lompatKeSoal(${i})">${i + 1}</button>`;
+                hM += `<button type="button" class="btn-nav-no status-kosong" id="nav-no-mobile-${i}" onclick="lompatKeSoal(${i}, event)" style="touch-action:manipulation">${i + 1}</button>`;
             }
             gridMobile.innerHTML = hM;
         }
 
-        // ===== FUNGSI LOMPAT KE SOAL (PAGINATION) =====
-        function lompatKeSoal(idx) {
+        // ===== FUNGSI LOMPAT KE SOAL (PAGINATION) — FIX loncat iPhone =====
+        function lompatKeSoal(idx, ev) {
+            if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
+            else if(window.event){ try{window.event.preventDefault(); window.event.stopPropagation();}catch(e){} }
+            if(_navLock) return;
+            const now = Date.now();
+            if(now - _navLast < 350) {
+                // debounce: jika tap kedua terlalu cepat (ghost click iOS), abaikan
+                // tapi jika idx beda dan sudah 150ms, izinkan
+                if(now - _navLast < 120) return;
+            }
+            _navLast = now;
+            try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>lompatKeSoal(idx), 650); return; } if(typeof isZooming!=='undefined' && isZooming){ setTimeout(()=>lompatKeSoal(idx), 650); return; } }catch(e){}
+            // tutup sheet dulu, tapi jangan blokir navigasi jika sheet overlay yang ke-tap
             tutupSheetNavigasi();
             if (idx < 0 || idx >= s_data.length) return;
-
-            // Sembunyikan soal saat ini
+            if(idx === window.currentSoalIndex) { _safeScrollTop(); updatePaginationUI(); return; }
+            _navLock = true;
             const soalLama = document.getElementById('soal-wrap-' + window.currentSoalIndex);
             if (soalLama) soalLama.classList.remove('soal-aktif');
-
-            // Tampilkan soal yang dipilih
             window.currentSoalIndex = idx;
             const soalBaru = document.getElementById('soal-wrap-' + idx);
-            if (soalBaru) {
-                soalBaru.classList.add('soal-aktif');
-            }
-
-            window.scrollTo(0, 0);
-            // MathJax sudah di-render sekali; tidak perlu re-typeset
+            if (soalBaru) soalBaru.classList.add('soal-aktif');
+            _safeScrollTop();
             updatePaginationUI();
+            setTimeout(()=>{ _navLock=false; }, 380);
         }
 
         // Scroll observer tidak diperlukan karena pakai pagination satu-per-satu
@@ -5428,7 +5464,13 @@
         }
 
 
-        function pilihjawaban(soalIdx, opsi) {
+        function pilihjawaban(soalIdx, opsi, ev) {
+            if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
+            // iPhone ghost-click guard: abaikan klik ganda dalam 300ms di soal yang sama
+            const _key = '_lastPick_'+soalIdx;
+            const _now = Date.now();
+            if(window[_key] && _now - window[_key] < 300 && window['_lastPickOpt']===opsi) return;
+            window[_key]=_now; window['_lastPickOpt']=opsi;
             const radios = document.getElementsByName('q' + soalIdx);
             radios.forEach(r => {
                 const label = document.getElementById('opt-' + soalIdx + '-' + r.value);
@@ -5436,10 +5478,14 @@
             });
             const target = document.getElementById('opt-' + soalIdx + '-' + opsi);
             if (target) target.classList.add('selected');
+            // pastikan radio benar-benar ter-check (iPhone kadang tidak auto-check saat label di-preventDefault)
+            const radio = document.getElementById('r'+soalIdx+opsi);
+            if(radio) radio.checked = true;
             const wrap = document.getElementById('soal-wrap-' + soalIdx);
             if (wrap) wrap.classList.add('answered');
             const badge = document.getElementById('badge-' + soalIdx);
             if (badge) badge.classList.add('answered');
+            // cegah scroll lompat: jangan panggil scroll apa pun di sini
             saveProgress();
             updateProgressBar();
         }
@@ -6238,12 +6284,35 @@ let aktifSignalSent = false;
             tampilkanWarningAntiCheat('Menempel teks (Paste) tidak diizinkan selama ujian.');
         });
 
-        // --- Scroll otomatis saat fokus essay agar tidak tertutup keyboard HP ---
+        // --- Scroll otomatis saat fokus essay agar tidak tertutup keyboard HP — FIX iPhone loncat 10→5 ---
         document.addEventListener('focusin', function(e) {
             if (e.target && e.target.classList.contains('essay-textarea')) {
+                const el = e.target;
+                const idxAtFocus = window.currentSoalIndex;
+                // Simpan posisi scroll sebelum, cegah scrollIntoView nyasar ke soal lain saat keyboard animasi
                 setTimeout(() => {
-                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 350);
+                    // Batal jika sudah pindah soal (mencegah loncat misterius)
+                    if(window.currentSoalIndex !== idxAtFocus) return;
+                    if(!document.contains(el)) return;
+                    // Jangan scroll jika zoom aktif (pinch)
+                    try{ if(typeof isZoomActive==='function' && isZoomActive()) return; if(typeof isZooming!=='undefined' && isZooming) return; }catch(_){}
+                    // Gunakan nearest agar tidak menggeser seluruh halaman ke tengah (hanya jika tertutup keyboard)
+                    try{
+                        // Hanya scroll jika element benar-benar tertutup keyboard (cek visualViewport)
+                        const vv = window.visualViewport;
+                        if(vv){
+                            const rect = el.getBoundingClientRect();
+                            const vvBottom = vv.height + vv.offsetTop;
+                            if(rect.bottom > vvBottom - 12){
+                                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                        } else {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }catch(_){
+                        try{ el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(_){}
+                    }
+                }, 380);
             }
         });
 
