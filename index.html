@@ -983,6 +983,29 @@
         .login-field:focus-within .login-field-icon {
             color: var(--blue-pale);
         }
+        .pwd-toggle{
+            position:absolute;
+            right:10px;
+            bottom:9px;
+            width:30px;
+            height:30px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:none;
+            border:none;
+            color:rgba(255,255,255,0.38);
+            font-size:14px;
+            cursor:pointer;
+            border-radius:8px;
+            transition:all 0.2s ease;
+            z-index:2;
+        }
+        .pwd-toggle:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);}
+        .pwd-toggle:active{transform:scale(0.92);}
+        .pwd-toggle:focus{outline:none;box-shadow:0 0 0 2px rgba(59,130,246,0.25);}
+        html[data-theme="light"] .pwd-toggle,html[data-theme="low"] .pwd-toggle{color:rgba(15,23,42,0.45);}
+        html[data-theme="light"] .pwd-toggle:hover,html[data-theme="low"] .pwd-toggle:hover{color:#0f172a;background:rgba(15,23,42,0.06);}
 
         /* ===== AUTOCOMPLETE NAMA SISWA (strict, min 2 huruf, limit 10) ===== */
         .autocomplete-wrap{position:relative}
@@ -3887,7 +3910,8 @@
                 <div class="login-field">
                     <label class="login-field-label">Password</label>
                     <i class="fas fa-lock login-field-icon" style="bottom:14px;"></i>
-                    <input type="password" id="guruPassword" class="login-input" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')loginGuru()">
+                    <input type="password" id="guruPassword" class="login-input" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')loginGuru()" style="padding-right:44px;" autocomplete="current-password">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('guruPassword',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
             <button class="btn-login" onclick="loginGuru()" style="margin-bottom:12px;">
@@ -3923,7 +3947,8 @@
                 <div class="login-field">
                     <label class="login-field-label">Password</label>
                     <i class="fas fa-lock login-field-icon" style="bottom:14px;"></i>
-                    <input type="password" id="daftarPassword" class="login-input" placeholder="Buat password (min 6 karakter)">
+                    <input type="password" id="daftarPassword" class="login-input" placeholder="Buat password (min 6 karakter)" style="padding-right:44px;" autocomplete="new-password">
+                    <button type="button" class="pwd-toggle" onclick="togglePwd('daftarPassword',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
             <button class="btn-login" onclick="daftarGuru()" style="margin-bottom:8px;background:linear-gradient(135deg,#059669,#22C55E);box-shadow:0 8px 32px rgba(34,197,94,0.3);">
@@ -6418,17 +6443,42 @@ let aktifSignalSent = false;
             }
         }
 
-        // ===================== GURU AUTH =====================
+        // ===================== GURU AUTH — toggle password =====================
+        function togglePwd(inputId, btn){
+            const inp=document.getElementById(inputId);
+            if(!inp||!btn) return;
+            const isPwd=inp.type==='password';
+            inp.type=isPwd?'text':'password';
+            const ic=btn.querySelector('i');
+            if(ic) ic.className=isPwd?'fas fa-eye-slash':'fas fa-eye';
+            btn.setAttribute('aria-label',isPwd?'Sembunyikan password':'Lihat password');
+            if(isPwd) inp.focus();
+        }
+        function _resetPwd(inputId, modalSel){
+            const inp=document.getElementById(inputId);
+            if(inp) inp.type='password';
+            const scope=modalSel?document.querySelector(modalSel):document;
+            if(scope){
+                const btn=scope.querySelector(`.pwd-toggle[onclick*="${inputId}"]`);
+                if(btn){
+                    const ic=btn.querySelector('i');
+                    if(ic) ic.className='fas fa-eye';
+                    btn.setAttribute('aria-label','Lihat password');
+                }
+            }
+        }
         function bukaModalLoginGuru() {
             document.getElementById('guruUsername').value = '';
-            document.getElementById('guruPassword').value = '';
+            const pw=document.getElementById('guruPassword'); if(pw) pw.value='';
+            _resetPwd('guruPassword','#modalLoginGuru');
             document.getElementById('modalLoginGuru').style.display = 'flex';
         }
 
         function bukaModalDaftarGuru() {
             document.getElementById('daftarNama').value = '';
             document.getElementById('daftarUsername').value = '';
-            document.getElementById('daftarPassword').value = '';
+            const pw2=document.getElementById('daftarPassword'); if(pw2) pw2.value='';
+            _resetPwd('daftarPassword','#modalDaftarGuru');
             document.getElementById('daftarStatus').textContent = '';
             document.getElementById('modalDaftarGuru').style.display = 'flex';
         }

@@ -38,6 +38,25 @@
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-mobile.css?v=26">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=3">
+    <style>
+        .pwd-toggle-glass{
+            position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+            background:none;border:none;color:rgba(255,255,255,0.38);font-size:15px;
+            cursor:pointer;border-radius:8px;transition:all 0.2s ease;z-index:3;
+        }
+        .pwd-toggle-glass:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);}
+        .pwd-toggle-glass:active{transform:translateY(-50%) scale(0.92);}
+        .pwd-toggle-glass:focus{outline:none;box-shadow:0 0 0 2px rgba(59,130,246,0.25);}
+        .pwd-toggle-daftar{
+            position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+            background:none;border:none;color:rgba(255,255,255,0.38);font-size:14px;
+            cursor:pointer;border-radius:8px;transition:all 0.2s ease;z-index:2;
+        }
+        .pwd-toggle-daftar:hover{color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.08);}
+        .pwd-toggle-daftar:active{transform:translateY(-50%) scale(0.92);}
+    </style>
 </head>
 
 <body>
@@ -158,7 +177,8 @@
                     <div class="login-glass-input-wrap">
                         <i class="fas fa-lock"></i>
                         <input type="password" class="login-glass-input" id="adminLoginPassword" placeholder="Masukkan password..."
-                            onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="current-password">
+                            onkeydown="if(event.key==='Enter')adminLogin()" autocomplete="current-password" style="padding-right:44px;">
+                        <button type="button" class="pwd-toggle-glass" onclick="togglePwdAdmin('adminLoginPassword',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
 
@@ -1464,14 +1484,15 @@
                 <div style="position:relative;">
                     <i class="fas fa-lock" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:14px;"></i>
                     <input type="password" id="daftarPassword" placeholder="Buat password (min 6 karakter)"
-                        style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 16px 14px 44px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:white;outline:none;">
+                        style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 44px 14px 44px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:white;outline:none;" autocomplete="new-password">
+                    <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('daftarPassword',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
             <button onclick="daftarGuruAdmin()" style="width:100%;background:linear-gradient(135deg,#059669,#22C55E);color:white;border:none;padding:16px;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.3s;box-shadow:0 8px 32px rgba(34,197,94,0.3);display:flex;align-items:center;justify-content:center;gap:10px;">
                 <i class="fas fa-paper-plane"></i> Kirim Pendaftaran
             </button>
             <div id="daftarStatus" style="font-size:13px;margin-top:12px;min-height:20px;"></div>
-            <button onclick="document.getElementById('modalDaftarGuru').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>
+            <button onclick="tutupModalDaftarGuru()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>
         </div>
     </div>
     <!-- ==================== MODAL AKSARA JAWA ==================== -->

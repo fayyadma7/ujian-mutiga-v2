@@ -898,9 +898,33 @@ async function fetchLandingStats() {
 }
 
 // ==================== AUTH FUNCTIONS ====================
+function togglePwdAdmin(inputId, btn){
+    const inp=document.getElementById(inputId);
+    if(!inp||!btn) return;
+    const isPwd=inp.type==='password';
+    inp.type=isPwd?'text':'password';
+    const ic=btn.querySelector('i');
+    if(ic) ic.className=isPwd?'fas fa-eye-slash':'fas fa-eye';
+    btn.setAttribute('aria-label', isPwd?'Sembunyikan password':'Lihat password');
+    if(isPwd) inp.focus();
+}
+function _resetPwdAdmin(inputId, scopeSel){
+    const inp=document.getElementById(inputId);
+    if(inp) inp.type='password';
+    const scope=scopeSel?document.querySelector(scopeSel):document;
+    if(scope){
+        const btn=scope.querySelector(`[onclick*="${inputId}"]`);
+        if(btn){
+            const ic=btn.querySelector('i');
+            if(ic) ic.className='fas fa-eye';
+            btn.setAttribute('aria-label','Lihat password');
+        }
+    }
+}
 function bukaLoginModal() {
     document.getElementById('adminLoginUsername').value = '';
-    document.getElementById('adminLoginPassword').value = '';
+    const pwL=document.getElementById('adminLoginPassword'); if(pwL) pwL.value='';
+    _resetPwdAdmin('adminLoginPassword','#loginModalOverlay');
     document.getElementById('loginModalError').textContent = '';
     document.getElementById('btnLoginSubmit').disabled = false;
     document.getElementById('btnLoginSubmit').innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Masuk Dashboard';
@@ -910,6 +934,7 @@ function bukaLoginModal() {
 
 function tutupLoginModal() {
     document.getElementById('loginModalOverlay').classList.remove('show');
+    _resetPwdAdmin('adminLoginPassword','#loginModalOverlay');
 }
 
 async function adminLogin() {
@@ -956,13 +981,15 @@ async function adminLogin() {
 function bukaModalDaftarGuru() {
     document.getElementById('daftarNama').value = '';
     document.getElementById('daftarUsername').value = '';
-    document.getElementById('daftarPassword').value = '';
+    const pwD=document.getElementById('daftarPassword'); if(pwD) pwD.value='';
+    _resetPwdAdmin('daftarPassword','#modalDaftarGuru');
     document.getElementById('daftarStatus').textContent = '';
     document.getElementById('modalDaftarGuru').style.display = 'flex';
 }
 
 function tutupModalDaftarGuru() {
     document.getElementById('modalDaftarGuru').style.display = 'none';
+    _resetPwdAdmin('daftarPassword','#modalDaftarGuru');
 }
 
 async function daftarGuruAdmin() {
