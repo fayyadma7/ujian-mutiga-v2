@@ -703,12 +703,25 @@ function initPage(idHalaman) {
         if (typeof loadNilaiSiswa === 'function') loadNilaiSiswa();
     }
     if (idHalaman === 'jadwal') {
-        if (typeof populateJadwalMapelDropdown === 'function') populateJadwalMapelDropdown();
+        if (typeof populateJadwalMapelDropdown === 'function') {
+            const _p = populateJadwalMapelDropdown();
+            if (_p && _p.then) _p.then(() => { if (typeof initCustomSelect === 'function') initCustomSelect('jadwal-mapel'); if (typeof syncCustomSelect === 'function') syncCustomSelect('jadwal-mapel'); });
+            else { if (typeof initCustomSelect === 'function') initCustomSelect('jadwal-mapel'); }
+        }
         if (typeof loadJadwal === 'function') loadJadwal();
     }
     if (idHalaman === 'bank-soal') {
         if (typeof populatePreviewMapel === 'function') populatePreviewMapel();
         if (typeof loadMathJax === 'function') loadMathJax();
+        // Load Math Paste PNG handler (campuran teks+rumus+tabel)
+        if (typeof window.__admin_math_paste_loaded === 'undefined') {
+            loadScript('admin/js/admin-math-paste.js').then(() => {
+                window.__admin_math_paste_loaded = true;
+                if (typeof initMathPaste === 'function') try { initMathPaste(); } catch (e) { }
+            }).catch(() => { });
+        } else {
+            if (typeof initMathPaste === 'function') try { initMathPaste(); } catch (e) { }
+        }
         // Load AI generator module
         if (typeof AIGenerator === 'undefined') {
             loadScript('admin/js/admin-ai.js');
@@ -1126,6 +1139,8 @@ function initCustomSelect(selectId) {
     const native = document.getElementById(selectId);
     if (!native || native.dataset.cslReady) return;
     native.dataset.cslReady = '1';
+    native.classList.add('csl-native');
+    native.style.display = 'none';
     const wrapper = native.parentNode;
     const container = document.createElement('div');
     container.className = 'csl-container';

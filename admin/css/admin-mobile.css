@@ -354,10 +354,10 @@
   }
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child i{ font-size:20px !important; color:#60a5fa !important; }
   tbody#tabel-jadwal tr td[data-label="Mapel"]{
-    min-height:auto !important; height:auto !important; align-items:flex-start !important;
+    min-height:72px !important; height:auto !important; align-items:center !important;
   }
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div{
-    align-items:flex-start !important;
+    align-items:center !important;
   }
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
     font-size:17px !important; font-weight:700 !important; color:#f1f5f9 !important;

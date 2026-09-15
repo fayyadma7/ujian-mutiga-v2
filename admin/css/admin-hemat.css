@@ -286,15 +286,15 @@ html {
     }
 }
 
-/* 14. FIX JADWAL CARD — JUDUL MAPEL FLEKSIBEL (WRAP PENUH SESUAI PANJANG) */
+/* 14. FIX JADWAL CARD — JUDUL MAPEL FLEKSIBEL (WRAP PENUH SESUAI PANJANG) + LURUS TENGAH LOGO */
 @media (max-width: 768px) {
   tbody#tabel-jadwal tr td[data-label="Mapel"]{
-    min-height: auto !important;
+    min-height: 72px !important;
     height: auto !important;
-    align-items: flex-start !important;
+    align-items: center !important;
   }
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div{
-    align-items: flex-start !important;
+    align-items: center !important;
   }
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
     font-size: 17px !important;

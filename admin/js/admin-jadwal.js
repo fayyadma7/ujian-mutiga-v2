@@ -26,6 +26,9 @@ async function populateJadwalMapelDropdown() {
         opt.textContent = m;
         select.appendChild(opt);
     });
+    // sinkron ke custom dropdown biar scrollbar besar terlihat (admin-base 8px)
+    if (typeof syncCustomSelect === 'function') try { syncCustomSelect('jadwal-mapel'); } catch(e){}
+    if (typeof initCustomSelect === 'function' && !select.dataset.cslReady) try { initCustomSelect('jadwal-mapel'); } catch(e){}
 }
 
 async function populateJadwalKelasOptions() {
@@ -284,8 +287,8 @@ async function loadJadwal() {
 
         tbody.innerHTML += `
             <tr>
-                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
-                <td data-label="Mapel" style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 38px 12px 14px; background:transparent; display:block; width:100%; border:none; border-bottom:1px solid rgba(255,255,255,.05); border-radius:0; position:static; top:auto; left:auto;">
+                <td data-label="" style="text-align:center; vertical-align:top; padding-top:18px;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
+                <td data-label="Mapel" style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 16px; vertical-align:top;">
                     <div style="display:flex; align-items:center; gap:12px; width:100%; background:transparent;">
                         <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas fa-book-open" style="color:#60a5fa; font-size:16px;"></i></div>
                         <div style="font-weight:700; color:#f1f5f9; font-size:15px; line-height:1.1; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${j.mapel}</div>

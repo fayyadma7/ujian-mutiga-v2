@@ -603,9 +603,10 @@ function updateManualOpsiVisibility() {
 function addManualOpsi() { if (manualOpsiCount < 5) { manualOpsiCount++; updateManualOpsiVisibility(); } }
 function removeManualOpsi() { if (manualOpsiCount > 2) { manualOpsiCount--; updateManualOpsiVisibility(); } }
 
+let _manualMapelCache = [];
 async function populateManualMapel() {
     const dl = document.getElementById('manual-mapel-list');
-    if (!dl) return;
+    const dd = document.getElementById('manual-mapel-dropdown');
     const _pmSesi = getGuruSession();
     const _pmIsAdmin = _pmSesi && _pmSesi.isAdmin === true;
     const _pmGuruId = _pmSesi ? _pmSesi.id : null;
@@ -615,13 +616,46 @@ async function populateManualMapel() {
     const { data } = await query;
     if (!data) return;
     const mapels = [...new Set(data.map(r => r.mapel))];
-    dl.innerHTML = '';
-    mapels.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        dl.appendChild(opt);
-    });
+    _manualMapelCache = mapels;
+    if (dl) { dl.innerHTML = ''; mapels.forEach(m => { const opt = document.createElement('option'); opt.value = m; dl.appendChild(opt); }); }
+    if (dd) renderManualMapelDropdown(mapels);
 }
+function renderManualMapelDropdown(list){
+    const dd = document.getElementById('manual-mapel-dropdown');
+    if(!dd) return;
+    if(!list || list.length===0){ dd.innerHTML = '<div class="csl-option" style="color:#64748b;cursor:default;">Belum ada mapel</div>'; return; }
+    dd.innerHTML = list.map(m=> `<div class="csl-option" onmousedown="event.preventDefault(); selectManualMapel('${m.replace(/'/g,"\\'")}')">${m}</div>`).join('');
+}
+function filterManualMapelDropdown(){
+    const inp = document.getElementById('manual-mapel'); const dd=document.getElementById('manual-mapel-dropdown');
+    if(!inp||!dd) return;
+    const q = inp.value.trim().toLowerCase();
+    const filtered = q ? _manualMapelCache.filter(m=> m.toLowerCase().includes(q)) : _manualMapelCache;
+    renderManualMapelDropdown(filtered);
+    openManualMapelDropdown();
+}
+function openManualMapelDropdown(){
+    const dd=document.getElementById('manual-mapel-dropdown'); if(!dd) return;
+    if(_manualMapelCache.length===0) return;
+    dd.classList.add('show'); dd.style.display='block';
+}
+function closeManualMapelDropdown(e){
+    // jangan tutup jika klik masih di dropdown
+    if(e && e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#manual-mapel-dropdown')) return;
+    const dd=document.getElementById('manual-mapel-dropdown'); if(dd){ dd.classList.remove('show'); dd.style.display='none'; }
+}
+function selectManualMapel(val){
+    const inp=document.getElementById('manual-mapel'); const dd=document.getElementById('manual-mapel-dropdown');
+    if(inp) inp.value = val;
+    if(dd){ dd.classList.remove('show'); dd.style.display='none'; }
+    if(inp) inp.focus();
+}
+// tutup jika klik di luar
+document.addEventListener('click', (e)=>{
+    const dd=document.getElementById('manual-mapel-dropdown'); const inp=document.getElementById('manual-mapel');
+    if(!dd||!inp) return;
+    if(!dd.contains(e.target) && e.target!==inp){ dd.classList.remove('show'); dd.style.display='none'; }
+});
 
 /**
  * Render semua \\(...\\) di dalam contenteditable field dengan KaTeX.
@@ -1316,7 +1350,17 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
             }
         } catch(_) {}
         mammoth.convertToHtml({ arrayBuffer }, mammothOpts).then(async function(result) {
-            const htmlContent = result.value;
+            let htmlContent = result.value;
+            // ——— PNG kompres: campuran teks+rumus+tabel via admin-math-paste.js jika ada ———
+            try {
+                if (typeof window.convertHtmlMixed === 'function' && isMathHtmlMixed(htmlContent)) {
+                    htmlContent = await window.convertHtmlMixed(htmlContent);
+                } else if (typeof window.convertHtmlMixed === 'undefined') {
+                    // lazy load math-paste jika belum ada (import Word butuh)
+                    try { await loadScript('admin/js/admin-math-paste.js'); window.__admin_math_paste_loaded = true; if(typeof initMathPaste==='function') initMathPaste(); if(typeof window.convertHtmlMixed==='function') htmlContent = await window.convertHtmlMixed(htmlContent); } catch(_){}
+                }
+            } catch(_) {}
+            function isMathHtmlMixed(h){ if(!h) return false; const l=h.toLowerCase(); return l.includes('<math')||l.includes('<table')||l.includes('<img')||l.includes('katex'); }
             const div = document.createElement('div');
             div.innerHTML = htmlContent;
             let blocks = [];
@@ -1350,6 +1394,14 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                         }
                         blocks.push(p);
                     });
+                } else if (node.nodeName.toLowerCase() === 'table' || (node.nodeName.toLowerCase() === 'div' && node.classList && node.classList.contains('table-responsive-wrapper'))) {
+                    // Tabel hasil convertHtmlMixed (campuran teks+rumus+tabel) — push utuh
+                    blocks.push(node);
+                } else if (node.nodeName.toLowerCase() === 'p' && node.querySelector && node.querySelector('table')) {
+                    // p yang membungkus table (Word kadang) — unwrap
+                    const tbl = node.querySelector('table');
+                    if (tbl) blocks.push(tbl.parentElement.classList.contains('table-responsive-wrapper') ? tbl.parentElement : tbl);
+                    else blocks.push(node);
                 } else if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim() !== '')) blocks.push(node);
             });
 

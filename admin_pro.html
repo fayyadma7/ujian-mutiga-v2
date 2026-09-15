@@ -33,11 +33,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-    <link rel="stylesheet" href="admin/css/admin-base.css?v=2">
-    <link rel="stylesheet" href="admin/css/admin-components.css?v=2">
+    <link rel="stylesheet" href="admin/css/admin-base.css?v=3">
+    <link rel="stylesheet" href="admin/css/admin-components.css?v=3">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
-    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=26">
-    <link rel="stylesheet" href="admin/css/admin-hemat.css?v=3">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=27">
+    <link rel="stylesheet" href="admin/css/admin-hemat.css?v=4">
     <style>
         .pwd-toggle-glass{
             position:absolute;right:10px;top:50%;transform:translateY(-50%);
@@ -589,11 +589,13 @@
                     <div id="form-input-manual" style="display:none; padding-top:8px;">
                         <!-- Row: Mapel & Tipe Soal -->
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
-                            <div class="form-group">
+                            <div class="form-group" style="position:relative;">
                                 <label>Mata Pelajaran (Wajib)</label>
-                                <input type="text" id="manual-mapel" list="manual-mapel-list" class="form-control"
-                                    style="font-size:13px;" placeholder="Ketik atau pilih mapel...">
-                                <datalist id="manual-mapel-list"></datalist>
+                                <input type="text" id="manual-mapel" class="form-control"
+                                    style="font-size:13px;" placeholder="Ketik atau pilih mapel..." autocomplete="off"
+                                    oninput="filterManualMapelDropdown()" onfocus="openManualMapelDropdown()" onblur="setTimeout(closeManualMapelDropdown,180,event)">
+                                <div id="manual-mapel-dropdown" class="csl-dropdown" style="left:0;right:0;width:auto;max-height:220px;display:none;"></div>
+                                <datalist id="manual-mapel-list" style="display:none;"></datalist>
                             </div>
                             <div class="form-group">
                                 <label>Tipe Soal</label>
@@ -932,7 +934,7 @@
                                     <th style="text-align:left; min-width:160px;">MATA PELAJARAN</th>
                                     <th style="text-align:center; min-width:180px;">TARGET KELAS</th>
                                     <th style="text-align:center; min-width:200px; white-space:nowrap;">WAKTU PELAKSANAAN</th>
-                                    <th style="text-align:center; min-width:80px; white-space:nowrap;">DURASI/SISWA</th>
+                                    <th style="text-align:center; min-width:80px; white-space:nowrap;">DURASI</th>
                                     <th style="text-align:center; min-width:110px;">STATUS</th>
                                     <th style="text-align:center; min-width:90px;">AKTIFKAN</th>
                                     <th style="text-align:center; min-width:120px;">DIBUAT OLEH</th>

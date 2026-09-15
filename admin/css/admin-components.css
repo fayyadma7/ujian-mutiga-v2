@@ -158,6 +158,7 @@ th, td {
     border-bottom: 1px solid var(--border);
     font-size: 0.85rem;
     color: var(--text-main);
+    vertical-align: top;
 }
 
 th {
@@ -175,9 +176,15 @@ table tr:first-child th:last-child { border-top-right-radius: 12px; }
 table tr:last-child td:first-child { border-bottom-left-radius: 12px; }
 table tr:last-child td:last-child { border-bottom-right-radius: 12px; }
 
-tbody tr {
-    transition: background-color 0.2s;
-}
+tbody tr { transition: background-color 0.2s; }
+/* Jadwal: top alignment + garis per baris rapi 1px penuh */
+#tabel-jadwal { border-collapse: collapse !important; }
+#tabel-jadwal th, #tabel-jadwal td { vertical-align: top !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; }
+#tabel-jadwal tr:last-child td { border-bottom: none !important; }
+#tabel-jadwal td[data-label=""] { vertical-align: top !important; padding-top: 18px !important; }
+#tabel-jadwal td[data-label=""] input[type="checkbox"].cb-jadwal { vertical-align: top; margin-top: 2px; }
+#tabel-jadwal td[data-label="Mapel"] > div { align-items: center !important; }
+#tabel-jadwal thead th { border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
 
 tbody tr:hover {
     background-color: rgba(255, 255, 255, 0.02);
@@ -497,7 +504,13 @@ select.form-control option {
     width: max-content;
     max-height: 280px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb, rgba(59,130,246,0.28)) transparent;
 }
+.csl-dropdown::-webkit-scrollbar { width: 8px; height: 8px; }
+.csl-dropdown::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 10px; }
+.csl-dropdown::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.38); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; min-height: 40px; }
+.csl-dropdown::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.62); }
 .csl-dropdown.show { display: block; }
 .csl-option {
     padding: 7px 12px;
