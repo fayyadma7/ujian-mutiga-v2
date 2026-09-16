@@ -7,6 +7,7 @@
 // ============================================================
 
 const ADMIN_PROXY_URL = 'https://bkecjfrwqocguyvjymkn.supabase.co/functions/v1/admin-proxy';
+const ADMIN_PROXY_ANON_KEY = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
 
 // Ambil session dari localStorage
 function getGuruSession() {
@@ -24,6 +25,8 @@ async function callProxy(action, body) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'apikey': ADMIN_PROXY_ANON_KEY,
+        'Authorization': `Bearer ${ADMIN_PROXY_ANON_KEY}`,
         'x-guru-id': String(session.id),
         'x-guru-username': session.username
       },
