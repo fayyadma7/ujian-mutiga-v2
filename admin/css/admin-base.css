@@ -643,11 +643,11 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
     display:flex;
     flex-direction:row;
     min-width:520px; max-width:min(560px,96vw);
-    max-height:min(420px,78vh);
+    max-height:min(460px,84vh);
     font-family:'Inter',sans-serif;
     user-select:none;
 }
-.dtp-cal{ flex:1 1 320px; padding:14px 14px 16px 14px; min-width:300px; display:flex; flex-direction:column; }
+.dtp-cal{ flex:1 1 320px; padding:14px 14px 18px 14px; min-width:300px; display:flex; flex-direction:column; }
 .dtp-cal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
 .dtp-month-btn{
     display:flex; align-items:center; gap:6px;
@@ -677,8 +677,8 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
 .dtp-day.today{ border-color:rgba(59,130,246,0.45); color:#93c5fd; }
 .dtp-day.selected{ background:#60a5fa !important; color:#0f172a !important; font-weight:800; border-color:#60a5fa !important; }
 .dtp-day.selected.other{ background:#3b82f6 !important; color:white !important; }
-.dtp-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; padding-bottom:2px; border-top:1px solid rgba(255,255,255,0.06); margin-top:14px; }
-.dtp-foot button{ background:transparent; border:none; color:#60a5fa; font-size:13px; font-weight:600; cursor:pointer; padding:8px 14px; border-radius:8px; }
+.dtp-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); }
+.dtp-foot button{ background:transparent; border:none; color:#60a5fa; font-size:13px; font-weight:600; cursor:pointer; padding:7px 12px; border-radius:8px; }
 .dtp-foot button:hover{ background:rgba(59,130,246,0.1); }
 .dtp-time{
     width:148px; min-width:148px; max-width:148px;
