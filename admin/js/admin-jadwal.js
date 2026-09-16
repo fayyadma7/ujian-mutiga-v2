@@ -3,12 +3,15 @@
 // admin-jadwal.js — Jadwal Ujian Section (multi-kelas klik-toggle)
 // Format kelas: "X AKL A, X AKL B" (tanpa jurusan)
 // Klik per kelas, tanpa Ctrl
+// FIX: mulaiEditJadwal sekarang auto-fill mapel + sync custom select
 // ============================================================
 
 let editingJadwalId = null;
 
 async function populateJadwalMapelDropdown() {
     const select = document.getElementById('jadwal-mapel');
+    if (!select) return;
+    const previousValue = (select.value || '').trim();
     const _jmSesi = getGuruSession();
     const _jmIsAdmin = _jmSesi && _jmSesi.isAdmin === true;
     const _jmGuruId = _jmSesi ? _jmSesi.id : null;
@@ -26,9 +29,21 @@ async function populateJadwalMapelDropdown() {
         opt.textContent = m;
         select.appendChild(opt);
     });
-    // sinkron ke custom dropdown biar scrollbar besar terlihat (admin-base 8px)
+    // restore previous selection (penting saat edit: jangan hilangkan mapel yang sedang di-edit)
+    if (previousValue) {
+        let exists = [...select.options].some(o => o.value === previousValue);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = previousValue;
+            opt.textContent = previousValue;
+            select.appendChild(opt);
+        }
+        select.value = previousValue;
+    }
     if (typeof syncCustomSelect === 'function') try { syncCustomSelect('jadwal-mapel'); } catch(e){}
     if (typeof initCustomSelect === 'function' && !select.dataset.cslReady) try { initCustomSelect('jadwal-mapel'); } catch(e){}
+    // pastikan button custom ter-sync setelah init
+    if (typeof syncCustomSelect === 'function') try { syncCustomSelect('jadwal-mapel'); } catch(e){}
 }
 
 async function populateJadwalKelasOptions() {
@@ -47,7 +62,6 @@ async function populateJadwalKelasOptions() {
         sel.innerHTML = '';
         return;
     }
-    // sync hidden select
     sel.innerHTML = '';
     data.forEach(k => {
         const opt = document.createElement('option');
@@ -140,6 +154,55 @@ function toLocalISOString(datetimeLocalValue) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${pad(Math.floor(absOff / 60))}:${pad(absOff % 60)}`;
 }
 
+function _syncJadwalMapelCustom() {
+    const sel = document.getElementById('jadwal-mapel');
+    if (!sel) return;
+    try {
+        if (sel.dataset.cslReady && typeof syncCustomSelect === 'function') syncCustomSelect('jadwal-mapel');
+        else if (typeof initCustomSelect === 'function' && !sel.dataset.cslReady) initCustomSelect('jadwal-mapel');
+        if (typeof syncCustomSelect === 'function') syncCustomSelect('jadwal-mapel');
+    } catch(e){}
+}
+
+function _resetJadwalFormUI() {
+    const selMapel = document.getElementById('jadwal-mapel');
+    if (selMapel) {
+        selMapel.value = '';
+        _syncJadwalMapelCustom();
+        selMapel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const sel = document.getElementById('jadwal-kelas-select');
+    if (sel) [...sel.options].forEach(o => o.selected = false);
+    renderJadwalKelasList();
+    renderJadwalKelasChips();
+    const elWaktu = document.getElementById('jadwal-waktu');
+    const elSelesai = document.getElementById('jadwal-selesai');
+    const elDurasi = document.getElementById('jadwal-durasi');
+    if (elWaktu) elWaktu.value = '';
+    if (elSelesai) elSelesai.value = '';
+    if (elDurasi) elDurasi.value = '';
+    const statusEl = document.getElementById('status-jadwal');
+    if (statusEl) statusEl.innerHTML = '';
+}
+
+function batalEditJadwal() {
+    editingJadwalId = null;
+    _resetJadwalFormUI();
+    const btnSubmit = document.getElementById('btn-submit-jadwal');
+    if (btnSubmit) {
+        btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal';
+        btnSubmit.onclick = simpanJadwal;
+        btnSubmit.disabled = false;
+    }
+    const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
+    if (panelTitle) panelTitle.innerHTML = 'Buat Jadwal Baru';
+    const cancelBtn = document.getElementById('btn-batal-jadwal');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const statusEl = document.getElementById('status-jadwal');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Mode edit dibatalkan</span>';
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ''; }, 2000);
+}
+
 async function simpanJadwal() {
     const mapel = document.getElementById('jadwal-mapel').value.trim();
     const waktuMulaiRaw = document.getElementById('jadwal-waktu').value;
@@ -183,14 +246,13 @@ async function simpanJadwal() {
     if (error) { statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Gagal: ${error.message}</span>`; return; }
 
     statusEl.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Jadwal "${mapel}" — ${durasiInput} menit/siswa berhasil disimpan!</span>`;
-    document.getElementById('jadwal-mapel').value = '';
-    const sel = document.getElementById('jadwal-kelas-select');
-    if (sel) [...sel.options].forEach(o => o.selected = false);
-    renderJadwalKelasList();
-    renderJadwalKelasChips();
-    document.getElementById('jadwal-waktu').value = '';
-    document.getElementById('jadwal-selesai').value = '';
-    document.getElementById('jadwal-durasi').value = '';
+    _resetJadwalFormUI();
+    // pastikan tombol kembali ke mode simpan
+    if (btnSubmit) { btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; btnSubmit.onclick = simpanJadwal; }
+    const cancelBtn = document.getElementById('btn-batal-jadwal');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
+    if (panelTitle) panelTitle.innerHTML = 'Buat Jadwal Baru';
     loadJadwal();
     scheduleNextAutoDeactivate();
 }
@@ -311,7 +373,7 @@ async function loadJadwal() {
                 <td data-label="Aksi" style="text-align:center;">
                     <div style="display:flex; gap:8px; justify-content:flex-end;">
                         <button class="btn btn-primary" style="padding:8px 14px; font-size:12px; background:transparent; color:#60a5fa; border:1px solid rgba(59,130,246,.35);" onclick="mulaiEditJadwal(${j.id})" title="Edit Jadwal"><i class="fas fa-edit"></i> <span>Edit</span></button>
-                        <button class="btn btn-danger" style="padding:8px 14px; font-size:12px; background:transparent; color:#f87171; border:1px solid rgba(239,68,68,.35);" onclick="hapusJadwal(${j.id}, '${j.mapel}')"><i class="fas fa-trash"></i> <span>Hapus</span></button>
+                        <button class="btn btn-danger" style="padding:8px 14px; font-size:12px; background:transparent; color:#f87171; border:1px solid rgba(239,68,68,.35);" onclick="hapusJadwal(${j.id}, '${j.mapel.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i> <span>Hapus</span></button>
                     </div>
                 </td>
             </tr>
@@ -348,16 +410,39 @@ async function hapusJadwal(id, mapel) {
         };
         showToast(`Jadwal "${mapel}" berhasil dihapus`, 'success', undoFunc, 'Undo');
         loadJadwal();
+        if (editingJadwalId === id) batalEditJadwal();
     }
 }
 
 async function mulaiEditJadwal(id) {
     const { data, error } = await db.from('jadwal_ujian').select('*').eq('id', id).single();
-    if (error || !data) return;
+    if (error || !data) {
+        if (typeof showToast === 'function') showToast('Gagal memuat jadwal: ' + (error?.message || 'tidak ditemukan'), 'error');
+        return;
+    }
 
     editingJadwalId = id;
-    document.getElementById('jadwal-mapel').value = data.mapel;
 
+    // 1) Pastikan dropdown Mapel terisi dulu, lalu set value + sync custom select
+    try { await populateJadwalMapelDropdown(); } catch(e){}
+    const selMapel = document.getElementById('jadwal-mapel');
+    if (selMapel) {
+        const targetMapel = (data.mapel || '').trim();
+        if (targetMapel) {
+            let exists = [...selMapel.options].some(o => o.value.trim() === targetMapel);
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = targetMapel;
+                opt.textContent = targetMapel;
+                selMapel.appendChild(opt);
+            }
+            selMapel.value = targetMapel;
+            _syncJadwalMapelCustom();
+            selMapel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    // 2) Kelas — harus setelah populate agar opsi ada
     await populateJadwalKelasOptions();
     setJadwalKelasFromString(data.kelas);
 
@@ -386,18 +471,43 @@ async function mulaiEditJadwal(id) {
     if (btnSubmit) {
         btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Jadwal';
         btnSubmit.onclick = updateJadwal;
+        btnSubmit.disabled = false;
     }
 
-    document.querySelector('#jadwal .card-panel').scrollIntoView({ behavior: 'smooth' });
+    // UI: ubah judul panel + tombol batal
+    const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
+    if (panelTitle) panelTitle.innerHTML = '<i class="fas fa-edit" style="color:#60a5fa;"></i> Edit Jadwal';
+    let cancelBtn = document.getElementById('btn-batal-jadwal');
+    if (!cancelBtn && btnSubmit && btnSubmit.parentNode) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.id = 'btn-batal-jadwal';
+        cancelBtn.className = 'btn btn-outline';
+        cancelBtn.style.cssText = 'width:100%;justify-content:center;margin-top:8px;';
+        cancelBtn.innerHTML = '<i class="fas fa-times"></i> Batal Edit';
+        cancelBtn.onclick = batalEditJadwal;
+        btnSubmit.insertAdjacentElement('afterend', cancelBtn);
+    } else if (cancelBtn) {
+        cancelBtn.style.display = '';
+    }
+
+    const statusEl = document.getElementById('status-jadwal');
+    if (statusEl) statusEl.innerHTML = `<span style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle"></i> Mengedit "<b>${data.mapel}</b>" — ubah lalu klik Update</span>`;
+
+    const card = document.querySelector('#jadwal .card-panel');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // fokus ke mapel agar user langsung lihat terisi
+    if (selMapel) selMapel.focus();
 }
 
 async function updateJadwal() {
     if (!editingJadwalId) return;
-    const mapel = document.getElementById('jadwal-mapel').value;
+    const mapelEl = document.getElementById('jadwal-mapel');
+    const mapel = mapelEl ? mapelEl.value.trim() : '';
     const mulaiRaw = document.getElementById('jadwal-waktu').value;
     const selesaiRaw = document.getElementById('jadwal-selesai').value;
     const durasiInput = parseInt(document.getElementById('jadwal-durasi').value);
 
+    if (!mapel) return showToast('Mapel wajib dipilih!', 'error');
     if (!mulaiRaw || !selesaiRaw) return showToast('Window waktu wajib diisi!', 'error');
     if (new Date(selesaiRaw) <= new Date(mulaiRaw)) return showToast('Batas masuk harus setelah mulai masuk!', 'error');
     if (!durasiInput || durasiInput < 1) return showToast('Durasi ujian wajib diisi (min 1 menit)!', 'error');
@@ -414,24 +524,21 @@ async function updateJadwal() {
         mapel, kelas: kelasFinal, waktu_mulai: mulai, waktu_selesai: selesai, durasi_menit: durasiInput, is_aktif: true
     });
 
-    if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal';
-
-    if (error) { return showToast('Gagal update: ' + error.message, 'error'); }
+    if (error) {
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Jadwal'; }
+        return showToast('Gagal update: ' + error.message, 'error');
+    }
 
     showToast(`Jadwal diperbarui! Durasi: ${durasiInput} menit / siswa`, 'success');
     editingJadwalId = null;
-    if (btnSubmit) btnSubmit.onclick = simpanJadwal;
-
-    document.getElementById('jadwal-mapel').value = '';
-    const sel = document.getElementById('jadwal-kelas-select');
-    if (sel) [...sel.options].forEach(o => o.selected = false);
-    renderJadwalKelasList();
-    renderJadwalKelasChips();
-    document.getElementById('jadwal-waktu').value = '';
-    document.getElementById('jadwal-selesai').value = '';
-    document.getElementById('jadwal-durasi').value = '';
-    document.getElementById('status-jadwal').innerHTML = '';
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; btnSubmit.onclick = simpanJadwal; }
+    const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
+    if (panelTitle) panelTitle.innerHTML = 'Buat Jadwal Baru';
+    const cancelBtn = document.getElementById('btn-batal-jadwal');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    _resetJadwalFormUI();
     loadJadwal();
+    try { if (typeof scheduleNextAutoDeactivate === 'function') scheduleNextAutoDeactivate(); } catch(e){}
 }
 
 async function editJadwal(id) { return mulaiEditJadwal(id); }
@@ -450,6 +557,7 @@ async function bulkActionJadwal(action) {
             if (backupData && backupData.length > 0) { await chunkedInsert('jadwal_ujian', backupData); loadJadwal(); showToast(`${ids.length} jadwal berhasil di-restore`, 'success'); }
         };
         showToast(`${ids.length} jadwal berhasil dihapus`, 'success', undoFunc, 'Undo');
+        if (editingJadwalId && ids.includes(String(editingJadwalId))) batalEditJadwal();
     } else {
         const status = (action === 'active');
         for (const jid of ids) { await adminDb.update('jadwal_ujian', jid, { is_aktif: status }); }

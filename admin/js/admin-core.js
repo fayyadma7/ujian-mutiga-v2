@@ -161,7 +161,7 @@ function executeUndo(undoId) {
 }
 // ==================== WATCHDOG: ANTI BLOCK UI (admin tidak bisa diklik) ====================
 function clearStuckOverlays(){
-    ['landingOverlay','loginModalOverlay','modalConfirmAdmin','modalEditSoal','modalDaftarGuru'].forEach(id=>{
+    ['landingOverlay','loginModalOverlay','modalConfirmAdmin','modalEditSoal','modalDaftarGuru','modalEditProfilSaya','modalEditGuruAdmin'].forEach(id=>{
         const el=document.getElementById(id);
         if(!el) return;
         const cs=getComputedStyle(el);
@@ -595,8 +595,10 @@ function pasangNavigasiRole() {
 
     const headerName = document.getElementById('header-user-name');
     const headerLogout = document.getElementById('header-logout-btn');
+    const headerSet = document.getElementById('header-settings-btn');
     if (headerName) headerName.style.display = sesi ? 'flex' : 'none';
     if (headerLogout) headerLogout.style.display = sesi ? 'inline-flex' : 'none';
+    if (headerSet) headerSet.style.display = sesi ? 'inline-flex' : 'none';
 
     const welcomeBadge = document.getElementById('welcome-role-badge');
     if (welcomeBadge) {
@@ -1037,6 +1039,143 @@ async function daftarGuruAdmin() {
     } catch (e) {
         statusEl.innerHTML = '<span style="color:#fca5a5;">' + (e.message || 'Terjadi kesalahan') + '</span>';
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran';
+    }
+}
+
+// ==================== EDIT PROFIL & GANTI PASSWORD (SELF) ====================
+let _profilTab = 'profil';
+function switchProfilTab(tab){
+    _profilTab = tab;
+    const btnProfil = document.getElementById('tab-btn-profil');
+    const btnPass = document.getElementById('tab-btn-password');
+    const paneProfil = document.getElementById('pane-profil');
+    const panePass = document.getElementById('pane-password');
+    if(tab==='profil'){
+        if(btnProfil){ btnProfil.style.background='var(--primary)'; btnProfil.style.color='white'; btnProfil.style.border='none'; }
+        if(btnPass){ btnPass.style.background='rgba(255,255,255,0.06)'; btnPass.style.color='rgba(255,255,255,0.6)'; btnPass.style.border='1px solid rgba(255,255,255,0.1)'; }
+        if(paneProfil) paneProfil.style.display='block';
+        if(panePass) panePass.style.display='none';
+    } else {
+        if(btnPass){ btnPass.style.background='var(--primary)'; btnPass.style.color='white'; btnPass.style.border='none'; }
+        if(btnProfil){ btnProfil.style.background='rgba(255,255,255,0.06)'; btnProfil.style.color='rgba(255,255,255,0.6)'; btnProfil.style.border='1px solid rgba(255,255,255,0.1)'; }
+        if(paneProfil) paneProfil.style.display='none';
+        if(panePass) panePass.style.display='block';
+    }
+}
+function bukaModalEditProfilSaya(){
+    const s = getGuruSession();
+    if(!s || !s.id){ showToast('Silakan login terlebih dahulu','error'); return; }
+    const namaEl = document.getElementById('profil-nama');
+    const userEl = document.getElementById('profil-username');
+    const oldEl = document.getElementById('profil-old-pass');
+    const newEl = document.getElementById('profil-new-pass');
+    const confEl = document.getElementById('profil-confirm-pass');
+    if(namaEl) namaEl.value = s.nama || '';
+    if(userEl) userEl.value = s.username || '';
+    if(oldEl) oldEl.value = '';
+    if(newEl) newEl.value = '';
+    if(confEl) confEl.value = '';
+    ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id=>_resetPwdAdmin(id,'#modalEditProfilSaya'));
+    const statusEl = document.getElementById('profil-status');
+    if(statusEl) statusEl.innerHTML='';
+    const infoEl = document.getElementById('profil-info');
+    if(infoEl) infoEl.innerHTML = '<i class="fas fa-user-circle"></i> '+(s.nama||'')+' &middot; @'+(s.username||'')+' &middot; '+(s.role==='admin'?'Admin':'Guru');
+    switchProfilTab('profil');
+    const modal = document.getElementById('modalEditProfilSaya');
+    if(modal) modal.style.display='flex';
+    setTimeout(()=>{ if(namaEl) namaEl.focus(); },100);
+}
+function tutupModalEditProfilSaya(){
+    const modal = document.getElementById('modalEditProfilSaya');
+    if(modal) modal.style.display='none';
+    ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id=>_resetPwdAdmin(id,'#modalEditProfilSaya'));
+}
+async function simpanProfilSaya(){
+    const s = getGuruSession();
+    if(!s || !s.id){ showToast('Session tidak valid','error'); return; }
+    const nama = (document.getElementById('profil-nama')?.value || '').trim();
+    const username = (document.getElementById('profil-username')?.value || '').trim();
+    const btn = document.getElementById('btnSimpanProfil');
+    const statusEl = document.getElementById('profil-status');
+    if(!nama || nama.length < 3){ showToast('Nama minimal 3 karakter','error'); return; }
+    if(nama.length > 60){ showToast('Nama maksimal 60 karakter','error'); return; }
+    if(!username || username.length < 3){ showToast('Username minimal 3 karakter','error'); return; }
+    if(username.length > 30){ showToast('Username maksimal 30 karakter','error'); return; }
+    if(!/^[a-zA-Z0-9._@-]+$/.test(username)){ showToast('Username hanya boleh huruf, angka, @, titik, underscore, strip','error'); return; }
+    if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+    if(statusEl) statusEl.innerHTML='';
+    try{
+        const res = await adminDb.updateGuruProfile(s.id, nama, username);
+        // proxy mengembalikan {data, error} atau {error}
+        let errMsg = null;
+        if(res && res.error) errMsg = res.error.message || res.error;
+        else if(res && res.data && res.data.error) errMsg = res.data.error;
+        else if(res && res.data && res.data.success===false) errMsg = res.data.error;
+        if(errMsg){
+            if(statusEl) statusEl.innerHTML='<span style="color:#fca5a5;">'+errMsg+'</span>';
+            showToast(errMsg,'error');
+            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Simpan Profil'; }
+            return;
+        }
+        // sukses: update session
+        s.nama = nama; s.username = username;
+        localStorage.setItem('guru_session', JSON.stringify(s));
+        try{ sessionStorage.setItem('guru_session_backup', JSON.stringify(s)); }catch(_){}
+        updateWelcomeGreeting(); pasangNavigasiRole();
+        showToast('Profil berhasil diperbarui','success');
+        if(statusEl) statusEl.innerHTML='<span style="color:#86efac;"><i class="fas fa-check-circle"></i> Profil diperbarui</span>';
+        setTimeout(()=>tutupModalEditProfilSaya(),900);
+    }catch(e){
+        const msg = e.message || 'Gagal menyimpan';
+        if(statusEl) statusEl.innerHTML='<span style="color:#fca5a5;">'+msg+'</span>';
+        showToast(msg,'error');
+    }finally{
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Simpan Profil'; }
+    }
+}
+async function gantiPasswordSaya(){
+    const s = getGuruSession();
+    if(!s || !s.id){ showToast('Session tidak valid','error'); return; }
+    const oldPass = document.getElementById('profil-old-pass')?.value || '';
+    const newPass = document.getElementById('profil-new-pass')?.value || '';
+    const confPass = document.getElementById('profil-confirm-pass')?.value || '';
+    const btn = document.getElementById('btnGantiPassword');
+    const statusEl = document.getElementById('profil-status-pass');
+    if(!oldPass){ showToast('Password lama wajib diisi','error'); return; }
+    if(!newPass || newPass.length < 6){ showToast('Password baru minimal 6 karakter','error'); return; }
+    if(newPass.length > 72){ showToast('Password maksimal 72 karakter','error'); return; }
+    if(newPass !== confPass){ showToast('Konfirmasi password tidak cocok','error'); return; }
+    if(oldPass === newPass){ showToast('Password baru tidak boleh sama dengan lama','error'); return; }
+    if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memproses...'; }
+    if(statusEl) statusEl.innerHTML='';
+    try{
+        const res = await adminDb.updateGuruPassword(s.id, oldPass, newPass);
+        let errMsg=null;
+        if(res && res.error) errMsg = res.error.message || res.error;
+        else if(res && res.data && res.data.error) errMsg = res.data.error;
+        else if(res && res.data && res.data.success===false) errMsg = res.data.error;
+        if(errMsg && String(errMsg).includes('Unknown action')){
+            errMsg = 'Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref bkecjfrwqocguyvjymkn';
+        }
+        if(errMsg){
+            if(statusEl) statusEl.innerHTML='<span style="color:#fca5a5;">'+errMsg+'</span>';
+            showToast(errMsg,'error');
+            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-key"></i> Ubah Password'; }
+            return;
+        }
+        showToast('Password berhasil diubah','success');
+        if(statusEl) statusEl.innerHTML='<span style="color:#86efac;"><i class="fas fa-check-circle"></i> Password diperbarui</span>';
+        document.getElementById('profil-old-pass').value='';
+        document.getElementById('profil-new-pass').value='';
+        document.getElementById('profil-confirm-pass').value='';
+        ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id=>_resetPwdAdmin(id,'#modalEditProfilSaya'));
+        setTimeout(()=>{ switchProfilTab('profil'); },1200);
+    }catch(e){
+        const msg = e.message || 'Gagal ganti password';
+        if(statusEl) statusEl.innerHTML='<span style="color:#fca5a5;">'+msg+'</span>';
+        showToast(msg,'error');
+    }finally{
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-key"></i> Ubah Password'; }
     }
 }
 

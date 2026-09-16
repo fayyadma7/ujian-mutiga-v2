@@ -417,6 +417,13 @@
                     <i class="fas fa-shield-halved" style="font-size:10px;"></i>
                     <span id="role-badge-text">Guru</span>
                 </span>
+                <button id="header-settings-btn" onclick="bukaModalEditProfilSaya()"
+                    style="display:none;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.1);color:#93c5fd;font-family:'Inter',sans-serif;transition:all 0.25s;white-space:nowrap;"
+                    onmouseover="this.style.background='rgba(59,130,246,0.18)';this.style.borderColor='rgba(59,130,246,0.4)';"
+                    onmouseout="this.style.background='rgba(59,130,246,0.1)';this.style.borderColor='rgba(59,130,246,0.25)';"
+                    title="Pengaturan akun — ganti nama & password">
+                    <i class="fas fa-user-cog" style="font-size:11px;"></i> Akun
+                </button>
                 <button id="header-logout-btn" onclick="logoutGuru()"
                     style="display:none;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;white-space:nowrap;"
                     onmouseover="this.style.background='rgba(239,68,68,0.15)';this.style.borderColor='rgba(239,68,68,0.4)';"
@@ -449,11 +456,11 @@
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:10px; display:none;">
-                        <button onclick="logoutGuru()"
-                            style="display:none;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;"
-                            onmouseover="this.style.background='rgba(239,68,68,0.18)';this.style.borderColor='rgba(239,68,68,0.4)';"
-                            onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';">
+                    <div style="display:flex;align-items:center;gap:10px; flex-wrap:wrap;">
+                        <button onclick="bukaModalEditProfilSaya()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.1);color:#93c5fd;font-family:'Inter',sans-serif;transition:all 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">
+                            <i class="fas fa-user-cog"></i> Pengaturan Akun
+                        </button>
+                        <button onclick="logoutGuru()" style="display:none;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;" onmouseover="this.style.background='rgba(239,68,68,0.18)';this.style.borderColor='rgba(239,68,68,0.4)';" onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';">
                             <i class="fas fa-sign-out-alt"></i> Keluar
                         </button>
                     </div>
@@ -1497,6 +1504,124 @@
             <button onclick="tutupModalDaftarGuru()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>
         </div>
     </div>
+
+    <!-- ==================== MODAL EDIT PROFIL SAYA (SELF) ==================== -->
+    <div id="modalEditProfilSaya" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+        <div style="background:rgba(15,23,42,0.97);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:28px 26px;max-width:480px;width:92%;box-shadow:0 40px 100px rgba(0,0,0,0.8);position:relative;max-height:92vh;overflow-y:auto;">
+            <button onclick="tutupModalEditProfilSaya()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;"><i class="fas fa-times"></i></button>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(139,92,246,0.12));border:1px solid rgba(59,130,246,0.25);display:flex;align-items:center;justify-content:center;color:#93c5fd;font-size:18px;"><i class="fas fa-user-cog"></i></div>
+                <div>
+                    <div style="font-size:17px;font-weight:800;color:white;letter-spacing:-0.2px;">Pengaturan Akun</div>
+                    <div id="profil-info" style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:1px;">Memuat...</div>
+                </div>
+            </div>
+            <!-- Tabs -->
+            <div style="display:flex;gap:8px;margin:18px 0 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:4px;">
+                <button id="tab-btn-profil" onclick="switchProfilTab('profil')" style="flex:1;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--primary);color:white;font-family:'Inter',sans-serif;transition:all 0.2s;"><i class="fas fa-id-card"></i> Profil</button>
+                <button id="tab-btn-password" onclick="switchProfilTab('password')" style="flex:1;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;transition:all 0.2s;"><i class="fas fa-key"></i> Password</button>
+            </div>
+            <!-- Pane Profil -->
+            <div id="pane-profil">
+                <div style="margin-bottom:12px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Nama Lengkap</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-id-badge" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:13px;"></i>
+                        <input type="text" id="profil-nama" placeholder="Nama lengkap" maxlength="60" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px 12px 40px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                    </div>
+                </div>
+                <div style="margin-bottom:14px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Username</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-at" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:13px;"></i>
+                        <input type="text" id="profil-username" placeholder="Username" maxlength="30" autocomplete="username" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px 12px 40px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:5px;"><i class="fas fa-info-circle"></i> 3-30 karakter, huruf/angka/@._-</div>
+                </div>
+                <div id="profil-status" style="font-size:12px;min-height:18px;text-align:center;margin-bottom:10px;"></div>
+                <button id="btnSimpanProfil" onclick="simpanProfilSaya()" style="width:100%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:12px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 24px rgba(59,130,246,0.3);"><i class="fas fa-save"></i> Simpan Profil</button>
+                <div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-top:10px;">Perubahan nama/username langsung terlihat setelah simpan.</div>
+            </div>
+            <!-- Pane Password -->
+            <div id="pane-password" style="display:none;">
+                <div style="margin-bottom:12px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Password Lama</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-lock" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:13px;"></i>
+                        <input type="password" id="profil-old-pass" placeholder="Masukkan password lama" autocomplete="current-password" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 40px 12px 40px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                        <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('profil-old-pass',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Password Baru</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-key" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:13px;"></i>
+                        <input type="password" id="profil-new-pass" placeholder="Minimal 6 karakter" maxlength="72" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 40px 12px 40px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                        <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('profil-new-pass',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Konfirmasi Password Baru</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-check-double" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:13px;"></i>
+                        <input type="password" id="profil-confirm-pass" placeholder="Ulangi password baru" maxlength="72" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 40px 12px 40px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                        <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('profil-confirm-pass',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="profil-status-pass" style="font-size:12px;min-height:18px;text-align:center;margin-bottom:10px;"></div>
+                <button id="btnGantiPassword" onclick="gantiPasswordSaya()" style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:white;border:none;padding:12px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 24px rgba(16,185,129,0.3);"><i class="fas fa-key"></i> Ubah Password</button>
+                <div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-top:10px;"><i class="fas fa-shield-halved"></i> Password dienkripsi bcrypt aman.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL EDIT GURU (ADMIN) ==================== -->
+    <div id="modalEditGuruAdmin" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+        <div style="background:rgba(15,23,42,0.97);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:26px 24px;max-width:460px;width:92%;box-shadow:0 40px 100px rgba(0,0,0,0.8);position:relative;max-height:92vh;overflow-y:auto;">
+            <button onclick="tutupModalEditGuru()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;"><i class="fas fa-times"></i></button>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+                <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(245,158,11,0.08));border:1px solid rgba(245,158,11,0.25);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:16px;"><i class="fas fa-user-edit"></i></div>
+                <div>
+                    <div id="admin-edit-title" style="font-size:15px;font-weight:800;color:white;">Edit Akun Guru</div>
+                    <div id="admin-edit-hint" style="font-size:11px;color:rgba(255,255,255,0.4);">-</div>
+                </div>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,0.06);margin:14px 0;"></div>
+            <div style="margin-bottom:12px;text-align:left;">
+                <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Nama Lengkap</label>
+                <input type="text" id="admin-edit-nama" maxlength="60" placeholder="Nama guru" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:11px 14px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+            </div>
+            <div style="margin-bottom:16px;text-align:left;">
+                <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Username</label>
+                <input type="text" id="admin-edit-username" maxlength="30" placeholder="Username" autocomplete="username" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:11px 14px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;">3-30 karakter, unik, huruf/angka/@._-</div>
+            </div>
+            <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.12);border-radius:12px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:8px;"><i class="fas fa-key"></i> Reset Password (opsional)</div>
+                <div style="margin-bottom:10px;text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Password Baru</label>
+                    <div style="position:relative;">
+                        <input type="password" id="admin-edit-password" placeholder="Kosongkan jika tidak ganti" maxlength="72" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:11px 40px 11px 12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                        <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('admin-edit-password',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div style="text-align:left;">
+                    <label style="display:block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">Konfirmasi Password Baru</label>
+                    <div style="position:relative;">
+                        <input type="password" id="admin-edit-password-confirm" placeholder="Ulangi password baru" maxlength="72" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:11px 40px 11px 12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:white;outline:none;">
+                        <button type="button" class="pwd-toggle-daftar" onclick="togglePwdAdmin('admin-edit-password-confirm',this)" aria-label="Lihat password" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="admin-edit-pass-info" style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:8px;"></div>
+            </div>
+            <div id="admin-edit-status" style="font-size:12px;min-height:18px;text-align:center;margin-bottom:10px;"></div>
+            <div style="display:flex;gap:10px;">
+                <button onclick="tutupModalEditGuru()" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:11px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Batal</button>
+                <button id="btnSimpanEditGuru" onclick="simpanEditGuru()" style="flex:1.4;background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:11px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 8px 24px rgba(59,130,246,0.3);"><i class="fas fa-save"></i> Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== MODAL AKSARA JAWA ==================== -->
     <div id="modalAksaraJawa" style="position:fixed;bottom:20px;right:20px;z-index:99999;display:none;">
         <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:16px;width:380px;box-shadow:0 15px 50px rgba(0,0,0,0.8);position:relative;max-height:85vh;overflow-y:auto;">
