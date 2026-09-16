@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-    <link rel="stylesheet" href="admin/css/admin-base.css?v=3">
+    <link rel="stylesheet" href="admin/css/admin-base.css?v=7">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=3">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-mobile.css?v=27">
@@ -2460,7 +2460,26 @@
         });
     </script>
 
-    <script src="admin/js/admin-core.js?v=2"></script>
+    <script src="admin/js/admin-core.js?v=3"></script>
+    <!-- Eager preload jadwal picker (desktop scrollbar fix) — also lazy-loaded via admin-core -->
+    <script src="admin/js/admin-jadwal.js?v=6" defer></script>
+    <script>
+    // Fallback: paksa init picker desktop segera setelah load (jika lazy belum sempat)
+    (function(){
+        function tryInit(){
+            try{
+                if(typeof _dtpInitNow==='function') _dtpInitNow();
+                else if(typeof initCustomDateTimePicker==='function') initCustomDateTimePicker();
+            }catch(e){}
+        }
+        if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=>setTimeout(tryInit,300));
+        else setTimeout(tryInit,300);
+        setTimeout(tryInit,900); setTimeout(tryInit,2000);
+        // hook bukaHalaman jika belum
+        const _hook = ()=>{ if(window.bukaHalaman && !window.__dtpHooked){ const _o=window.bukaHalaman; window.bukaHalaman=function(a,b){const r=_o(a,b); if(a==='jadwal') setTimeout(tryInit,80); return r;}; window.__dtpHooked=true; } };
+        setTimeout(_hook,800); setTimeout(_hook,2000);
+    })();
+    </script>
 
 </body>
 

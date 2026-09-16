@@ -510,3 +510,229 @@ input[type="datetime-local"]:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+
+/* ================================================================
+   8b. DATETIME TIME PICKER — Scrollbar untuk pengaturan jam
+   FIX: jam kepotong (18/28) seperti di screenshot — tampilkan
+   scrollbar tebal & kontras pada daftar jam/menit.
+   Covers: Chrome/Edge WebKit internal list + Firefox + Chrome 125+ ::picker
+   Token warna sinkron dengan scrollbar global admin (biru).
+   ================================================================ */
+input[type="datetime-local"] {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59,130,246,0.55) rgba(255,255,255,0.06);
+    scrollbar-gutter: stable;
+}
+input[type="datetime-local"]::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+input[type="datetime-local"]::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+}
+input[type="datetime-local"]::-webkit-scrollbar-thumb {
+    background: rgba(59,130,246,0.55);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    min-height: 40px;
+}
+input[type="datetime-local"]::-webkit-scrollbar-thumb:hover {
+    background: rgba(59,130,246,0.78);
+    background-clip: padding-box;
+}
+input[type="datetime-local"]::-webkit-scrollbar-thumb:active {
+    background: rgba(59,130,246,0.90);
+    background-clip: padding-box;
+}
+input[type="datetime-local"]::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Chrome 125+ ::picker — popup kalender+jam resmi (top-layer) */
+@supports selector(::picker(select)) {
+    input[type="datetime-local"]::picker(select),
+    input[type="date"]::picker(select),
+    input[type="time"]::picker(select) {
+        max-height: min(420px, 68vh) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(59,130,246,0.55) rgba(255,255,255,0.06) !important;
+        scrollbar-gutter: stable !important;
+        border-radius: 16px !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.45) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+    }
+    input[type="datetime-local"]::picker(select)::-webkit-scrollbar,
+    input[type="date"]::picker(select)::-webkit-scrollbar,
+    input[type="time"]::picker(select)::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    input[type="datetime-local"]::picker(select)::-webkit-scrollbar-track,
+    input[type="date"]::picker(select)::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.06);
+        border-radius: 10px;
+    }
+    input[type="datetime-local"]::picker(select)::-webkit-scrollbar-thumb,
+    input[type="date"]::picker(select)::-webkit-scrollbar-thumb {
+        background: rgba(59,130,246,0.55);
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        min-height: 40px;
+    }
+    input[type="datetime-local"]::picker(select)::-webkit-scrollbar-thumb:hover,
+    input[type="date"]::picker(select)::-webkit-scrollbar-thumb:hover {
+        background: rgba(59,130,246,0.78);
+        background-clip: padding-box;
+    }
+}
+
+/* Firefox fallback — pastikan dropdown tidak kepotong viewport */
+@-moz-document url-prefix() {
+    input[type="datetime-local"] {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(59,130,246,0.55) rgba(255,255,255,0.06);
+    }
+}
+
+/* Wrapper jam di form jadwal — override inline overflow:hidden agar
+   scrollbar & focus-ring tidak ter-clip; tetap aman di grid */
+#jadwal .form-group div[style*="overflow:hidden"] {
+    overflow: visible !important;
+}
+#jadwal-waktu, #jadwal-selesai {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59,130,246,0.55) rgba(255,255,255,0.06);
+}
+
+/* Pertebal scrollbar global khusus area jadwal agar lebih terlihat
+   (tetap pakai token — hanya naikkan opacity di konteks jadwal) */
+#jadwal *::-webkit-scrollbar-thumb {
+    background: rgba(59,130,246,0.52);
+    background-clip: padding-box;
+}
+#jadwal *::-webkit-scrollbar-thumb:hover {
+    background: rgba(59,130,246,0.72);
+    background-clip: padding-box;
+}
+
+/* ================================================================
+   8c. CUSTOM DATETIME PICKER — Pengganti native (scrollbar jam jelas)
+   Dibuat karena picker native Chrome tidak bisa di-style & scrollbar
+   jam/menit kepotong (screenshot penjadwalan). Kolom jam/menit
+   dibuat scroll dengan track & thumb selalu terlihat.
+   ================================================================ */
+.dtp-overlay{
+    position:fixed; inset:0; z-index:9998;
+    background:rgba(4,8,18,0.35);
+    backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+    display:none;
+}
+.dtp-overlay.show{ display:block; }
+.dtp-popup{
+    position:fixed; z-index:9999;
+    background:#2e3440; background:linear-gradient(180deg,#343a4a 0%,#2b3242 100%);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    overflow:hidden;
+    display:flex;
+    flex-direction:row;
+    min-width:520px; max-width:min(560px,96vw);
+    max-height:min(420px,78vh);
+    font-family:'Inter',sans-serif;
+    user-select:none;
+}
+.dtp-cal{ flex:1 1 320px; padding:14px 14px 16px 14px; min-width:300px; display:flex; flex-direction:column; }
+.dtp-cal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.dtp-month-btn{
+    display:flex; align-items:center; gap:6px;
+    background:transparent; border:none; color:#e2e8f0;
+    font-size:14px; font-weight:700; cursor:pointer; padding:4px 6px; border-radius:8px;
+}
+.dtp-month-btn:hover{ background:rgba(255,255,255,0.06); }
+.dtp-month-btn i{ font-size:11px; opacity:0.7; }
+.dtp-nav{ display:flex; gap:4px; }
+.dtp-nav button{
+    width:30px; height:30px; border:none; border-radius:8px;
+    background:transparent; color:#cbd5e1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+}
+.dtp-nav button:hover{ background:rgba(255,255,255,0.08); color:#f1f5f9; }
+.dtp-week{ display:grid; grid-template-columns:repeat(7,1fr); gap:0; margin-bottom:4px; }
+.dtp-week span{ text-align:center; font-size:11px; font-weight:600; color:#94a3b8; padding:6px 0; }
+.dtp-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.dtp-day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:500; color:#e2e8f0;
+    border-radius:6px; cursor:pointer; border:1px solid transparent;
+    min-height:32px;
+}
+.dtp-day:hover{ background:rgba(255,255,255,0.06); }
+.dtp-day.other{ color:#64748b; opacity:0.7; }
+.dtp-day.today{ border-color:rgba(59,130,246,0.45); color:#93c5fd; }
+.dtp-day.selected{ background:#60a5fa !important; color:#0f172a !important; font-weight:800; border-color:#60a5fa !important; }
+.dtp-day.selected.other{ background:#3b82f6 !important; color:white !important; }
+.dtp-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; padding-bottom:2px; border-top:1px solid rgba(255,255,255,0.06); margin-top:14px; }
+.dtp-foot button{ background:transparent; border:none; color:#60a5fa; font-size:13px; font-weight:600; cursor:pointer; padding:8px 14px; border-radius:8px; }
+.dtp-foot button:hover{ background:rgba(59,130,246,0.1); }
+.dtp-time{
+    width:148px; min-width:148px; max-width:148px;
+    border-left:1px solid rgba(255,255,255,0.08);
+    background:rgba(0,0,0,0.12);
+    display:flex; flex-direction:row; gap:0;
+    overflow:hidden;
+}
+.dtp-time-col{
+    flex:1 1 50%; display:flex; flex-direction:column; overflow:hidden; position:relative;
+}
+.dtp-time-col + .dtp-time-col{ border-left:1px solid rgba(255,255,255,0.06); }
+.dtp-time-head{ text-align:center; font-size:10px; font-weight:700; letter-spacing:0.8px; color:#64748b; padding:8px 0 6px 0; text-transform:uppercase; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+.dtp-time-list{
+    flex:1 1 auto;
+    overflow-y:scroll !important;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(59,130,246,0.68) rgba(255,255,255,0.07);
+    scrollbar-gutter:stable;
+    scroll-behavior:smooth;
+    background:transparent;
+}
+.dtp-time-list::-webkit-scrollbar{ width:10px; height:10px; }
+.dtp-time-list::-webkit-scrollbar-track{ background:rgba(255,255,255,0.07); border-radius:10px; margin:4px 0; }
+.dtp-time-list::-webkit-scrollbar-thumb{
+    background:rgba(59,130,246,0.68);
+    border-radius:10px; border:2px solid transparent; background-clip:padding-box; min-height:36px;
+}
+.dtp-time-list::-webkit-scrollbar-thumb:hover{ background:rgba(59,130,246,0.85); background-clip:padding-box; }
+.dtp-time-list::-webkit-scrollbar-thumb:active{ background:rgba(96,165,250,0.95); background-clip:padding-box; }
+.dtp-time-list::-webkit-scrollbar-corner{ background:transparent; }
+/* Firefox track visible */
+@supports (scrollbar-width: thin){
+    .dtp-time-list{ scrollbar-width:thin; scrollbar-color:rgba(59,130,246,0.68) rgba(255,255,255,0.07); }
+}
+.dtp-tok{
+    display:flex; align-items:center; justify-content:center;
+    height:36px; min-height:36px; margin:2px 6px;
+    border-radius:8px; font-size:13px; font-weight:600; color:#cbd5e1;
+    cursor:pointer; border:1px solid transparent; line-height:1;
+}
+.dtp-tok:hover{ background:rgba(255,255,255,0.06); color:#f1f5f9; }
+.dtp-tok.sel{ background:#60a5fa !important; color:#0f172a !important; font-weight:800; border-color:#60a5fa !important; box-shadow:0 2px 10px rgba(59,130,246,0.35); }
+/* Input trigger style */
+.dtp-input{ cursor:pointer !important; background:rgba(255,255,255,0.04) !important; }
+.dtp-input::-webkit-calendar-picker-indicator{ display:none !important; }
+.dtp-input{ position:relative; }
+/* Mobile */
+@media (max-width: 640px){
+    .dtp-popup{ flex-direction:column; min-width:0; width:min(96vw,380px); max-height:82vh; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(59,130,246,0.45) transparent; }
+    .dtp-popup::-webkit-scrollbar{ width:8px; }
+    .dtp-popup::-webkit-scrollbar-thumb{ background:rgba(59,130,246,0.45); border-radius:10px; }
+    .dtp-cal{ min-width:0; padding:12px 12px 16px 12px; }
+    .dtp-time{ width:100%; min-width:0; max-width:none; height:180px; min-height:180px; border-left:none; border-top:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
+    .dtp-time-list{ max-height:140px; }
+}

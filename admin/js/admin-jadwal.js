@@ -567,3 +567,264 @@ async function bulkActionJadwal(action) {
 }
 
 function loadJadwalGuruOptions() {}
+
+// ============================================================
+// CUSTOM DATETIME PICKER — Penjadwalan (scrollbar jam selalu terlihat)
+// Pengganti picker native yang scrollbar-nya hilang/kepotong.
+// Kolom jam & menit dibuat scroll mandiri dengan thumb biru tebal.
+// ============================================================
+let _dtpActive = null;
+let _dtpState = { y: 2026, m: 8, d: 16, h: 13, mi: 34 };
+let _dtpOverlay = null, _dtpPopup = null;
+const _dtpMonthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+function _dtpPad(n){ return String(n).padStart(2,'0'); }
+function _dtpToInputVal(s){ return `${s.y}-${_dtpPad(s.m+1)}-${_dtpPad(s.d)}T${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }
+function _dtpFromInputVal(v){
+    if(!v) return null;
+    const d = new Date(v);
+    if(isNaN(d.getTime())) return null;
+    return { y:d.getFullYear(), m:d.getMonth(), d:d.getDate(), h:d.getHours(), mi:d.getMinutes() };
+}
+function _dtpDaysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function _dtpEnsureDom(){
+    if(_dtpOverlay) return;
+    _dtpOverlay = document.createElement('div');
+    _dtpOverlay.className = 'dtp-overlay';
+    _dtpOverlay.addEventListener('click', closeDTP);
+    _dtpPopup = document.createElement('div');
+    _dtpPopup.className = 'dtp-popup';
+    _dtpPopup.addEventListener('click', e=> e.stopPropagation());
+    document.body.appendChild(_dtpOverlay);
+    document.body.appendChild(_dtpPopup);
+    window.addEventListener('resize', ()=>{ if(_dtpActive) _dtpPosition(); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _dtpActive) closeDTP(); });
+}
+function _dtpPosition(){
+    if(!_dtpActive || !_dtpPopup) return;
+    const r = _dtpActive.getBoundingClientRect();
+    const pw = _dtpPopup.offsetWidth, ph = _dtpPopup.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let top = r.bottom + 8, left = r.left;
+    // keep inside viewport
+    if(left + pw > vw - 12) left = vw - pw - 12;
+    if(left < 12) left = 12;
+    if(top + ph > vh - 12){
+        // try above
+        const alt = r.top - ph - 8;
+        if(alt >= 12) top = alt;
+        else top = Math.max(12, vh - ph - 12);
+    }
+    if(window.innerWidth <= 640){
+        // center modal on mobile
+        _dtpPopup.style.left = '50%'; _dtpPopup.style.top = '50%';
+        _dtpPopup.style.transform = 'translate(-50%,-50%)';
+        _dtpPopup.style.right = 'auto'; _dtpPopup.style.bottom = 'auto';
+    } else {
+        _dtpPopup.style.left = left + 'px';
+        _dtpPopup.style.top = top + 'px';
+        _dtpPopup.style.transform = 'none';
+    }
+}
+function openDTP(input){
+    _dtpEnsureDom();
+    _dtpActive = input;
+    const parsed = _dtpFromInputVal(input.value);
+    const now = new Date();
+    if(parsed){ _dtpState = { y:parsed.y, m:parsed.m, d:parsed.d, h:parsed.h, mi:parsed.mi }; }
+    else { _dtpState = { y:now.getFullYear(), m:now.getMonth(), d:now.getDate(), h:now.getHours(), mi:now.getMinutes() }; }
+    _dtpRender();
+    _dtpOverlay.classList.add('show');
+    _dtpPopup.style.display = 'flex';
+    requestAnimationFrame(()=>{ _dtpPosition(); _dtpScrollToSelected(); });
+}
+function closeDTP(){
+    if(!_dtpOverlay) return;
+    _dtpOverlay.classList.remove('show');
+    if(_dtpPopup) _dtpPopup.style.display = 'none';
+    _dtpActive = null;
+}
+function _dtpSyncInput(){
+    if(!_dtpActive) return;
+    _dtpActive.value = _dtpToInputVal(_dtpState);
+    _dtpActive.dispatchEvent(new Event('change',{bubbles:true}));
+    _dtpActive.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function _dtpScrollToSelected(){
+    if(!_dtpPopup) return;
+    const hEl = _dtpPopup.querySelector('.dtp-tok.sel[data-h]');
+    const miEl = _dtpPopup.querySelector('.dtp-tok.sel[data-mi]');
+    const hList = _dtpPopup.querySelector('#dtp-hlist');
+    const miList = _dtpPopup.querySelector('#dtp-milist');
+    if(hEl && hList){
+        const top = hEl.offsetTop - hList.clientHeight/2 + hEl.offsetHeight/2;
+        hList.scrollTop = Math.max(0, top);
+    }
+    if(miEl && miList){
+        const top = miEl.offsetTop - miList.clientHeight/2 + miEl.offsetHeight/2;
+        miList.scrollTop = Math.max(0, top);
+    }
+}
+function _dtpRender(){
+    if(!_dtpPopup) return;
+    const y = _dtpState.y, m = _dtpState.m;
+    const dim = _dtpDaysInMonth(y,m);
+    const firstDay = new Date(y,m,1).getDay(); // 0 Su
+    const prevDim = _dtpDaysInMonth(y, m-1 <0?11:m-1);
+    // build days array 42 cells
+    let daysHtml = '';
+    for(let i=0;i<42;i++){
+        let dayNum, isOther=false, isPrev=false, cellY=y, cellM=m;
+        if(i < firstDay){ dayNum = prevDim - firstDay + 1 + i; isOther=true; isPrev=true; cellM = m-1; if(cellM<0){cellM=11; cellY=y-1;} }
+        else if(i >= firstDay+dim){ dayNum = i - firstDay - dim +1; isOther=true; cellM=m+1; if(cellM>11){cellM=0; cellY=y+1;} }
+        else { dayNum = i-firstDay+1; }
+        const isToday = (cellY===new Date().getFullYear() && cellM===new Date().getMonth() && dayNum===new Date().getDate());
+        const isSel = (!isOther && dayNum===_dtpState.d);
+        // but selection should follow actual y/m/d; if other month clicked, will navigate
+        const cls = ['dtp-day', isOther?'other':'', isToday?'today':'', isSel?'selected':''].filter(Boolean).join(' ');
+        daysHtml += `<div class="${cls}" data-day="${dayNum}" data-other="${isOther?1:0}" data-cm="${cellM}" data-cy="${cellY}">${dayNum}</div>`;
+    }
+    let hHtml='', miHtml='';
+    for(let h=0; h<24; h++){
+        const sel = h===_dtpState.h?' sel':'';
+        hHtml+=`<div class="dtp-tok${sel}" data-h="${h}">${_dtpPad(h)}</div>`;
+    }
+    for(let mi=0; mi<60; mi++){
+        const sel = mi===_dtpState.mi?' sel':'';
+        miHtml+=`<div class="dtp-tok${sel}" data-mi="${mi}">${_dtpPad(mi)}</div>`;
+    }
+    _dtpPopup.innerHTML = `
+        <div class="dtp-cal">
+            <div class="dtp-cal-head">
+                <button type="button" class="dtp-month-btn" id="dtp-monthBtn">${_dtpMonthNames[m]} ${y} <i class="fas fa-chevron-down"></i></button>
+                <div class="dtp-nav">
+                    <button type="button" id="dtp-prev" aria-label="Bulan sebelumnya"><i class="fas fa-arrow-up"></i></button>
+                    <button type="button" id="dtp-next" aria-label="Bulan berikutnya"><i class="fas fa-arrow-down"></i></button>
+                </div>
+            </div>
+            <div class="dtp-week"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+            <div class="dtp-days">${daysHtml}</div>
+            <div class="dtp-foot">
+                <button type="button" id="dtp-clear">Clear</button>
+                <button type="button" id="dtp-today">Today</button>
+            </div>
+        </div>
+        <div class="dtp-time">
+            <div class="dtp-time-col">
+                <div class="dtp-time-head">Jam</div>
+                <div class="dtp-time-list" id="dtp-hlist">${hHtml}</div>
+            </div>
+            <div class="dtp-time-col">
+                <div class="dtp-time-head">Menit</div>
+                <div class="dtp-time-list" id="dtp-milist">${miHtml}</div>
+            </div>
+        </div>
+    `;
+    // events
+    _dtpPopup.querySelector('#dtp-prev').onclick = ()=>{ let nm=m-1, ny=y; if(nm<0){nm=11; ny--;} _dtpState.y=ny; _dtpState.m=nm; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+    _dtpPopup.querySelector('#dtp-next').onclick = ()=>{ let nm=m+1, ny=y; if(nm>11){nm=0; ny++;} _dtpState.y=ny; _dtpState.m=nm; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+    _dtpPopup.querySelector('#dtp-monthBtn').onclick = ()=>{
+        // simple prompt year switch: click to reset to today month
+        const now=new Date(); _dtpState.y=now.getFullYear(); _dtpState.m=now.getMonth(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected);
+    };
+    _dtpPopup.querySelector('#dtp-clear').onclick = ()=>{ if(_dtpActive){ _dtpActive.value=''; _dtpActive.dispatchEvent(new Event('change',{bubbles:true})); } closeDTP(); };
+    _dtpPopup.querySelector('#dtp-today').onclick = ()=>{ const n=new Date(); _dtpState.y=n.getFullYear(); _dtpState.m=n.getMonth(); _dtpState.d=n.getDate(); _dtpState.h=n.getHours(); _dtpState.mi=Math.floor(n.getMinutes()/1); _dtpSyncInput(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); _dtpSyncInput(); };
+    _dtpPopup.querySelectorAll('.dtp-day').forEach(el=>{
+        el.addEventListener('click', ()=>{
+            const o = el.getAttribute('data-other')==='1';
+            const cd = parseInt(el.getAttribute('data-day'));
+            const cm = parseInt(el.getAttribute('data-cm'));
+            const cy = parseInt(el.getAttribute('data-cy'));
+            if(o){ _dtpState.y=cy; _dtpState.m=cm; _dtpState.d=cd; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); }
+            else { _dtpState.d=cd; _dtpPopup.querySelectorAll('.dtp-day').forEach(d=>d.classList.remove('selected')); el.classList.add('selected'); }
+            _dtpSyncInput();
+        });
+    });
+    _dtpPopup.querySelectorAll('.dtp-tok[data-h]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+            const h=parseInt(el.getAttribute('data-h'));
+            _dtpState.h=h;
+            _dtpPopup.querySelectorAll('.dtp-tok[data-h]').forEach(x=>x.classList.remove('sel'));
+            el.classList.add('sel');
+            _dtpSyncInput();
+            el.scrollIntoView({block:'nearest'});
+        });
+    });
+    _dtpPopup.querySelectorAll('.dtp-tok[data-mi]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+            const mi=parseInt(el.getAttribute('data-mi'));
+            _dtpState.mi=mi;
+            _dtpPopup.querySelectorAll('.dtp-tok[data-mi]').forEach(x=>x.classList.remove('sel'));
+            el.classList.add('sel');
+            _dtpSyncInput();
+            el.scrollIntoView({block:'nearest'});
+        });
+    });
+    // wheel scroll snap improvement: keep scroll always visible
+    const hList = _dtpPopup.querySelector('#dtp-hlist');
+    const miList = _dtpPopup.querySelector('#dtp-milist');
+    // ensure scrollbars visible by forcing overflow scroll
+    if(hList) hList.style.overflowY = 'scroll';
+    if(miList) miList.style.overflowY = 'scroll';
+}
+function initCustomDateTimePicker(){
+    _dtpEnsureDom();
+    ['jadwal-waktu','jadwal-selesai'].forEach(id=>{
+        const inp = document.getElementById(id);
+        if(!inp || inp.dataset.dtpReady) return;
+        inp.dataset.dtpReady='1';
+        try{ inp.type='text'; }catch(e){}
+        inp.setAttribute('readonly','readonly');
+        inp.setAttribute('inputmode','none');
+        inp.classList.add('dtp-input');
+        inp.setAttribute('placeholder','dd/mm/yyyy --:--');
+        inp.setAttribute('autocomplete','off');
+        // bungkus dengan wrapper + ikon kalender agar tetap terlihat seperti native (desktop)
+        try{
+            if(!inp.parentElement.classList.contains('dtp-wrap')){
+                const w=document.createElement('div');
+                w.className='dtp-wrap';
+                w.style.cssText='position:relative;display:block;';
+                inp.parentNode.insertBefore(w, inp);
+                w.appendChild(inp);
+                const ic=document.createElement('i');
+                ic.className='fas fa-calendar-alt';
+                ic.style.cssText='position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#64748b;font-size:13px;pointer-events:none;opacity:0.9;';
+                w.appendChild(ic);
+                // klik ikon juga buka
+                w.addEventListener('click', e=>{ if(e.target===ic) { e.preventDefault(); openDTP(inp); inp.focus(); } });
+            }
+        }catch(e){}
+        inp.addEventListener('click', e=>{ e.preventDefault(); openDTP(inp); });
+        inp.addEventListener('focus', e=>{ e.preventDefault(); openDTP(inp); });
+        inp.addEventListener('keydown', e=>{
+            if(e.key==='Backspace' || e.key==='Delete'){ inp.value=''; inp.dispatchEvent(new Event('change',{bubbles:true})); closeDTP(); e.preventDefault(); }
+            if(e.key==='Enter' || e.key===' '){ openDTP(inp); e.preventDefault(); }
+        });
+    });
+}
+// auto init — harus langsung jalan meski script di-load lazy setelah DOMContentLoaded
+function _dtpInitNow(){
+    try{ _dtpEnsureDom(); }catch(e){}
+    initCustomDateTimePicker();
+    if(!window.__dtpHooked && typeof window.bukaHalaman === 'function'){
+        const _orig = window.bukaHalaman;
+        window.bukaHalaman = function(a,b){ const r=_orig(a,b); if(a==='jadwal') setTimeout(initCustomDateTimePicker,80); return r; };
+        window.__dtpHooked = true;
+    }
+    // observe jadwal section jika ada
+    try{
+        const jadwal = document.getElementById('jadwal');
+        if(jadwal && !jadwal.dataset.dtpObs){
+            jadwal.dataset.dtpObs='1';
+            new MutationObserver(()=> initCustomDateTimePicker()).observe(jadwal,{attributes:true,attributeFilter:['class']});
+        }
+    }catch(e){}
+}
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', _dtpInitNow); } else { _dtpInitNow(); }
+setTimeout(_dtpInitNow, 150);
+setTimeout(_dtpInitNow, 900);
+setTimeout(_dtpInitNow, 2000);
+// expose
+window.openDTP = openDTP; window.closeDTP = closeDTP; window.initCustomDateTimePicker = initCustomDateTimePicker;
+window._dtpInitNow = _dtpInitNow;

@@ -669,7 +669,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
     const moduleMap = {
         'dashboard': 'admin-dashboard.js',
         'bank-soal': 'admin-soal.js',
-        'jadwal': 'admin-jadwal.js',
+        'jadwal': 'admin-jadwal.js?v=6',
         'monitoring': 'admin-monitoring.js',
         'laporan': 'admin-laporan.js',
         'analisis-soal-page': 'admin-analisis.js',
@@ -711,6 +711,9 @@ function initPage(idHalaman) {
             else { if (typeof initCustomSelect === 'function') initCustomSelect('jadwal-mapel'); }
         }
         if (typeof loadJadwal === 'function') loadJadwal();
+        // custom datetime picker — scrollbar jam selalu terlihat (desktop)
+        setTimeout(()=>{ try{ if(typeof initCustomDateTimePicker==='function') initCustomDateTimePicker(); if(typeof _dtpInitNow==='function') _dtpInitNow(); }catch(e){} }, 120);
+        setTimeout(()=>{ try{ if(typeof initCustomDateTimePicker==='function') initCustomDateTimePicker(); }catch(e){} }, 600);
     }
     if (idHalaman === 'bank-soal') {
         if (typeof populatePreviewMapel === 'function') populatePreviewMapel();
