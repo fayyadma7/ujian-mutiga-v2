@@ -576,7 +576,9 @@ function loadJadwalGuruOptions() {}
 let _dtpActive = null;
 let _dtpState = { y: 2026, m: 8, d: 16, h: 13, mi: 34 };
 let _dtpOverlay = null, _dtpPopup = null;
+let _dtpMPOpen = false;
 const _dtpMonthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const _dtpMonthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
 function _dtpPad(n){ return String(n).padStart(2,'0'); }
 function _dtpToInputVal(s){ return `${s.y}-${_dtpPad(s.m+1)}-${_dtpPad(s.d)}T${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }
@@ -629,6 +631,7 @@ function _dtpPosition(){
 function openDTP(input){
     _dtpEnsureDom();
     _dtpActive = input;
+    _dtpMPOpen = false;
     const parsed = _dtpFromInputVal(input.value);
     const now = new Date();
     if(parsed){ _dtpState = { y:parsed.y, m:parsed.m, d:parsed.d, h:parsed.h, mi:parsed.mi }; }
@@ -642,6 +645,7 @@ function closeDTP(){
     if(!_dtpOverlay) return;
     _dtpOverlay.classList.remove('show');
     if(_dtpPopup) _dtpPopup.style.display = 'none';
+    _dtpMPOpen=false;
     _dtpActive = null;
 }
 function _dtpSyncInput(){
@@ -693,15 +697,25 @@ function _dtpRender(){
         const sel = mi===_dtpState.mi?' sel':'';
         miHtml+=`<div class="dtp-tok${sel}" data-mi="${mi}">${_dtpPad(mi)}</div>`;
     }
+    const _mpHtml = (()=>{ let _mps=''; for(let i=0;i<12;i++){ const sel=i===m?' sel':''; _mps+=`<button type="button" class="dtp-mp-mon${sel}" data-mp="${i}">${_dtpMonthShort[i]}</button>`;} return `
+        <div class="dtp-month-picker${_dtpMPOpen?' show':''}" id="dtp-mp">
+            <div class="dtp-mp-year">
+                <button type="button" id="dtp-mp-prevY" aria-label="Tahun sebelumnya"><i class="fas fa-chevron-left"></i></button>
+                <span>${y}</span>
+                <button type="button" id="dtp-mp-nextY" aria-label="Tahun berikutnya"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="dtp-mp-grid">${_mps}</div>
+        </div>`; })();
     _dtpPopup.innerHTML = `
         <div class="dtp-cal">
             <div class="dtp-cal-head">
-                <button type="button" class="dtp-month-btn" id="dtp-monthBtn">${_dtpMonthNames[m]} ${y} <i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="dtp-month-btn${_dtpMPOpen?' open':''}" id="dtp-monthBtn">${_dtpMonthNames[m]} ${y} <i class="fas fa-chevron-down"></i></button>
                 <div class="dtp-nav">
                     <button type="button" id="dtp-prev" aria-label="Bulan sebelumnya"><i class="fas fa-arrow-up"></i></button>
                     <button type="button" id="dtp-next" aria-label="Bulan berikutnya"><i class="fas fa-arrow-down"></i></button>
                 </div>
             </div>
+            ${_mpHtml}
             <div class="dtp-week"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
             <div class="dtp-days">${daysHtml}</div>
             <div class="dtp-foot">
@@ -721,12 +735,35 @@ function _dtpRender(){
         </div>
     `;
     // events
-    _dtpPopup.querySelector('#dtp-prev').onclick = ()=>{ let nm=m-1, ny=y; if(nm<0){nm=11; ny--;} _dtpState.y=ny; _dtpState.m=nm; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
-    _dtpPopup.querySelector('#dtp-next').onclick = ()=>{ let nm=m+1, ny=y; if(nm>11){nm=0; ny++;} _dtpState.y=ny; _dtpState.m=nm; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
-    _dtpPopup.querySelector('#dtp-monthBtn').onclick = ()=>{
-        // simple prompt year switch: click to reset to today month
-        const now=new Date(); _dtpState.y=now.getFullYear(); _dtpState.m=now.getMonth(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected);
-    };
+    _dtpPopup.querySelector('#dtp-prev').onclick = ()=>{ let nm=m-1, ny=y; if(nm<0){nm=11; ny--;} _dtpState.y=ny; _dtpState.m=nm; _dtpMPOpen=false; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+    _dtpPopup.querySelector('#dtp-next').onclick = ()=>{ let nm=m+1, ny=y; if(nm>11){nm=0; ny++;} _dtpState.y=ny; _dtpState.m=nm; _dtpMPOpen=false; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+    _dtpPopup.querySelector('#dtp-monthBtn').onclick = (e)=>{ e.stopPropagation(); _dtpMPOpen=!_dtpMPOpen; _dtpRender(); requestAnimationFrame(()=>{ _dtpPosition(); _dtpScrollToSelected(); }); };
+    const _mpEl = _dtpPopup.querySelector('#dtp-mp');
+    if(_mpEl){
+        _mpEl.addEventListener('click', e=> e.stopPropagation());
+        const _mpPrev = _mpEl.querySelector('#dtp-mp-prevY');
+        const _mpNext = _mpEl.querySelector('#dtp-mp-nextY');
+        if(_mpPrev) _mpPrev.onclick=(e)=>{ e.stopPropagation(); _dtpState.y=y-1; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+        if(_mpNext) _mpNext.onclick=(e)=>{ e.stopPropagation(); _dtpState.y=y+1; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); };
+        _mpEl.querySelectorAll('.dtp-mp-mon').forEach(btn=>{
+            btn.addEventListener('click', (e)=>{
+                e.stopPropagation();
+                const mm=parseInt(btn.dataset.mp);
+                _dtpState.m=mm;
+                const dmax=_dtpDaysInMonth(_dtpState.y, mm);
+                if(_dtpState.d>dmax) _dtpState.d=dmax;
+                _dtpMPOpen=false;
+                _dtpRender(); requestAnimationFrame(_dtpScrollToSelected);
+                _dtpSyncInput();
+            });
+        });
+    }
+    // klik di area kosong calendar tutup month picker
+    _dtpPopup.querySelector('.dtp-cal').addEventListener('click', (e)=>{
+        if(_dtpMPOpen && !e.target.closest('#dtp-mp') && !e.target.closest('#dtp-monthBtn')){
+            _dtpMPOpen=false; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected);
+        }
+    });
     _dtpPopup.querySelector('#dtp-clear').onclick = ()=>{ if(_dtpActive){ _dtpActive.value=''; _dtpActive.dispatchEvent(new Event('change',{bubbles:true})); } closeDTP(); };
     _dtpPopup.querySelector('#dtp-today').onclick = ()=>{ const n=new Date(); _dtpState.y=n.getFullYear(); _dtpState.m=n.getMonth(); _dtpState.d=n.getDate(); _dtpState.h=n.getHours(); _dtpState.mi=Math.floor(n.getMinutes()/1); _dtpSyncInput(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); _dtpSyncInput(); };
     _dtpPopup.querySelectorAll('.dtp-day').forEach(el=>{

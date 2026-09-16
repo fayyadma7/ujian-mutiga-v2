@@ -655,7 +655,8 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
     font-size:14px; font-weight:700; cursor:pointer; padding:4px 6px; border-radius:8px;
 }
 .dtp-month-btn:hover{ background:rgba(255,255,255,0.06); }
-.dtp-month-btn i{ font-size:11px; opacity:0.7; }
+.dtp-month-btn i{ font-size:11px; opacity:0.7; transition:transform 0.2s; }
+.dtp-month-btn.open i{ transform:rotate(180deg); }
 .dtp-nav{ display:flex; gap:4px; }
 .dtp-nav button{
     width:30px; height:30px; border:none; border-radius:8px;
@@ -680,6 +681,23 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
 .dtp-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); }
 .dtp-foot button{ background:transparent; border:none; color:#60a5fa; font-size:13px; font-weight:600; cursor:pointer; padding:7px 12px; border-radius:8px; }
 .dtp-foot button:hover{ background:rgba(59,130,246,0.1); }
+/* Month/Year picker dropdown — muncul saat klik "September 2026 ▾" */
+.dtp-month-picker{
+    position:absolute; top:46px; left:14px; z-index:12;
+    background:#1e293b; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    padding:12px; width:300px; display:none;
+}
+.dtp-month-picker.show{ display:block; }
+.dtp-mp-year{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.dtp-mp-year span{ font-size:14px; font-weight:800; color:#f1f5f9; }
+.dtp-mp-year button{ width:28px; height:28px; border:none; border-radius:8px; background:rgba(255,255,255,0.06); color:#cbd5e1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.dtp-mp-year button:hover{ background:rgba(255,255,255,0.1); color:#f1f5f9; }
+.dtp-mp-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.dtp-mp-mon{ padding:9px 4px; text-align:center; font-size:12px; font-weight:600; color:#cbd5e1; background:rgba(255,255,255,0.04); border:1px solid transparent; border-radius:8px; cursor:pointer; }
+.dtp-mp-mon:hover{ background:rgba(255,255,255,0.08); color:#f1f5f9; }
+.dtp-mp-mon.sel{ background:#3b82f6 !important; color:white !important; border-color:#60a5fa; font-weight:800; box-shadow:0 2px 10px rgba(59,130,246,0.3); }
+.dtp-cal{ position:relative; }
 .dtp-time{
     width:148px; min-width:148px; max-width:148px;
     border-left:1px solid rgba(255,255,255,0.08);

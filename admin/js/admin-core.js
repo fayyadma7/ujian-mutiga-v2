@@ -669,7 +669,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
     const moduleMap = {
         'dashboard': 'admin-dashboard.js',
         'bank-soal': 'admin-soal.js',
-        'jadwal': 'admin-jadwal.js?v=6',
+        'jadwal': 'admin-jadwal.js?v=7',
         'monitoring': 'admin-monitoring.js',
         'laporan': 'admin-laporan.js',
         'analisis-soal-page': 'admin-analisis.js',
