@@ -160,6 +160,14 @@ serve(async (req: Request) => {
         } else {
           result = await supabase.from('bank_soal').update({ mapel: newMapel }).eq('mapel', oldMapel);
         }
+        // sinkronkan jadwal_ujian juga (best-effort, RBAC-aware)
+        try {
+          if (!isAdmin) {
+            await supabase.from('jadwal_ujian').update({ mapel: newMapel }).eq('mapel', oldMapel).eq('created_by', guru.id);
+          } else {
+            await supabase.from('jadwal_ujian').update({ mapel: newMapel }).eq('mapel', oldMapel);
+          }
+        } catch (_) { /* jadwal sync best-effort, jangan gagalkan rename soal */ }
         break;
       }
 

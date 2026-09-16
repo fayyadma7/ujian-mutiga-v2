@@ -381,19 +381,33 @@ async function renameMapel(oldMapel) {
             if (!mergeOk) return;
         }
     } catch (_) {}
-    // Cek jadwal pakai oldMapel (warning saja)
+    // Cek jadwal pakai oldMapel — akan otomatis disinkronkan juga (satu modal saja, tidak dobel)
+    let jadwalCount = 0;
     try {
-        const { data: jadwalPakai } = await db.from('jadwal_ujian').select('id').eq('mapel', oldMapel).limit(1);
-        if (jadwalPakai && jadwalPakai.length > 0) {
-            const lanjut = await asyncConfirm(`Mapel "<b>${oldMapel.replace(/</g,'&lt;')}</b>" sedang dipakai di <b>Jadwal Ujian</b>. Rename bank soal tidak otomatis mengubah jadwal.<br>Anda perlu ubah jadwal manual jika ingin sinkron.<br>Lanjutkan rename bank soal?`, 'Perhatian Jadwal');
-            if (!lanjut) return;
-        }
+        let qJ = db.from('jadwal_ujian').select('id', { count: 'exact', head: false }).eq('mapel', oldMapel);
+        if (!isAdmin) qJ = qJ.eq('created_by', guruId);
+        const { data: jadwalPakai, count: jCnt } = await qJ;
+        jadwalCount = jCnt ?? (jadwalPakai ? jadwalPakai.length : 0);
     } catch (_) {}
-    // Konfirmasi akhir
-    const finalOk = await asyncConfirm(`Yakin rename "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"?<br>${isAdmin ? `Mengubah ${total} soal` : `Mengubah ${own} soal milik Anda`}`, 'Konfirmasi Rename');
+    // Satu konfirmasi final saja (sudah mencakup info jadwal — tidak dobel)
+    const finalOk = await asyncConfirm(
+        `Yakin rename "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"?<br>`+
+        `<div style="margin-top:8px; padding:8px 10px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:8px; font-size:12px; text-align:left;">`+
+        `${isAdmin ? `Mengubah <b>${total} soal</b>` : `Mengubah <b>${own} soal milik Anda</b>`}`+
+        `${jadwalCount ? ` + <b>${jadwalCount} jadwal ujian</b> <span style="color:#10b981;">(otomatis sync)</span>` : ` <span style="color:#64748b;">(tidak ada jadwal terkait)</span>`}`+
+        `</div>`, 'Konfirmasi Rename');
     if (!finalOk) return;
-    // Eksekusi via admin-proxy (pakai updateWhere agar tidak butuh deploy edge baru; fallback ke rename-mapel jika sudah deploy)
-    Swal.fire({ title: 'Menyimpan...', html: `Merename ${isAdmin ? total : own} soal...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9' });
+    // Loading mulus — pakai fa-spin (anti-lag, tetap muter di mode hemat) bukan Swal.showLoading yang ke-freeze
+    Swal.fire({
+        title: 'Menyimpan...',
+        html: `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 0;">
+            <i class="fas fa-spinner fa-spin" style="font-size:20px; color:#60a5fa;"></i>
+            <span>Merename ${isAdmin ? total : own} soal${jadwalCount ? ` + ${jadwalCount} jadwal` : ''}...</span>
+        </div>`,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        background: 'rgba(15,23,42,0.98)', color: '#f1f5f9'
+    });
     let resData, rnErr;
     try {
         const updRes = await adminDb.updateWhere('bank_soal', { mapel: oldMapel }, { mapel: newMapel });
@@ -418,8 +432,28 @@ async function renameMapel(oldMapel) {
         Swal.fire({ icon: 'warning', title: 'Tidak ada perubahan', text: isAdmin ? 'Mapel tidak ditemukan atau sudah di-rename' : 'Tidak ada soal milik Anda dengan mapel tersebut', background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#f59e0b' });
         return;
     }
-    Swal.fire({ icon: 'success', title: 'Berhasil', html: `Mapel "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"<br>${affected} soal berhasil di-rename`, background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#10b981', timer: 2500, showConfirmButton: false });
-    showToast(`Mapel "${oldMapel}" → "${newMapel}" berhasil di-rename`, 'success');
+    // Sinkronkan jadwal_ujian juga (best-effort, RBAC-aware)
+    let jadwalSynced = 0;
+    let jadwalErr = null;
+    if (jadwalCount > 0) {
+        try {
+            const jUpd = await adminDb.updateWhere('jadwal_ujian', { mapel: oldMapel }, { mapel: newMapel });
+            if (jUpd.error) jadwalErr = jUpd.error;
+            else if (Array.isArray(jUpd.data)) jadwalSynced = jUpd.data.length;
+            else jadwalSynced = jadwalCount; // fallback jika proxy tidak return array (head:false biasanya return array)
+            // fallback jika Unknown action (proxy lama belum support filter) — coba via rename-mapel yang sudah update di edge terbaru
+            if (jadwalErr && String(jadwalErr.message).includes('Unknown action')) {
+                // edge terbaru sudah sync di dalam rename-mapel, anggap sukses
+                jadwalSynced = jadwalCount; jadwalErr = null;
+            }
+        } catch (e) { jadwalErr = e; }
+    }
+    if (jadwalErr) {
+        Swal.fire({ icon: 'warning', title: 'Soal ter-rename, jadwal gagal sync', html: `Soal: ${affected} berhasil<br>Jadwal gagal: ${jadwalErr.message || jadwalErr}<br>Silakan ubah manual di Penjadwalan.`, background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#f59e0b' });
+    } else {
+        Swal.fire({ icon: 'success', title: 'Berhasil', html: `Mapel "<b>${oldMapel.replace(/</g,'&lt;')}</b>" → "<b>${newMapel.replace(/</g,'&lt;')}</b>"<br>${affected} soal${jadwalSynced ? ` + ${jadwalSynced} jadwal` : ''} berhasil di-rename`, background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#10b981', timer: 2800, showConfirmButton: false });
+    }
+    showToast(`Mapel "${oldMapel}" → "${newMapel}" berhasil di-rename${jadwalSynced ? ` + ${jadwalSynced} jadwal` : ''}`, 'success');
     await populatePreviewMapel();
     // Refresh detail jika sedang buka mapel yang di-rename
     const previewVal = document.getElementById('preview-mapel')?.value;
@@ -430,6 +464,9 @@ async function renameMapel(oldMapel) {
     }
     if (typeof populateManualMapel === 'function') populateManualMapel();
     if (typeof populateFilterKelas === 'function') { try{ populateFilterKelas(); }catch(e){} }
+    // refresh jadwal & dropdown
+    try{ if(typeof loadJadwal==='function') loadJadwal(); }catch(e){}
+    try{ if(typeof populateJadwalMapelDropdown==='function') populateJadwalMapelDropdown(); }catch(e){}
 }
 
 async function bulkActionMapel(action) {

@@ -5,13 +5,22 @@
    Load PALING AKHIR setelah admin-mobile.css
    ================================================================ */
 
-/* 1. MATIKAN SEMUA ANIMASI & TRANSISI — KECUALI SPINNER (ANTI-LAG) */
-*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring),
-*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring)::before,
-*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring)::after {
+/* 1. MATIKAN SEMUA ANIMASI & TRANSISI — KECUALI SPINNER & SWEETALERT (ANTI-LAG) */
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring):not([class*="swal2"]):not(.swal2-container):not(.swal2-popup):not(.swal2-backdrop),
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring):not([class*="swal2"])::before,
+*:not(.fa-spin):not(.fa-spinner):not(.fa-circle-notch):not(.fa-pulse):not(.loader-ring):not([class*="swal2"])::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+}
+/* SweetAlert2 tetap mulus — jangan di-freeze */
+.swal2-popup, .swal2-container, .swal2-backdrop, .swal2-loader, .swal2-actions, .swal2-title, .swal2-html-container {
+    animation: initial !important;
+    transition: all 0.25s ease !important;
+}
+.swal2-loader {
+    animation: swal2-rotate-loading 1.5s linear infinite !important;
+    border-color: #3b82f6 transparent #3b82f6 transparent !important;
 }
 
 /* Spinner harus tetap muter biar tau loading — GPU ACCELERATED, ANTI-JANK */
