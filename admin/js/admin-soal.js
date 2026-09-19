@@ -1454,11 +1454,15 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                         let p = document.createElement('p');
                         const liText = (li.textContent || '').trim();
                         const hasLetter = /^[A-E][\.\)]\s*/i.test(liText);
+                        const hasNum = /^\d+\s*[\.\\)]/.test(liText);
+                        const isOrdered = node.nodeName.toLowerCase() === 'ol';
                         const hasImg = !!li.querySelector('img');
                         // Jika tanpa huruf tapi ada konten/gambar dan masih dalam urutan opsi, inject huruf agar terdeteksi sebagai opsi
                         if (!hasLetter && hasImg && idx < letters.length) {
-                            // Hanya inject jika sebelumnya sudah ada soal dan bukan bagian dari pertanyaan awal
                             p.innerHTML = letters[idx] + '. ' + li.innerHTML;
+                        } else if (isOrdered && !hasNum && !hasLetter) {
+                            // FIX: Word auto-numbered list (mammoth hilangkan angka) -> inject nomor
+                            p.innerHTML = (idx + 1) + '. ' + li.innerHTML;
                         } else if (!hasLetter && liText === '' && hasImg) {
                             // fallback sama
                             p.innerHTML = li.innerHTML;
@@ -1495,49 +1499,81 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                 }; traverse(node);
             };
 
+            // ── FIX ESSAY BERANAK + NOMOR RAPET "8.a." / "10.Apa" ──
+            const stripTipeFromDom = (node) => {
+                const tipeRe = /Tipe\s*:\s*ESSAY.*/i;
+                const walk = (cur) => {
+                    for (let ch of Array.from(cur.childNodes)) {
+                        if (ch.nodeType === 3) {
+                            if (tipeRe.test(ch.textContent)) ch.textContent = ch.textContent.replace(tipeRe, '');
+                        } else if (ch.nodeType === 1) walk(ch);
+                    }
+                };
+                walk(node);
+            };
             let soalArray = [], currentSoal = null, currentMode = null, currentQuestionNumber = null;
             blocks.forEach(node => {
-                let textMatch = node.textContent.trim();
+                let textMatch = (node.textContent || '').trim();
                 let num = null;
-                const dotMatch = textMatch.match(/^(\d+)[\.\)]\s/);
-                if (dotMatch) num = parseInt(dotMatch[1]);
-                else { const soalMatch = textMatch.match(/^Soal\s+(\d+)/i); if (soalMatch) num = parseInt(soalMatch[1]); }
+                const dotMatch = textMatch.match(/^\s*(\d+)\s*[\.\\)]\s*/);
+                if (dotMatch) num = parseInt(dotMatch[1], 10);
+                else { const soalMatch = textMatch.match(/^\s*Soal\s+(\d+)/i); if (soalMatch) num = parseInt(soalMatch[1], 10); }
 
                 let isNewSoal = false;
                 if (num !== null && currentMode !== 'Q') {
                     if (currentQuestionNumber === null) isNewSoal = true;
-                    else { if (currentMode === null) isNewSoal = true; else isNewSoal = (num === currentQuestionNumber + 1); }
+                    else if (currentMode === null) isNewSoal = true;
+                    else isNewSoal = (num === currentQuestionNumber + 1);
                 }
 
-                // FIX: allow image-only opsi "A. <img>" tanpa kata — gunakan \s* bukan \s
-                let isOpsiA = /^A[\.\)]\s*/i.test(textMatch) && /^A[\.\)]/i.test(textMatch),
-                    isOpsiB = /^B[\.\)]\s*/i.test(textMatch) && /^B[\.\)]/i.test(textMatch),
-                    isOpsiC = /^C[\.\)]\s*/i.test(textMatch) && /^C[\.\)]/i.test(textMatch),
-                    isOpsiD = /^D[\.\)]\s*/i.test(textMatch) && /^D[\.\)]/i.test(textMatch),
-                    isOpsiE = /^E[\.\)]\s*/i.test(textMatch) && /^E[\.\)]/i.test(textMatch),
-                    // Kunci tetap fleksibel
-                    isKunci = /^Kunci\s*:\s*/i.test(textMatch),
-                    isTipe = /^Tipe\s*:\s*ESSAY/i.test(textMatch);
-                // Fallback: jika block hanya berisi <img> tanpa teks tapi currentMode sudah di opsi, jangan anggap opsi baru
-                // (akan ditangani di branch else sebagai lanjutan opsi)
+                const isKunci = /^\s*Kunci\s*:\s*/i.test(textMatch);
+                const isTipeContains = /Tipe\s*:\s*ESSAY/i.test(textMatch);
+                const isOpsiA = /^\s*A\s*[\.\\)]/i.test(textMatch);
+                const isOpsiB = /^\s*B\s*[\.\\)]/i.test(textMatch);
+                const isOpsiC = /^\s*C\s*[\.\\)]/i.test(textMatch);
+                const isOpsiD = /^\s*D\s*[\.\\)]/i.test(textMatch);
+                const isOpsiE = /^\s*E\s*[\.\\)]/i.test(textMatch);
 
                 if (isNewSoal) {
                     if (currentSoal) soalArray.push(currentSoal);
                     currentSoal = { mapel, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '', kunci_jawaban: '', tipe_soal: 'PG' };
                     currentMode = 'Q'; currentQuestionNumber = num;
                     let clone = node.cloneNode(true);
-                    stripPrefixFromDom(clone, /^\d+[\.\)]\s*/);
-                    stripPrefixFromDom(clone, /^Soal\s+\d+\s*/i);
+                    stripPrefixFromDom(clone, /^\s*\d+\s*[\.\\)]\s*/);
+                    stripPrefixFromDom(clone, /^\s*Soal\s+\d+\s*[\.\\)]?\s*/i);
+                    const hadTipe = isTipeContains;
+                    if (hadTipe) { stripTipeFromDom(clone); currentSoal.tipe_soal = 'ESSAY'; }
                     cleanEmptyTags(clone);
-                    currentSoal.pertanyaan += clone.outerHTML;
+                    const rem = (clone.textContent || '').trim();
+                    const hasContent = rem !== '' || clone.querySelector('img') || clone.querySelector('table');
+                    if (hasContent) currentSoal.pertanyaan += clone.outerHTML;
+                    else if (!hadTipe) currentSoal.pertanyaan += clone.outerHTML;
+                    if (hadTipe) currentMode = null;
                 } else if (currentSoal) {
-                    if (isOpsiA) { currentMode = 'A'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^A[\.\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_a += c.outerHTML; }
-                    else if (isOpsiB) { currentMode = 'B'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^B[\.\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_b += c.outerHTML; }
-                    else if (isOpsiC) { currentMode = 'C'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^C[\.\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_c += c.outerHTML; }
-                    else if (isOpsiD) { currentMode = 'D'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^D[\.\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_d += c.outerHTML; }
-                    else if (isOpsiE) { currentMode = 'E'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^E[\.\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_e += c.outerHTML; }
-                    else if (isKunci) { let kunciVal = textMatch.replace(/^Kunci\s*:\s*/i, '').trim().toUpperCase().charAt(0); currentSoal.kunci_jawaban = kunciVal; currentMode = null; }
-                    else if (isTipe) { currentSoal.tipe_soal = 'ESSAY'; currentMode = null; }
+                    if (isKunci) { let kunciVal = textMatch.replace(/^\s*Kunci\s*:\s*/i, '').trim().toUpperCase().charAt(0); if (kunciVal) currentSoal.kunci_jawaban = kunciVal; currentMode = null; }
+                    else if (isTipeContains) {
+                        let clone = node.cloneNode(true);
+                        stripTipeFromDom(clone);
+                        cleanEmptyTags(clone);
+                        const rem = (clone.textContent || '').trim();
+                        const hasExtra = rem !== '' || clone.querySelector('img') || clone.querySelector('table');
+                        if (hasExtra) {
+                            if (currentMode === 'Q') currentSoal.pertanyaan += clone.outerHTML;
+                            else if (currentMode === 'A') currentSoal.opsi_a += clone.outerHTML;
+                            else if (currentMode === 'B') currentSoal.opsi_b += clone.outerHTML;
+                            else if (currentMode === 'C') currentSoal.opsi_c += clone.outerHTML;
+                            else if (currentMode === 'D') currentSoal.opsi_d += clone.outerHTML;
+                            else if (currentMode === 'E') currentSoal.opsi_e += clone.outerHTML;
+                            else currentSoal.pertanyaan += clone.outerHTML;
+                        }
+                        currentSoal.tipe_soal = 'ESSAY';
+                        currentMode = null;
+                    }
+                    else if (isOpsiA) { currentMode = 'A'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^\s*A\s*[\.\\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_a += c.outerHTML; }
+                    else if (isOpsiB) { currentMode = 'B'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^\s*B\s*[\.\\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_b += c.outerHTML; }
+                    else if (isOpsiC) { currentMode = 'C'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^\s*C\s*[\.\\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_c += c.outerHTML; }
+                    else if (isOpsiD) { currentMode = 'D'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^\s*D\s*[\.\\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_d += c.outerHTML; }
+                    else if (isOpsiE) { currentMode = 'E'; let c = node.cloneNode(true); stripPrefixFromDom(c, /^\s*E\s*[\.\\)]\s*/i); cleanEmptyTags(c); currentSoal.opsi_e += c.outerHTML; }
                     else {
                         if (currentMode === 'Q') currentSoal.pertanyaan += node.outerHTML;
                         else if (currentMode === 'A') currentSoal.opsi_a += node.outerHTML;
@@ -1545,10 +1581,43 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                         else if (currentMode === 'C') currentSoal.opsi_c += node.outerHTML;
                         else if (currentMode === 'D') currentSoal.opsi_d += node.outerHTML;
                         else if (currentMode === 'E') currentSoal.opsi_e += node.outerHTML;
+                        else if (currentMode === null) {
+                            currentSoal.pertanyaan += node.outerHTML;
+                            currentMode = 'Q';
+                        }
                     }
                 }
             });
             if (currentSoal) soalArray.push(currentSoal);
+            // POST-PROCESS: essay beranak (a., b., c.) yang terlanjur masuk opsi_* dikembalikan ke pertanyaan
+            soalArray.forEach(s => {
+                if (s.tipe_soal === 'ESSAY') {
+                    const letters = ['a','b','c','d','e'];
+                    const keys = ['opsi_a','opsi_b','opsi_c','opsi_d','opsi_e'];
+                    let merged = s.pertanyaan || '';
+                    keys.forEach((k, idx) => {
+                        const val = s[k];
+                        if (!val || !val.trim()) return;
+                        const tmp = document.createElement('div'); tmp.innerHTML = val;
+                        const txt = (tmp.textContent || '').trim();
+                        const hasMedia = !!tmp.querySelector('img, table');
+                        if (txt === '' && !hasMedia) return;
+                        const prefix = letters[idx] + '. ';
+                        let withPrefix = val;
+                        const pOpen = withPrefix.match(/^<p[^>]*>/i);
+                        if (pOpen) withPrefix = withPrefix.replace(/^<p[^>]*>/i, m => m + prefix);
+                        else if (withPrefix.trim().startsWith('<')) {
+                            const tagMatch = withPrefix.match(/^<[^>]+>/);
+                            if (tagMatch) withPrefix = withPrefix.replace(/^<[^>]+>/, m => m + prefix);
+                            else withPrefix = `<p>${prefix}${withPrefix}</p>`;
+                        } else withPrefix = `<p>${prefix}${withPrefix}</p>`;
+                        merged += withPrefix;
+                        s[k] = '';
+                    });
+                    s.pertanyaan = merged;
+                    if (!s.kunci_jawaban || !s.kunci_jawaban.trim()) s.kunci_jawaban = '-';
+                }
+            });
             if (soalArray.length === 0) {
                 status.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Tidak ada soal yang ditemukan. Pastikan format penulisan sudah benar!</span>`;
                 return;
