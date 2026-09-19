@@ -512,8 +512,9 @@ function resetMonitoringFilter() { return clearFilterMonitoring(); }
 
 // --- BULK ACTIONS ---
 async function bulkActionMonitoring(action) {
+    console.log('[bulkActionMonitoring] clicked', action);
     const s = getGuruSession();
-    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
+    if (!s || s.isAdmin !== true) { console.log('bulkActionMonitoring: not admin', s); showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     const ids = Array.from(document.querySelectorAll('.cb-monitoring:checked')).map(cb => cb.value);
     if (ids.length === 0) return showToast("Pilih minimal satu siswa!", 'info');
     if (action === 'delete') {
@@ -531,8 +532,9 @@ async function bulkActionMonitoring(action) {
 }
 
 async function hapusDataNilai(id, nama) {
+    console.log('[hapusDataNilai] monitoring id', id, nama);
     const s = getGuruSession();
-    if (!s || s.isAdmin !== true) { showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
+    if (!s || s.isAdmin !== true) { console.log('hapusDataNilai: not admin', s); showToast('Akses ditolak. Hanya Admin.', 'error'); return; }
     if (!await asyncConfirm(`Hapus data sesi/jawaban siswa "${nama}"?<br>Anda akan memiliki waktu untuk membatalkan tindakan ini.`, "Hapus Data Siswa?")) return;
     const { data: savedData } = await db.from('jawaban_ujian').select('*').eq('id', id).single();
     const { error } = await adminDb.delete('jawaban_ujian', id);

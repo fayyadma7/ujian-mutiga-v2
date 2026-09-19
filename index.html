@@ -1643,8 +1643,17 @@
             align-items: center;
         }
 
-        /* FIX paste gelap & tembus: paksa warna terang & wrap, override style="color:#202124" dari Word */
-        .soal-item, .soal-item *, .teks-pertanyaan, .teks-pertanyaan *, .soal-text, .soal-text *, .option-label, .option-label *, .option-item, .option-item *{
+        /* FIX paste gelap & tembus: paksa warna terang & wrap — hanya untuk dark (default), light/low override di bawah */
+        html:not([data-theme="light"]):not([data-theme="low"]) .soal-item,
+        html:not([data-theme="light"]):not([data-theme="low"]) .soal-item *,
+        html:not([data-theme="light"]):not([data-theme="low"]) .teks-pertanyaan,
+        html:not([data-theme="light"]):not([data-theme="low"]) .teks-pertanyaan *,
+        html:not([data-theme="light"]):not([data-theme="low"]) .soal-text,
+        html:not([data-theme="light"]):not([data-theme="low"]) .soal-text *,
+        html:not([data-theme="light"]):not([data-theme="low"]) .option-label,
+        html:not([data-theme="light"]):not([data-theme="low"]) .option-label *,
+        html:not([data-theme="light"]):not([data-theme="low"]) .option-item,
+        html:not([data-theme="light"]):not([data-theme="low"]) .option-item *{
             color: #f1f5f9 !important;
             background-color: transparent !important;
             background: transparent !important;
@@ -1657,6 +1666,45 @@
             text-indent: 0 !important;
             mso-list: none !important;
         }
+        /* Light & hemat — paksa gelap biar terbaca di background putih, override paste gelap */
+        html[data-theme="light"] .soal-item, html[data-theme="light"] .soal-item *,
+        html[data-theme="low"] .soal-item, html[data-theme="low"] .soal-item *,
+        html[data-theme="light"] .soal-text, html[data-theme="light"] .soal-text *,
+        html[data-theme="low"] .soal-text, html[data-theme="low"] .soal-text *{
+            color: #1E293B !important;
+        }
+        html[data-theme="light"] .option-label, html[data-theme="light"] .option-label *,
+        html[data-theme="low"] .option-label, html[data-theme="low"] .option-label *{
+            color: #334155 !important;
+        }
+        html[data-theme="light"] .option-item.selected, html[data-theme="light"] .option-item.selected *,
+        html[data-theme="low"] .option-item.selected, html[data-theme="low"] .option-item.selected *{
+            color: #0F172A !important;
+        }
+        html[data-theme="light"] .soal-text .katex, html[data-theme="light"] .soal-text .katex *,
+        html[data-theme="low"] .soal-text .katex, html[data-theme="low"] .soal-text .katex *{
+            color: #1E293B !important;
+        }
+        html[data-theme="light"] code, html[data-theme="low"] code{
+            background: #F1F5F9 !important;
+            color: #1E293B !important;
+            border: 1px solid #E2E8F0 !important;
+            padding: 2px 6px !important;
+            border-radius: 6px !important;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+            font-size: 0.95em !important;
+        }
+        html[data-theme="light"] code *, html[data-theme="low"] code *{ color: #1E293B !important; }
+        /* Dark mode code — biar rumus Excel tetap terlihat di card gelap */
+        code{
+            background: rgba(255,255,255,0.08) !important;
+            color: #f1f5f9 !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            padding: 2px 6px !important;
+            border-radius: 6px !important;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+        }
+        code *{ color: #f1f5f9 !important; }
         .soal-item{ overflow: hidden !important; overflow-wrap: anywhere !important; }
         .soal-text p, .teks-pertanyaan p, .option-label p{ margin: 0 0 8px 0 !important; text-indent: 0 !important; }
 
