@@ -915,9 +915,10 @@
 
                     <!-- TABEL DAFTAR JADWAL — hanya 3 baris terlihat, scroll vertikal+horizontal -->
                     <div class="card-panel">
-                        <div class="panel-header">
+                        <div class="panel-header" style="flex-wrap:wrap; gap:12px;">
                             <h3 class="panel-title">Daftar Jadwal Ujian</h3>
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 10px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="search-jadwal" class="form-control" placeholder="Cari Jadwal Ujian" style="width:220px; padding:7px 12px; font-size:13px;" onkeyup="filterJadwal()" oninput="filterJadwal()">
                                 <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#f87171; border:1px solid rgba(239, 68, 68, 0.25);"
                                     onclick="bulkActionJadwal('delete')">
                                     <i class="fas fa-trash-alt"></i> Hapus Terpilih

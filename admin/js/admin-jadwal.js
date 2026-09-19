@@ -403,6 +403,8 @@ async function loadJadwal() {
         if (tMulai > now && tMulai.getTime() < nextRefreshTime) nextRefreshTime = tMulai.getTime();
         if (tSelesai > now && tSelesai.getTime() < nextRefreshTime) nextRefreshTime = tSelesai.getTime();
     });
+    // terapkan filter pencarian yang sedang aktif (jangan hilang setelah reload)
+    try{ if(typeof filterJadwal==='function' && document.getElementById('search-jadwal')?.value) filterJadwal(); }catch(e){}
 
     if (nextRefreshTime !== Infinity) {
         const delayMs = nextRefreshTime - new Date().getTime() + 500;
@@ -945,6 +947,23 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 setTimeout(_dtpInitNow, 150);
 setTimeout(_dtpInitNow, 900);
 setTimeout(_dtpInitNow, 2000);
+function filterJadwal(){
+  const q = (document.getElementById('search-jadwal')?.value || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#tabel-jadwal tr');
+  if(!cards.length) return;
+  cards.forEach(card=>{
+    if(card.querySelector('td[colspan]')){
+      if(q) card.style.setProperty('display','none','important');
+      else card.style.removeProperty('display');
+      return;
+    }
+    const txt = (card.innerText || '').toLowerCase();
+    const show = !q || txt.includes(q);
+    if(show) card.style.removeProperty('display');
+    else card.style.setProperty('display','none','important');
+  });
+}
+window.filterJadwal = filterJadwal;
 // expose
 window.openDTP = openDTP; window.closeDTP = closeDTP; window.initCustomDateTimePicker = initCustomDateTimePicker;
 window._dtpInitNow = _dtpInitNow;
