@@ -116,8 +116,9 @@ async function loadNilaiSiswa() {
 
     sortedData.forEach((siswa, index) => {
         const displayNama = highlight(siswa.nama, searchNameLap);
+        const safeNama2 = (siswa.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const hapusBtn = _lapIsAdmin
-            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${siswa.id}, '${siswa.nama}')" title="Hapus Data">
+            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${siswa.id}, '${safeNama2}')" title="Hapus Data">
                     <i class="fas fa-trash"></i> Hapus
                </button>`
             : '';
@@ -137,7 +138,7 @@ async function loadNilaiSiswa() {
                 <td data-label="Durasi & Pelanggaran" style="text-align:center;">
                     <span style="font-size:13px;color:var(--text-main);">${siswa.durasi || '-'}</span><br>
                     ${(siswa.pelanggaran || 0) > 0
-                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${siswa.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran</button>`
+                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${(siswa.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran</button>`
                         : `<span style="font-size:12px;font-weight:600;color:#10b981;"><i class="fas fa-check-circle"></i> Bersih</span>`
                     }
                 </td>

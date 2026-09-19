@@ -322,15 +322,17 @@ async function loadMonitoring() {
             statusBadge = `<span class="badge" style="background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">🟡 ${s.status || 'Mengerjakan...'}</span>`;
         }
 
+        const safeNamaPlg = (s.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const plgBadge = isPlg
-            ? `<button onclick="lihatPelanggaran(${s.id}, '${s.nama.replace(/'/g, "\\'")}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x</button>`
+            ? `<button onclick="lihatPelanggaran(${s.id}, '${safeNamaPlg}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x</button>`
             : `<span style="color:#10b981;">✓ Bersih</span>`;
 
         const waktu = s.created_at ? new Date(s.created_at).toLocaleTimeString('id-ID') : '-';
         const displayNama = highlight(s.nama, searchName);
 
+        const safeNama = (s.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const hapusBtn = _monIsAdmin
-            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${s.id}, '${s.nama}')" title="Hapus Data Siswa">
+            ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${s.id}, '${safeNama}')" title="Hapus Data Siswa">
                     <i class="fas fa-trash"></i> Hapus
                </button>`
             : '';
