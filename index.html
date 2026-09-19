@@ -4754,27 +4754,51 @@
         }
 
         function cekSebelumMulai() {
+            if (window._cekMulaiLock) return;
+            window._cekMulaiLock = true;
+            setTimeout(()=> window._cekMulaiLock=false, 1200);
             const n = document.getElementById('nama').value.trim(), k = document.getElementById('kelas').value, m = document.getElementById('mapel').value;
             if (!n || !k || !m) {
+                window._cekMulaiLock=false;
                 document.getElementById('modalBiodataKosong').style.display = 'flex';
                 return;
             }
             // STRICT: harus pilih dari autocomplete master
             if (!_selectedSiswa || _selectedSiswa.nama.trim().toLowerCase() !== n.toLowerCase()) {
+                window._cekMulaiLock=false;
                 Swal.fire({ icon:'warning', title:'Nama belum dipilih dari daftar', text:'Ketik minimal 2 huruf lalu pilih namamu dari daftar. Jika namamu belum ada, hubungi admin.', background:'rgba(15,23,42,0.95)', color:'#f1f5f9', confirmButtonColor:'#3b82f6', customClass:{popup:'modern-swal-popup'} });
                 return;
             }
             if (_selectedSiswa.kelasNama && k.toLowerCase() !== _selectedSiswa.kelasNama.toLowerCase()) {
+                window._cekMulaiLock=false;
                 Swal.fire({ icon:'warning', title:'Kelas tidak sesuai', text:`Kamu terdaftar di kelas "${_selectedSiswa.kelasNama}". Kelas akan disesuaikan otomatis.`, background:'rgba(15,23,42,0.95)', color:'#f1f5f9', confirmButtonColor:'#3b82f6', customClass:{popup:'modern-swal-popup'} });
                 setKelasValue(_selectedSiswa.kelasNama);
                 return;
             }
+            // cegah double open modal konfirmasi
+            const mp = document.getElementById('modalPeringatan');
+            if (mp && mp.style.display === 'flex') { window._cekMulaiLock=false; return; }
             document.getElementById('modalPeringatan').style.display = 'flex';
+            // reset lock saat modal tertutup manual — juga via tutupModal()
         }
 
-        function tutupModal() { document.getElementById('modalPeringatan').style.display = 'none'; const btnMulai=document.querySelector("#modalPeringatan .btn-modal-confirm"); if(btnMulai){btnMulai.disabled=false; btnMulai.innerHTML='Ya, Mulai!';} }
+        function tutupModal() { document.getElementById('modalPeringatan').style.display = 'none'; const btnMulai=document.querySelector("#modalPeringatan .btn-modal-confirm"); if(btnMulai){btnMulai.disabled=false; btnMulai.style.pointerEvents=''; btnMulai.innerHTML='Ya, Mulai!';} window._mulaiLock=false; window._cekMulaiLock=false; }
 
+        // Guard anti klik 2x login — flag global + debounce
+        window._mulaiLock = false;
+        window._cekMulaiLock = false;
         async function mulaiUjian() {
+            // LOCK detik 0 — cegah double-click sebelum await apapun
+            if (window._mulaiLock) return;
+            const btnMulaiEarly = document.querySelector("#modalPeringatan .btn-modal-confirm");
+            if (btnMulaiEarly && btnMulaiEarly.disabled) return;
+            window._mulaiLock = true;
+            if (btnMulaiEarly) {
+                btnMulaiEarly.disabled = true;
+                btnMulaiEarly.style.pointerEvents = 'none';
+                btnMulaiEarly.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="margin-right: 6px;"></i> Menghubungkan ke server...`;
+            }
+
             const n = document.getElementById('nama').value;
             const m = document.getElementById('mapel').value;
             const k = document.getElementById('kelas').value;
@@ -4783,22 +4807,30 @@
             window.isDevMode = false;
 
             // --- VALIDASI AWAL: CEK APAKAH SUDAH SELESAI ---
-            const { data: sudahSelesai } = await safeDbCall(() => 
-                db.from('jawaban_ujian')
-                    .select('id').eq('nama', n).eq('kelas', k).eq('mapel', m)
-                    .like('status', 'SELESAI%').maybeSingle()
-            );
+            let sudahSelesai;
+            try {
+                const res = await safeDbCall(() => 
+                    db.from('jawaban_ujian')
+                        .select('id').eq('nama', n).eq('kelas', k).eq('mapel', m)
+                        .like('status', 'SELESAI%').maybeSingle()
+                );
+                sudahSelesai = res.data;
+            } catch (e) {
+                // Gagal cek SELESAI — buka kunci biar bisa coba lagi
+                window._mulaiLock = false;
+                if (btnMulaiEarly) { btnMulaiEarly.disabled = false; btnMulaiEarly.style.pointerEvents = ''; btnMulaiEarly.innerHTML = 'Ya, Mulai!'; }
+                throw e;
+            }
 
             if (sudahSelesai) {
+                window._mulaiLock = false;
+                if (btnMulaiEarly) { btnMulaiEarly.disabled = false; btnMulaiEarly.style.pointerEvents = ''; btnMulaiEarly.innerHTML = 'Ya, Mulai!'; }
                 tutupModal();
                 document.getElementById('modalSudahSelesai').style.display = 'flex';
                 return;
             }
 
-            const btnMulai = document.querySelector("#modalPeringatan .btn-modal-confirm");
-            if (btnMulai.disabled) return;
-            btnMulai.disabled = true;
-            btnMulai.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="margin-right: 6px;"></i> Menghubungkan ke server...`;
+            const btnMulai = btnMulaiEarly || document.querySelector("#modalPeringatan .btn-modal-confirm");
 
             // --- SOLUSI HIGH TRAFFIC: JITTER & RETRY ---
             // 1. Jitter: Delay acak 0-4 detik agar tidak semua siswa hit server di milidetik yang sama
@@ -4834,6 +4866,10 @@
             const keyDurasi = "durasi_" + idUser;
 
             const startHandler = async (data) => {
+                // buka kunci login — sukses masuk ujian
+                window._mulaiLock=false;
+                const _b = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                if(_b){ _b.disabled=false; _b.style.pointerEvents=''; }
                 // Sembunyikan login page SEBELUM tutup Swal, agar tidak ada flash login
                 document.getElementById('identitas').style.display = 'none';
                 Swal.close(); // Tutup loading overlay takeover
@@ -5028,13 +5064,14 @@
                             if (existing.created_at) {
                                 localStorage.setItem(keyWaktu, new Date(existing.created_at).toISOString());
                             }
-                            // Reset disabled state tombol agar mulaiUjian() tidak langsung return
+                            // Reset lock agar mulaiUjian() bisa jalan lagi
+                            window._mulaiLock=false;
                             const btnTaken = document.querySelector("#modalPeringatan .btn-modal-confirm");
-                            if (btnTaken) btnTaken.disabled = false;
+                            if (btnTaken) { btnTaken.disabled = false; btnTaken.style.pointerEvents=''; }
                             mulaiUjian(); // Loading Swal akan ditutup di dalam startHandler()
                         } else {
-                            btnMulai.disabled = false;
-                            btnMulai.innerHTML = 'Ya, Mulai!';
+                            window._mulaiLock=false;
+                            if(btnMulai){ btnMulai.disabled = false; btnMulai.style.pointerEvents=''; btnMulai.innerHTML = 'Ya, Mulai!'; }
                         }
                     });
                     return;
@@ -5068,25 +5105,71 @@
                 }
 
             } else {
-                // Buat sesi baru
+                // Buat sesi baru — dengan handle duplikat 23505 (klik 2x bareng)
                 const newToken = generateDeviceToken();
                 localStorage.setItem("device_token_" + idUserLocal, newToken);
-                const { data: inserted } = await db.from('jawaban_ujian').insert([{
-                    created_at: new Date().toISOString(),
-                    nama: n, kelas: k, mapel: m,
-                    skor_pg: null, jawaban_essay: '', jawaban_pg: '',
-                    pelanggaran: p_count, durasi: '-',
-                    status: 'MENGERJAKAN',
-                    device_token: newToken,
-                    urutan_soal: ''
-                }]).select('id').single();
+                let inserted = null;
+                let insErr = null;
+                try {
+                    const res = await db.from('jawaban_ujian').insert([{
+                        created_at: new Date().toISOString(),
+                        nama: n, kelas: k, mapel: m,
+                        skor_pg: null, jawaban_essay: '', jawaban_pg: '',
+                        pelanggaran: p_count, durasi: '-',
+                        status: 'MENGERJAKAN',
+                        device_token: newToken,
+                        urutan_soal: ''
+                    }]).select('id').single();
+                    inserted = res.data; insErr = res.error;
+                } catch (e) { insErr = e; }
+                if (insErr) {
+                    const msg = (insErr.message||'').toLowerCase();
+                    const isDup = insErr.code==='23505' || msg.includes('duplicate') || msg.includes('unique') || msg.includes('uq_jawaban');
+                    if (isDup) {
+                        // Race: baris sudah dibuat klik pertama → pakai yang ada, tidak error ke siswa
+                        console.warn('[Login] Duplikat terdeteksi (klik 2x), pakai sesi existing');
+                        try {
+                            const { data: dup } = await db.from('jawaban_ujian').select('id, created_at, pelanggaran').eq('nama', n).eq('kelas', k).eq('mapel', m).or('status.is.null,status.not.like.SELESAI%').maybeSingle();
+                            if (dup) {
+                                inserted = dup;
+                                // sync token & waktu agar konsisten
+                                localStorage.setItem("device_token_" + idUserLocal, newToken);
+                                try { await db.from('jawaban_ujian').update({ device_token: newToken }).eq('id', dup.id); } catch(_){}
+                                if (dup.created_at) localStorage.setItem(keyWaktu, new Date(dup.created_at).toISOString());
+                                const dupPlg = parseInt(dup.pelanggaran)||0;
+                                if (dupPlg > p_count) { p_count=dupPlg; localStorage.setItem("pelanggaran_"+idUserLocal, p_count); }
+                            } else {
+                                throw insErr;
+                            }
+                        } catch (e2) {
+                            window._mulaiLock=false;
+                            const b = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                            if(b){ b.disabled=false; b.style.pointerEvents=''; b.innerHTML='Ya, Mulai!'; }
+                            tampilkanErrorJaringan('Gagal buat sesi (duplikat): '+(e2.message||insErr.message));
+                            return;
+                        }
+                    } else {
+                        window._mulaiLock=false;
+                        const b = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                        if(b){ b.disabled=false; b.style.pointerEvents=''; b.innerHTML='Ya, Mulai!'; }
+                        tampilkanErrorJaringan('Gagal buat sesi: '+(insErr.message||'Jaringan bermasalah'));
+                        return;
+                    }
+                }
                 if (inserted) {
                     window.idRowUjian = inserted.id;
-                    // Mark that AKTIF signal already sent to avoid duplicate
                     aktifSignalSent = true;
                     localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
+                    if (inserted.created_at) localStorage.setItem(keyWaktu, new Date(inserted.created_at).toISOString());
+                } else {
+                    window._mulaiLock=false;
+                    const b = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                    if(b){ b.disabled=false; b.style.pointerEvents=''; b.innerHTML='Ya, Mulai!'; }
+                    tampilkanErrorJaringan('Gagal buat sesi: tidak ada data kembali');
+                    return;
                 }
             }
+            // sukses buat/ambil sesi → _mulaiLock tetap true sampai soal ter-render (tutupModal akan reset jika error)
 
             // === AMBIL SOAL (idRowUjian sudah pasti ada di sini) ===
             let attemptGet = 0;
@@ -5122,10 +5205,11 @@
                         if (attemptGet < maxAttemptsGet) {
                             setTimeout(sendGetRequest, 1500 + Math.random() * 2000); // Jitter 1.5-3.5s
                         } else {
+                            // buka kunci biar bisa coba lagi, jangan stuck disabled
+                            window._mulaiLock=false;
                             tutupModal();
                             tampilkanErrorJaringan("Gagal memuat soal: " + err.message);
-                            btnMulai.disabled = false;
-                            btnMulai.innerHTML = "Ya, Mulai!";
+                            if(btnMulai){ btnMulai.disabled = false; btnMulai.style.pointerEvents=''; btnMulai.innerHTML = "Ya, Mulai!"; }
                         }
                     });
             };
