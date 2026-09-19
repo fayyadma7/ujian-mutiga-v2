@@ -1643,6 +1643,23 @@
             align-items: center;
         }
 
+        /* FIX paste gelap & tembus: paksa warna terang & wrap, override style="color:#202124" dari Word */
+        .soal-item, .soal-item *, .teks-pertanyaan, .teks-pertanyaan *, .soal-text, .soal-text *, .option-label, .option-label *, .option-item, .option-item *{
+            color: #f1f5f9 !important;
+            background-color: transparent !important;
+            background: transparent !important;
+        }
+        .soal-text, .soal-text *, .teks-pertanyaan, .teks-pertanyaan *, .option-label, .option-label *{
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+            white-space: normal !important;
+            max-width: 100% !important;
+            text-indent: 0 !important;
+            mso-list: none !important;
+        }
+        .soal-item{ overflow: hidden !important; overflow-wrap: anywhere !important; }
+        .soal-text p, .teks-pertanyaan p, .option-label p{ margin: 0 0 8px 0 !important; text-indent: 0 !important; }
+
         .option-label-inner {
             width: 100%;
             display: block;

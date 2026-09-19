@@ -313,7 +313,7 @@
     box-shadow:0 8px 28px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.04) inset;
   }
   tbody#tabel-jadwal tr::before{
-    content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:#3b82f6; border-radius:18px 0 0 18px;
+    content:''; position:absolute; left:0; top:14px; height:28px; width:4px; background:#3b82f6; border-radius:0 4px 4px 0;
   }
   .card-panel tbody#tabel-jadwal tr{ padding-top:0 !important; }
   tbody#tabel-jadwal tr td[data-label=""]{

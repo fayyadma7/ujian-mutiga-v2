@@ -64,7 +64,14 @@ async function populatePreviewMapel() {
     const _sIsAdmin = _sSesi && _sSesi.isAdmin === true;
     const _sGuruId = _sSesi ? _sSesi.id : null;
 
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>`;
+    // Skeleton 3 cards biar tidak lompat kecil→besar
+    const _hasMapelContent = tbody.children.length>0 && !tbody.innerHTML.includes('Memuat data');
+    if(!_hasMapelContent){
+        tbody.innerHTML = `
+            <div class="banksoal-card" style="opacity:0.7;"><div class="banksoal-head"><div style="flex:1; display:flex; flex-direction:column; gap:8px;"><div class="skeleton-line" style="width:60%; height:13px;"></div><div class="skeleton-line" style="width:35%; height:10px;"></div></div></div><div class="banksoal-meta"><div class="skeleton-line" style="width:80px; height:22px; border-radius:20px;"></div></div></div>
+            <div class="banksoal-card" style="opacity:0.7;"><div class="banksoal-head"><div style="flex:1; display:flex; flex-direction:column; gap:8px;"><div class="skeleton-line" style="width:55%; height:13px;"></div><div class="skeleton-line" style="width:32%; height:10px;"></div></div></div><div class="banksoal-meta"><div class="skeleton-line" style="width:70px; height:22px; border-radius:20px;"></div></div></div>
+            <div class="banksoal-card" style="opacity:0.7;"><div class="banksoal-head"><div style="flex:1; display:flex; flex-direction:column; gap:8px;"><div class="skeleton-line" style="width:58%; height:13px;"></div><div class="skeleton-line" style="width:30%; height:10px;"></div></div></div><div class="banksoal-meta"><div class="skeleton-line" style="width:75px; height:22px; border-radius:20px;"></div></div></div>`;
+    }
 
     // FIX: paginated fetch agar >1000 soal tetap terhitung sinkron dengan preview per-mapel
     const { data, error } = await fetchAllBankSoal('mapel, created_by, guru:created_by(nama)', (q) => {
@@ -72,7 +79,7 @@ async function populatePreviewMapel() {
         return q;
     });
     if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Gagal memuat data: ${error?.message}</td></tr>`;
+        tbody.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#f87171; background:#1e2d44; border:1px solid rgba(239,68,68,0.2); border-radius:12px;">Gagal memuat data: ${error?.message}</div>`;
         return;
     }
 
@@ -88,7 +95,7 @@ async function populatePreviewMapel() {
     const uniqueMapels = Object.keys(mapelInfo).sort();
 
     if (uniqueMapels.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Belum ada bank soal. Silakan upload soal via Excel atau Word.</td></tr>';
+        tbody.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:24px; color:#94a3b8; background:#1e2d44; border:1px dashed rgba(255,255,255,0.08); border-radius:12px;">Belum ada bank soal. Silakan upload soal via Excel atau Word.</div>';
         const optMapel = document.getElementById('jadwal-mapel');
         if (optMapel) optMapel.innerHTML = '<option value="">— Belum ada Mapel di Bank Soal —</option>';
         return;
@@ -104,33 +111,24 @@ async function populatePreviewMapel() {
         const creatorHtml = _sIsAdmin ? creatorPlainAdmin : '<span style="color:var(--text-muted)">Milik Saya</span>';
         const mapelEsc = mapel.replace(/'/g, "\\'");
         html += `
-            <tr>
-                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-mapel" value="${mapel}"></td>
-                <td data-label="Mata Pelajaran" style="font-weight:600; color:var(--text-main); text-align:left; padding-left:15px;">
-                    <div style="display:flex; align-items:center; gap:12px; width:100%; background:transparent;">
-                        <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas fa-book-open" style="color:#60a5fa; font-size:16px;"></i></div>
-                        <div style="flex:1; min-width:0;">
-                            <div style="font-weight:700; color:#f1f5f9; font-size:14px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${mapel}</div>
-                            <div class="mapel-sub-mobile" style="font-size:12px; color:#64748b; margin-top:2px;">Dibuat oleh <span style="color:#60a5fa; font-weight:600;">${creatorPlain}</span></div>
-                        </div>
+            <div class="banksoal-card">
+                <input type="checkbox" class="cb-mapel" value="${mapel}" title="Pilih">
+                <div class="banksoal-head">
+                    <div style="flex:1; min-width:0;">
+                        <div class="banksoal-title" title="${mapel}">${mapel}</div>
+                        <div class="banksoal-sub">Dibuat oleh <span style="color:#60a5fa; font-weight:600;">${creatorPlain}</span></div>
                     </div>
-                </td>
-                <td data-label="Jumlah Soal" style="text-align:center;"><span class="badge" style="background:rgba(15,23,42,.7); color:#94a3b8; border:1px solid rgba(255,255,255,.07); display:inline-flex; align-items:center; gap:6px;"><i class="far fa-file" style="font-size:11px; opacity:.7;"></i> ${info.count} SOAL</span></td>
-                <td data-label="Dibuat Oleh" style="text-align:center; font-size:12px; color:var(--text-muted);">${creatorHtml}</td>
-                <td data-label="Aksi" style="text-align:center;">
-                    <div class="action-buttons" style="display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="bukaDetailSoal('${mapelEsc}')">
-                            <i class="fas fa-eye"></i> Lihat
-                        </button>
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #fbbf24; border-color: rgba(245,158,11,0.35); background:rgba(245,158,11,0.06);" onclick="renameMapel('${mapelEsc}')" title="Rename Mapel">
-                            <i class="fas fa-pen"></i> Rename
-                        </button>
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fecaca;" onclick="hapusSatuMapel('${mapelEsc}')">
-                            <i class="fas fa-trash-alt"></i> Hapus
-                        </button>
-                    </div>
-                </td>
-            </tr>
+                </div>
+                <div class="banksoal-meta">
+                    <span class="badge" style="background:rgba(15,23,42,.7); color:#94a3b8; border:1px solid rgba(255,255,255,.07); display:inline-flex; align-items:center; gap:6px;"><i class="far fa-file" style="font-size:11px; opacity:.7;"></i> ${info.count} SOAL</span>
+                    <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">${creatorHtml}</span>
+                </div>
+                <div class="banksoal-actions">
+                    <button class="btn btn-outline" style="padding:6px 8px; font-size:11px;" onclick="bukaDetailSoal('${mapelEsc}')"><i class="fas fa-eye"></i> Lihat</button>
+                    <button class="btn btn-outline" style="padding:6px 8px; font-size:11px; color:#fbbf24; border-color:rgba(245,158,11,0.35); background:rgba(245,158,11,0.06);" onclick="renameMapel('${mapelEsc}')" title="Rename"><i class="fas fa-pen"></i> Rename</button>
+                    <button class="btn btn-outline" style="padding:6px 8px; font-size:11px; color:#ef4444; border-color:#fecaca;" onclick="hapusSatuMapel('${mapelEsc}')"><i class="fas fa-trash-alt"></i> Hapus</button>
+                </div>
+            </div>
         `;
         optHtml += `<option value="${mapel}">${mapel}</option>`;
     });
@@ -176,7 +174,10 @@ async function loadPreviewSoal() {
     const currentScrollTop = container ? container.scrollTop : 0;
     const hasQuestions = container.querySelector('.soal-item') !== null;
     if (!hasQuestions) {
-        container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Memuat soal...</div>';
+        container.innerHTML = `
+            <div class="skeleton-card" style="padding:16px; margin-bottom:12px;"><div class="skeleton-line" style="width:30%; height:14px; margin-bottom:10px;"></div><div class="skeleton-line" style="width:100%;"></div><div class="skeleton-line" style="width:95%;"></div><div class="skeleton-line" style="width:40%; height:10px; margin-top:10px;"></div></div>
+            <div class="skeleton-card" style="padding:16px; margin-bottom:12px;"><div class="skeleton-line" style="width:28%; height:14px; margin-bottom:10px;"></div><div class="skeleton-line" style="width:100%;"></div><div class="skeleton-line" style="width:92%;"></div><div class="skeleton-line" style="width:38%; height:10px; margin-top:10px;"></div></div>`;
+        container.style.minHeight='380px';
     }
 
     // FIX: paginated fetch per-mapel agar sinkron dengan badge di tabel (limit 1000 -> paginate)
@@ -278,10 +279,20 @@ async function loadPreviewSoal() {
 
 function filterMapel() {
     const query = document.getElementById('search-mapel').value.trim().toLowerCase();
+    const cards = document.querySelectorAll('#tabel-daftar-mapel .banksoal-card');
+    if(cards.length){
+        cards.forEach(card => {
+            const titleEl = card.querySelector('.banksoal-title');
+            const mapelName = titleEl ? titleEl.textContent.toLowerCase() : (card.innerText||'').toLowerCase();
+            card.style.display = mapelName.includes(query) ? '' : 'none';
+        });
+        return;
+    }
+    // fallback untuk skeleton / legacy tr
     const rows = document.querySelectorAll('#tabel-daftar-mapel tr');
     rows.forEach(row => {
-        if (row.cells.length < 4) return;
-        const mapelName = row.cells[1] ? row.cells[1].innerText.toLowerCase() : "";
+        if (row.cells && row.cells.length < 4) return;
+        const mapelName = row.cells && row.cells[1] ? row.cells[1].innerText.toLowerCase() : "";
         row.style.display = mapelName.includes(query) ? '' : 'none';
     });
 }

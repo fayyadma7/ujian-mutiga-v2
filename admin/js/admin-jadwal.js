@@ -233,9 +233,6 @@ async function simpanJadwal() {
     const waktuSelesai = toLocalISOString(waktuSelesaiRaw);
     statusEl.innerHTML = '';
 
-    const btnSubmit = document.getElementById('btn-submit-jadwal');
-    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
-
     const kelasFinal = getJadwalKelasFinal();
 
     const { error } = await adminDb.insert('jadwal_ujian', [{
@@ -243,14 +240,13 @@ async function simpanJadwal() {
         waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai,
         durasi_menit: durasiInput, is_aktif: true
     }]);
-
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; }
     if (error) { statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Gagal: ${error.message}</span>`; return; }
 
     statusEl.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Jadwal "${mapel}" — ${durasiInput} menit/siswa berhasil disimpan!</span>`;
     _resetJadwalFormUI();
     // pastikan tombol kembali ke mode simpan
-    if (btnSubmit) { btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; btnSubmit.onclick = simpanJadwal; }
+    const _btnSimpan=document.getElementById('btn-submit-jadwal');
+    if (_btnSimpan) { _btnSimpan.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; _btnSimpan.onclick = simpanJadwal; }
     const cancelBtn = document.getElementById('btn-batal-jadwal');
     if (cancelBtn) cancelBtn.style.display = 'none';
     const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
@@ -259,6 +255,12 @@ async function simpanJadwal() {
     scheduleNextAutoDeactivate();
 }
 
+function _showJadwalLoading(show){
+    const ov=document.getElementById('jadwal-loading');
+    if(!ov) return;
+    if(show){ ov.style.display='flex'; void ov.offsetWidth; ov.classList.add('show'); }
+    else { ov.classList.remove('show'); setTimeout(()=>{ if(!ov.classList.contains('show')) ov.style.display='none'; }, 180); }
+}
 async function loadJadwal() {
     const tbody = document.getElementById('tabel-jadwal');
     const _jSesi = getGuruSession();
@@ -267,11 +269,29 @@ async function loadJadwal() {
 
     if (document.getElementById('jadwal-kelas-list')) populateJadwalKelasOptions();
 
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat data jadwal...</td></tr>';
+    const _hasContent = tbody && tbody.children.length>0 && !tbody.innerHTML.includes('Memuat jadwal') && !tbody.innerHTML.includes('Memuat data jadwal') && !tbody.innerHTML.includes('skeleton');
+    let _needsOverlay = false;
+    if(_hasContent){ _showJadwalLoading(true); _needsOverlay=true; }
+    else {
+        // Skeleton 3 cards biar tinggi awal sama kayak hasil akhir — tidak lompat kecil→besar
+        tbody.innerHTML = `<tr style="display:block; background:transparent; border:none; box-shadow:none; padding:0; margin:0;">
+            <td colspan="9" style="display:block; padding:0; border:none; background:transparent;">
+                <div class="jadwal-skeleton-grid">
+                    <div class="skeleton-card"><div class="skeleton-line" style="width:65%; height:16px;"></div><div class="skeleton-line" style="width:90%;"></div><div class="skeleton-line" style="width:80%;"></div><div class="skeleton-line" style="width:70%; height:10px;"></div></div>
+                    <div class="skeleton-card"><div class="skeleton-line" style="width:60%; height:16px;"></div><div class="skeleton-line" style="width:85%;"></div><div class="skeleton-line" style="width:75%;"></div><div class="skeleton-line" style="width:68%; height:10px;"></div></div>
+                    <div class="skeleton-card"><div class="skeleton-line" style="width:62%; height:16px;"></div><div class="skeleton-line" style="width:88%;"></div><div class="skeleton-line" style="width:78%;"></div><div class="skeleton-line" style="width:72%; height:10px;"></div></div>
+                </div>
+            </td></tr>`;
+    }
 
+    let _loadData=null, _loadError=null;
+    try{
     let query = db.from('jadwal_ujian').select('*, guru:created_by(id, nama)').order('id', { ascending: false });
     if (!_jIsAdmin && _jGuruId) query = query.eq('created_by', _jGuruId);
     const { data, error } = await query;
+    _loadData=data; _loadError=error;
+    if(_needsOverlay) _showJadwalLoading(false);
+    _needsOverlay=false;
     if (error) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:16px; color:red;">Gagal memuat: ${error.message}</td></tr>`;
         return;
@@ -354,8 +374,7 @@ async function loadJadwal() {
                 <td data-label="" style="text-align:center; vertical-align:top; padding-top:18px;"><input type="checkbox" class="cb-jadwal" value="${j.id}"></td>
                 <td data-label="Mapel" style="font-weight:700; color:var(--text-main); text-align:left; padding:14px 16px; vertical-align:top;">
                     <div style="display:flex; align-items:center; gap:12px; width:100%; background:transparent;">
-                        <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas fa-book-open" style="color:#60a5fa; font-size:16px;"></i></div>
-                        <div style="font-weight:700; color:#f1f5f9; font-size:15px; line-height:1.1; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${j.mapel}</div>
+                        <div style="font-weight:700; color:#f1f5f9; font-size:13px; line-height:1.3; flex:1; min-width:0; white-space:normal; word-break:break-word; overflow-wrap:anywhere;">${j.mapel}</div>
                     </div>
                 </td>
                 <td data-label="Kelas" style="text-align:center; padding:14px 12px;">${kelasLabel}</td>
@@ -391,6 +410,8 @@ async function loadJadwal() {
             jadwalTimeout = setTimeout(() => { loadJadwal(); }, Math.max(1000, delayMs));
         }
     }
+    }catch(_e){ console.warn(_e); _showJadwalLoading(false); }
+    finally{ if(_needsOverlay) _showJadwalLoading(false); }
 }
 
 async function toggleAktifJadwal(id, isAktif) {
@@ -417,19 +438,14 @@ async function hapusJadwal(id, mapel) {
 }
 
 async function mulaiEditJadwal(id) {
-    // — Loader instan untuk edit (tanpa delay 300ms) biar konsisten —
-    const _triggerBtn = (typeof event !== 'undefined' && event?.currentTarget) ? event.currentTarget : document.activeElement;
-    const _isBtn = _triggerBtn && _triggerBtn.tagName === 'BUTTON';
-    const _origHTML = _isBtn ? _triggerBtn.innerHTML : null;
-    const _origDis = _isBtn ? _triggerBtn.disabled : null;
+    // — Loader instan global saja, tanpa animasi di tombol —
     let _cardEl = null;
     try{
-        if(_isBtn){ _triggerBtn.classList.add('is-loading'); _triggerBtn.disabled=true; _triggerBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memuat...'; }
         const _gl=document.getElementById('global-loader');
         const _glTxt=document.getElementById('global-loader-text');
         if(_gl){ _gl.style.display='flex'; void _gl.offsetWidth; _gl.classList.add('show'); _gl.style.opacity='1'; if(_glTxt) _glTxt.textContent='Memuat jadwal...'; }
-        // tandai card yang di-edit biar ada pulse
-        _cardEl = _isBtn ? _triggerBtn.closest('tr') : null;
+        const _triggerBtn = (typeof event !== 'undefined' && event?.currentTarget) ? event.currentTarget : document.activeElement;
+        _cardEl = _triggerBtn && _triggerBtn.closest ? _triggerBtn.closest('tr') : null;
         if(_cardEl) _cardEl.classList.add('jadwal-pulse');
     }catch(e){}
     let _editData=null, _editError=null;
@@ -533,7 +549,6 @@ async function mulaiEditJadwal(id) {
             const _gl=document.getElementById('global-loader');
             if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; }, 220); const _glTxt=document.getElementById('global-loader-text'); if(_glTxt) _glTxt.textContent='Memproses...'; }
             if(_cardEl) _cardEl.classList.remove('jadwal-pulse');
-            if(_isBtn){ _triggerBtn.classList.remove('is-loading'); _triggerBtn.disabled=_origDis; _triggerBtn.innerHTML=_origHTML; }
         }catch(e){}
     }
 }
@@ -556,9 +571,6 @@ async function updateJadwal() {
     const mulai = toLocalISOString(mulaiRaw);
     const selesai = toLocalISOString(selesaiRaw);
 
-    const btnSubmit = document.getElementById('btn-submit-jadwal');
-    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
-
     const kelasFinal = getJadwalKelasFinal();
 
     const { error } = await adminDb.update('jadwal_ujian', editingJadwalId, {
@@ -566,13 +578,13 @@ async function updateJadwal() {
     });
 
     if (error) {
-        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Jadwal'; }
         return showToast('Gagal update: ' + error.message, 'error');
     }
 
     showToast(`Jadwal diperbarui! Durasi: ${durasiInput} menit / siswa`, 'success');
     editingJadwalId = null;
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; btnSubmit.onclick = simpanJadwal; }
+    const btnSubmit2=document.getElementById('btn-submit-jadwal');
+    if (btnSubmit2) { btnSubmit2.innerHTML = '<i class="fas fa-plus"></i> Simpan Jadwal'; btnSubmit2.onclick = simpanJadwal; }
     const panelTitle = document.querySelector('#jadwal .card-panel .panel-title');
     if (panelTitle) panelTitle.innerHTML = 'Buat Jadwal Baru';
     const cancelBtn = document.getElementById('btn-batal-jadwal');

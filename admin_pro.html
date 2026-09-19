@@ -771,25 +771,14 @@
                                 style="width:160px; padding:6px 10px; font-size:13px;" onkeyup="filterMapel()">
                         </div>
                     </div>
-                    <div
-                        style="overflow-x: auto; max-height: 450px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
-                        <table style="width: 100%; border-collapse: collapse; position: relative;">
-                            <thead>
-                                <tr>
-                                    <th style="width:40px;"><input type="checkbox" id="select-all-mapel"
-                                             onchange="toggleSelectAll('mapel')"></th>
-                                    <th style="text-align:left; padding-left:15px;">MATA PELAJARAN</th>
-                                    <th style="text-align:center;">JUMLAH SOAL</th>
-                                    <th style="text-align:center;">DIBUAT OLEH</th>
-                                    <th style="text-align:center;">OPSI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabel-daftar-mapel">
-                                <tr>
-                                    <td colspan="5" style="text-align:center;">Memuat data...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); cursor:pointer; user-select:none;">
+                            <input type="checkbox" id="select-all-mapel" onchange="toggleSelectAll('mapel')" style="width:16px; height:16px; accent-color:#3b82f6;"> Pilih semua
+                        </label>
+                        <span style="font-size:11px; color:var(--text-muted);">— card list, 3 per baris</span>
+                    </div>
+                    <div id="tabel-daftar-mapel" class="banksoal-grid" style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; max-height: 520px; overflow-y:auto; overflow-x:hidden; padding:12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,0.01); scrollbar-width:thin; scrollbar-color: rgba(59,130,246,0.38) transparent;">
+                        <div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">Memuat data...</div>
                     </div>
                 </div>
 
@@ -946,6 +935,9 @@
                                 </tr>
                             </tbody>
                         </table>
+                            <div id="jadwal-loading" class="jadwal-loading-overlay" style="display:none;">
+                                <div class="jadwal-loading-card"><i class="fas fa-spinner fa-spin" style="color:#60a5fa;"></i> Memuat jadwal...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1295,9 +1287,9 @@
                         <button id="btn-tab-kelas" class="active" onclick="switchKelasSiswaTab('kelas')" style="flex:1;padding:12px 16px;border:none;background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(59,130,246,0.05));color:#93c5fd;font-weight:700;font-size:13px;cursor:pointer;border-bottom:2px solid #3b82f6;"><i class="fas fa-chalkboard"></i> Kelola Kelas</button>
                         <button id="btn-tab-siswa" onclick="switchKelasSiswaTab('siswa')" style="flex:1;padding:12px 16px;border:none;background:transparent;color:var(--text-muted);font-weight:600;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;"><i class="fas fa-user-graduate"></i> Kelola Siswa</button>
                     </div>
-                    <!-- PANE KELAS -->
+                    <!-- PANE KELAS — single column biar lebar sama kayak jadwal -->
                     <div id="pane-kelas" style="padding:20px;">
-                        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
+                        <div style="display:grid;grid-template-columns:1fr;gap:20px;align-items:start;">
                             <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;">
                                 <h4 style="font-size:13px;color:var(--text-main);margin-bottom:12px;"><i class="fas fa-plus" style="color:#60a5fa;"></i> Tambah / Edit Kelas</h4>
                                 <div class="form-group">
@@ -1324,9 +1316,9 @@
                             </div>
                         </div>
                     </div>
-                    <!-- PANE SISWA -->
+                    <!-- PANE SISWA — single column biar konsisten -->
                     <div id="pane-siswa" style="padding:20px;display:none;">
-                        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
+                        <div style="display:grid;grid-template-columns:1fr;gap:20px;align-items:start;">
                             <div>
                                 <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
                                     <h4 style="font-size:13px;color:var(--text-main);margin-bottom:12px;"><i class="fas fa-user-plus" style="color:#34d399;"></i> Tambah / Edit Siswa</h4>

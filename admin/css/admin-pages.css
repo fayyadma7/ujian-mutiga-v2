@@ -50,10 +50,10 @@
            1451-1458, 1572-1581, 1629-1640, 1947-1950, 2222-2225
    ================================================================ */
 
-/* Page section slide-in */
+/* Page section slide-in — tanpa scale biar tidak kelihatan kecil→besar */
 @keyframes pageSlideIn {
-    from { opacity: 0; transform: translateY(18px) scale(0.99); }
-    to   { opacity: 1; transform: translateY(0)  scale(1);    }
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Fade-in alias */

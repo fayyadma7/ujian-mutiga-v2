@@ -190,6 +190,7 @@ tbody tr { transition: background-color 0.2s; }
 .jadwal-scroll-wrapper{
   max-height: 780px;
   max-height: min(780px, 74vh);
+  min-height: 220px;
   overflow-y: auto;
   overflow-x: hidden;
   border: 1px solid rgba(255,255,255,0.06);
@@ -200,7 +201,60 @@ tbody tr { transition: background-color 0.2s; }
   scrollbar-color: rgba(59,130,246,0.38) transparent;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
+/* Overlay loading untuk refresh tanpa bikin halaman mengecil */
+.jadwal-loading-overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.jadwal-loading-overlay.show{ opacity: 1; pointer-events: auto; }
+.jadwal-loading-overlay .jadwal-loading-card{
+  background: rgba(15,23,42,0.96);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+/* Skeleton untuk jadwal & bank soal — tinggi sama kayak card asli biar tidak lompat kecil→besar */
+.skeleton-card{
+  background: rgba(30,45,68,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+.skeleton-line{
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.06) 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+@keyframes skeletonPulse{ 0%,100%{ opacity:0.7; } 50%{ opacity:1; } }
+@keyframes skeletonShimmer{ 0%{ background-position: 100% 0; } 100%{ background-position: -100% 0; } }
+.jadwal-skeleton-grid{ display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+@media (max-width: 1100px){ .jadwal-skeleton-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 768px){ .jadwal-skeleton-grid{ grid-template-columns: 1fr; } }
 .jadwal-scroll-wrapper::-webkit-scrollbar{ width: 8px; height: 8px; }
 .jadwal-scroll-wrapper::-webkit-scrollbar-track{ background: rgba(255,255,255,0.03); border-radius: 10px; }
 .jadwal-scroll-wrapper::-webkit-scrollbar-thumb{ background: rgba(59,130,246,0.38); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; min-height: 36px; }
@@ -215,9 +269,23 @@ tbody#tabel-jadwal tr{
   padding:0 !important; overflow:hidden; position:relative; margin-bottom:14px;
   box-shadow:0 8px 28px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.04) inset;
 }
-tbody#tabel-jadwal tr::before{
-  content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:#3b82f6; border-radius:18px 0 0 18px;
+tbody#tabel-jadwal tr::before{ display:none !important; }
+tbody#tabel-jadwal tr td[data-label="Mapel"]{ position:relative !important; }
+tbody#tabel-jadwal tr td[data-label="Mapel"]::before{
+  content:''; position:absolute; left:0; top:50%; height:28px; width:3px; background:#3b82f6; border-radius:0 4px 4px 0; transform:translateY(-50%);
 }
+/* Soal preview — paksa warna terang & cegah tembus (paste gelap + MsoList) */
+.soal-item, .soal-item *{ color:#f1f5f9 !important; background:transparent !important; background-color:transparent !important; border-color:rgba(255,255,255,0.08) !important; }
+.teks-pertanyaan, .teks-pertanyaan *{ color:#f1f5f9 !important; word-break:break-word !important; overflow-wrap:anywhere !important; white-space:normal !important; max-width:100% !important; text-indent:0 !important; margin-left:0 !important; mso-list:none !important; }
+.teks-pertanyaan{ overflow:hidden; word-break:break-word; overflow-wrap:anywhere; }
+.MsoListParagraph, [class*="Mso"], [style*="mso-"]{ margin:0 !important; text-indent:0 !important; mso-list:none !important; mso-add-space:normal !important; }
+.soal-item ul li div{ word-break:break-word; overflow-wrap:anywhere; white-space:normal; max-width:100%; overflow-x:hidden !important; overflow-y:visible !important; }
+/* Kunci jawaban tetap hijau beda warna, jangan putih */
+.soal-item li[style*="var(--success)"], .soal-item li[style*="--success"]{ color:#34d399 !important; }
+.soal-item li[style*="var(--success)"] *, .soal-item li[style*="--success"] *{ color:#34d399 !important; }
+.soal-item li[style*="bold"]{ color:#34d399 !important; }
+.soal-item div[style*="--success"] span, .soal-item span[style*="--success"]{ color:#10b981 !important; font-weight:800 !important; }
+
 .card-panel tbody#tabel-jadwal tr{ padding-top:0 !important; }
 tbody#tabel-jadwal tr td[data-label=""]{
   position:absolute !important; top:18px !important; right:16px !important;
@@ -238,32 +306,32 @@ tbody#tabel-jadwal tr td[data-label="Mapel"]{
   display:flex !important; align-items:center !important;
   position:static !important; top:auto !important; left:auto !important;
   width:100% !important; max-width:100% !important;
-  padding:16px 52px 16px 16px !important;
-  border:none !important; border-bottom:1px solid rgba(255,255,255,.07) !important;
-  background:rgba(255,255,255,.015) !important; border-radius:0 !important; box-shadow:none !important;
-  min-height:68px !important;
+  padding:14px 36px 10px 14px !important;
+  border:none !important; background:transparent !important; border-radius:0 !important; box-shadow:none !important;
+  min-height:auto !important;
 }
 tbody#tabel-jadwal tr td[data-label="Mapel"]::before{ display:none !important; content:none !important; }
 tbody#tabel-jadwal tr td[data-label="Mapel"] > div{
-  display:flex !important; align-items:center !important; gap:14px !important; width:100% !important;
+  display:flex !important; align-items:center !important; gap:0 !important; width:100% !important;
 }
-tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child{
-  width:48px !important; height:48px !important; min-width:48px !important;
-  border-radius:12px !important; background:#19365a !important;
-  border:1px solid rgba(59,130,246,.25) !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  box-shadow:0 2px 8px rgba(0,0,0,.2) !important;
+tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div{
+  width:auto !important; height:auto !important; min-width:0 !important;
+  background:transparent !important; border:none !important; border-radius:0 !important;
+  box-shadow:none !important; display:block !important;
 }
-tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child i{ font-size:18px !important; color:#60a5fa !important; }
+tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div i{ display:none !important; }
 tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
-  font-size:15px !important; font-weight:700 !important; color:#f1f5f9 !important;
-  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+  font-size:13px !important; font-weight:700 !important; color:#f1f5f9 !important;
+  white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+  word-break:break-word !important; overflow-wrap:anywhere !important;
+  display:block !important;
   line-height:1.3 !important; min-width:0 !important; flex:1 !important; max-width:100% !important;
 }
 @media (max-width: 768px){
   tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{
     white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
     word-break:break-word !important; overflow-wrap:anywhere !important;
+    display:block !important;
   }
 }
 tbody#tabel-jadwal tr td[data-label="Kelas"],
@@ -1938,6 +2006,57 @@ header, .card-panel, .soal-item,
   .jadwal-form-grid{ gap: 20px; }
 }
 
+/* Bank Soal — card grid 3 per baris, tanpa tabel */
+.banksoal-grid{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59,130,246,0.38) transparent;
+}
+.banksoal-grid::-webkit-scrollbar{ width:8px; height:8px; }
+.banksoal-grid::-webkit-scrollbar-track{ background: rgba(255,255,255,0.03); border-radius:10px; }
+.banksoal-grid::-webkit-scrollbar-thumb{ background: rgba(59,130,246,0.38); border-radius:10px; border:2px solid transparent; background-clip:padding-box; }
+.banksoal-grid::-webkit-scrollbar-thumb:hover{ background: rgba(59,130,246,0.58); }
+.banksoal-card{
+  background:#1e2d44;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px;
+  padding:14px;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+}
+.banksoal-card::before{
+  content:''; position:absolute; left:0; top:14px; height:28px; width:3px; background:#3b82f6; border-radius:0 4px 4px 0;
+}
+.banksoal-card .banksoal-head{
+  display:flex; align-items:center; gap:10px; padding-right:28px; min-height:28px;
+}
+.banksoal-card .banksoal-icon{
+  width:40px; height:40px; min-width:40px; border-radius:10px; background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.2);
+  display:flex; align-items:center; justify-content:center; color:#60a5fa; font-size:15px; flex-shrink:0;
+}
+.banksoal-card .banksoal-title{
+  font-weight:700; color:#f1f5f9; font-size:13px; line-height:1.3; flex:1; min-width:0;
+  white-space:normal; overflow:visible; text-overflow:clip;
+  word-break:break-word; overflow-wrap:anywhere;
+  display:block;
+}
+.banksoal-card .banksoal-sub{ font-size:11px; color:#64748b; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.banksoal-card .banksoal-meta{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);
+}
+.banksoal-card .banksoal-actions{
+  display:flex; gap:6px; flex-wrap:wrap; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);
+}
+.banksoal-card .banksoal-actions .btn{ flex:1; justify-content:center; padding:7px 6px; font-size:11px; border-radius:8px; min-height:32px; }
+.banksoal-card input[type="checkbox"].cb-mapel{
+  position:absolute; top:14px; right:12px; width:16px; height:16px; accent-color:#3b82f6; margin:0;
+}
+@media (max-width: 1100px){ .banksoal-grid{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; } }
+@media (max-width: 768px){ .banksoal-grid{ grid-template-columns: 1fr !important; } }
+
 /* === Jadwal 2-col compact — 2 cards bersebelahan, tanpa tabel header === */
 @media (min-width: 769px){
   .jadwal-scroll-wrapper{
@@ -1973,18 +2092,20 @@ header, .card-panel, .soal-item,
     min-width: 0 !important;
     box-sizing: border-box !important;
   }
-  /* perkecil card biar muat 2 kolom - compact untuk desktop */
+  /* perkecil card biar muat 3 kolom - samakan bank soal tanpa background */
   tbody#tabel-jadwal tr td[data-label="Mapel"]{
-    min-height: 46px !important;
-    padding: 8px 36px 8px 10px !important;
+    min-height: auto !important;
+    padding: 10px 32px 8px 10px !important;
+    background: transparent !important; border: none !important;
   }
-  tbody#tabel-jadwal tr td[data-label="Mapel"] > div{ gap:10px !important; }
-  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child{
-    width:32px !important; height:32px !important; min-width:32px !important;
-    border-radius:9px !important;
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div{ gap:0 !important; }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div{
+    width:auto !important; height:auto !important; min-width:0 !important;
+    background:transparent !important; border:none !important; border-radius:0 !important;
+    box-shadow:none !important; display:block !important;
   }
-  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:first-child i{ font-size:13px !important; }
-  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{ font-size:12px !important; line-height:1.25 !important; letter-spacing:.1px !important; }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div i{ display:none !important; }
+  tbody#tabel-jadwal tr td[data-label="Mapel"] > div > div:last-child{ font-size:13px !important; line-height:1.3 !important; letter-spacing:.1px !important; white-space:normal !important; overflow:visible !important; display:block !important; word-break:break-word !important; }
   tbody#tabel-jadwal tr td[data-label="Kelas"],
   tbody#tabel-jadwal tr td[data-label="Waktu"],
   tbody#tabel-jadwal tr td[data-label="Durasi"],

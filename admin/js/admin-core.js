@@ -1464,33 +1464,14 @@ function syncBottomNavActive(idHalaman){
     };
 })();
 
-// ==================== GLOBAL CLICK ANIMASI — feedback instan saat delay ====================
+// ==================== GLOBAL CLICK ANIMASI — hanya scale, tanpa is-loading di tombol ====================
 (function(){
-  // Ripple + scale untuk semua tombol
   document.addEventListener('click', function(e){
     const btn = e.target.closest('button, .btn, [role="button"]');
     if(!btn) return;
     if(btn.closest('#global-loader')) return;
-    // animasi scale cepat
     const origTrans = btn.style.transform;
     btn.style.transform = 'scale(0.96)';
     setTimeout(()=>{ try{ btn.style.transform = origTrans; }catch(_){} }, 140);
-    // jika tombol memicu aksi delay (hapus/edit/simpan/toggle/bulk), beri is-loading 400ms minimal biar user lihat feedback
-    const onclick = (btn.getAttribute('onclick')||'') + ' ' + (btn.id||'');
-    const isDelayAction = /hapus|delete|edit|update|simpan|bulk|toggle|load|refresh|hapusJadwal|hapusSatu|rename|cut|move/i.test(onclick);
-    if(isDelayAction && !btn.classList.contains('is-loading')){
-      btn.classList.add('is-loading');
-      // lepas setelah 700ms atau saat global-loader hilang (mana yang lebih lama)
-      setTimeout(()=> btn.classList.remove('is-loading'), 900);
-    }
   }, true);
-  // Pastikan global-loader juga hilang saat navigasi
-  const _hide = window.hideGlobalLoader;
-  if(_hide){
-    const origHide = _hide;
-    window.hideGlobalLoader = function(){
-      origHide();
-      document.querySelectorAll('.btn.is-loading').forEach(b=> setTimeout(()=>b.classList.remove('is-loading'), 400));
-    };
-  }
 })();
