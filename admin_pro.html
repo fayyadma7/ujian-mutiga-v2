@@ -1185,9 +1185,12 @@
                 <div class="card-panel">
                     <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
                         <h3 class="panel-title"><i class="fas fa-chart-pie"></i> Analisis Detail Ujian</h3>
-                        <div style="display:flex; gap:10px; align-items:center;">
-                            <select id="ana-filter-mapel" style="display:none;"
-                                onchange="loadAnalisisData()"></select>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <div style="position:relative; min-width:220px; flex:1;">
+                                <input type="text" id="ana-filter-mapel-search" class="form-control" placeholder="Cari Mapel" autocomplete="off" style="padding-right:32px; width:100%;">
+                                <select id="ana-filter-mapel" style="display:none;" onchange="loadAnalisisData()"></select>
+                                <div id="ana-filter-mapel-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid #334155; border-radius:10px; padding:6px; box-shadow:0 12px 32px rgba(0,0,0,0.4); z-index:20;"></div>
+                            </div>
                             <select id="ana-filter-kelas" style="display:none;"
                                 onchange="loadAnalisisData()"></select>
                         </div>

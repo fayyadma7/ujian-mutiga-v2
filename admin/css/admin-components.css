@@ -2214,11 +2214,11 @@ header, .card-panel, .soal-item,
   z-index: 1;
 }
 
-/* Sembunyikan custom select lama untuk jadwal-mapel (sudah jadi searchable input) */
-#jadwal-mapel.csl-native{ display:none !important; }
-.csl-container:has(#jadwal-mapel){ display:none !important; }
-#jadwal-mapel-csldd{ display:none !important; }
-#jadwal-mapel + .csl-container{ display:none !important; }
+/* Sembunyikan custom select lama untuk jadwal-mapel & analisis-mapel (sudah jadi searchable input) */
+#jadwal-mapel.csl-native, #ana-filter-mapel.csl-native{ display:none !important; }
+.csl-container:has(#jadwal-mapel), .csl-container:has(#ana-filter-mapel){ display:none !important; }
+#jadwal-mapel-csldd, #ana-filter-mapel-csldd{ display:none !important; }
+#jadwal-mapel + .csl-container, #ana-filter-mapel + .csl-container{ display:none !important; }
 
 /* Swal dark theme — samakan tema website (jangan putih) */
 .swal2-popup{ background:rgba(12,19,38,0.97) !important; color:#e2e8f0 !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:18px !important; backdrop-filter:blur(12px) !important; }
