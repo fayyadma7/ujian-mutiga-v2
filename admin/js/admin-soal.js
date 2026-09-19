@@ -37,6 +37,26 @@ function loadMathJax() {
 }
 
 // --- PREVIEW SOAL ---
+// Helper: fetch all rows melewati limit 1000 bawaan Supabase (paginate via .range)
+async function fetchAllBankSoal(selectCols, extraFilter) {
+    const PAGE = 1000;
+    let all = [];
+    let from = 0;
+    let lastErr = null;
+    while (true) {
+        let q = db.from('bank_soal').select(selectCols).order('id', { ascending: true }).range(from, from + PAGE - 1);
+        if (extraFilter) q = extraFilter(q);
+        const { data, error } = await q;
+        if (error) { lastErr = error; break; }
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+        if (from > 20000) break; // safety cap 20k
+    }
+    return { data: all, error: lastErr };
+}
+
 async function populatePreviewMapel() {
     const tbody = document.getElementById('tabel-daftar-mapel');
     if (!tbody) return;
@@ -46,12 +66,11 @@ async function populatePreviewMapel() {
 
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>`;
 
-    // Admin: join guru untuk "Dibuat Oleh"; Guru: filter created_by
-    let query = _sIsAdmin
-        ? db.from('bank_soal').select('mapel, guru:created_by(nama)')
-        : db.from('bank_soal').select('mapel, guru:created_by(nama)').eq('created_by', _sGuruId);
-
-    const { data, error } = await query;
+    // FIX: paginated fetch agar >1000 soal tetap terhitung sinkron dengan preview per-mapel
+    const { data, error } = await fetchAllBankSoal('mapel, created_by, guru:created_by(nama)', (q) => {
+        if (!_sIsAdmin && _sGuruId) return q.eq('created_by', _sGuruId);
+        return q;
+    });
     if (error || !data) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Gagal memuat data: ${error?.message}</td></tr>`;
         return;
@@ -160,9 +179,24 @@ async function loadPreviewSoal() {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Memuat soal...</div>';
     }
 
-    let query = db.from('bank_soal').select('*, guru:created_by(nama)').eq('mapel', mapel).order('id', { ascending: true });
-    if (!_psIsAdmin && _psGuruId) query = query.eq('created_by', _psGuruId);
-    const { data, error } = await query;
+    // FIX: paginated fetch per-mapel agar sinkron dengan badge di tabel (limit 1000 -> paginate)
+    const PAGE = 1000;
+    let allRows = [];
+    let pageFrom = 0;
+    let fetchErr = null;
+    while (true) {
+        let query = db.from('bank_soal').select('*, guru:created_by(nama)').eq('mapel', mapel).order('id', { ascending: true }).range(pageFrom, pageFrom + PAGE - 1);
+        if (!_psIsAdmin && _psGuruId) query = query.eq('created_by', _psGuruId);
+        const { data: chunk, error: err } = await query;
+        if (err) { fetchErr = err; break; }
+        if (!chunk || chunk.length === 0) break;
+        allRows = allRows.concat(chunk);
+        if (chunk.length < PAGE) break;
+        pageFrom += PAGE;
+        if (pageFrom > 20000) break;
+    }
+    const data = fetchErr ? null : allRows;
+    const error = fetchErr;
 
     if (error || !data || data.length === 0) {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--danger);"><i class="fas fa-exclamation-circle"></i> Tidak ada soal ditemukan untuk mapel ini.</div>';
@@ -648,11 +682,13 @@ async function populateManualMapel() {
     const _pmIsAdmin = _pmSesi && _pmSesi.isAdmin === true;
     const _pmGuruId = _pmSesi ? _pmSesi.id : null;
 
-    let query = db.from('bank_soal').select('mapel').order('mapel', { ascending: true });
-    if (!_pmIsAdmin && _pmGuruId) query = query.eq('created_by', _pmGuruId);
-    const { data } = await query;
+    // FIX: paginated agar dropdown manual tidak hilang saat >1000 baris (order by id untuk paginasi stabil, sort alfabet di client)
+    const { data } = await fetchAllBankSoal('mapel', (q) => {
+        if (!_pmIsAdmin && _pmGuruId) return q.eq('created_by', _pmGuruId);
+        return q;
+    });
     if (!data) return;
-    const mapels = [...new Set(data.map(r => r.mapel))];
+    const mapels = [...new Set(data.map(r => r.mapel))].sort((a,b)=> a.localeCompare(b,'id'));
     _manualMapelCache = mapels;
     if (dl) { dl.innerHTML = ''; mapels.forEach(m => { const opt = document.createElement('option'); opt.value = m; dl.appendChild(opt); }); }
     if (dd) renderManualMapelDropdown(mapels);
