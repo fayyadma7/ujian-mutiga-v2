@@ -707,6 +707,22 @@
 /* ================================================================
    4. Helpers
    ================================================================ */
+/* Jadwal: hanya 3 baris/cards terlihat, scroll vertikal+horizontal */
+.jadwal-scroll-wrapper{ scrollbar-width: thin; scrollbar-color: rgba(59,130,246,0.38) transparent; }
+@media (max-width: 768px){
+  .jadwal-scroll-wrapper{
+    max-height: 560px !important;
+    max-height: min(560px, 68vh) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .jadwal-scroll-wrapper table{ min-width: 0 !important; width: 100% !important; }
+  #tabel-jadwal thead th{ position: static !important; backdrop-filter: none !important; box-shadow: none !important; }
+}
+@media (max-width: 480px){
+  .jadwal-scroll-wrapper{ max-height: 520px !important; max-height: min(520px, 66vh) !important; }
+}
 /* Scroll hint untuk wrapper yang masih pakai overflow-x di desktop */
 .table-scroll-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
 /* Pastikan switch toggle tetap kelihatan di card */

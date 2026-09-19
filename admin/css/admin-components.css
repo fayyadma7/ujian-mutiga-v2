@@ -186,6 +186,33 @@ tbody tr { transition: background-color 0.2s; }
 #tabel-jadwal td[data-label="Mapel"] > div { align-items: center !important; }
 #tabel-jadwal thead th { border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
 
+/* Jadwal: hanya 3 baris terlihat, scroll vertikal+horizontal */
+.jadwal-scroll-wrapper{
+  max-height: 268px; /* header ~48px + 3 rows @ ~73px */
+  overflow: auto;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.01);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59,130,246,0.38) transparent;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.jadwal-scroll-wrapper::-webkit-scrollbar{ width: 8px; height: 8px; }
+.jadwal-scroll-wrapper::-webkit-scrollbar-track{ background: rgba(255,255,255,0.03); border-radius: 10px; }
+.jadwal-scroll-wrapper::-webkit-scrollbar-thumb{ background: rgba(59,130,246,0.38); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; min-height: 36px; }
+.jadwal-scroll-wrapper::-webkit-scrollbar-thumb:hover{ background: rgba(59,130,246,0.58); }
+.jadwal-scroll-wrapper::-webkit-scrollbar-corner{ background: transparent; }
+.jadwal-scroll-wrapper table{ min-width: 1080px; }
+/* sticky header biar tetap kelihatan saat scroll vertikal */
+#tabel-jadwal thead th{
+  position: sticky; top: 0; z-index: 3;
+  background: #0f172a;
+  background: rgba(15,23,42,0.97);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08);
+}
+
 tbody tr:hover {
     background-color: rgba(255, 255, 255, 0.02);
 }
