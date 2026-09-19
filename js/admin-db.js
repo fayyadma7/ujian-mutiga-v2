@@ -68,6 +68,8 @@ async function callProxy(action, body, opts) {
     return { data: null, error: new Error('Silakan login terlebih dahulu') };
   }
   opts = opts || {};
+  // hapus harus instan tanpa delay 300ms
+  if(['delete','batch-delete'].includes(action)) opts.immediate = true;
   const _msgMap={ 'delete':'Menghapus...','batch-delete':'Menghapus...','update':'Menyimpan...','insert':'Menyimpan...','rename-mapel':'Memproses...','update-guru-profile':'Menyimpan...','update-guru-password':'Menyimpan...','rpc':'Memproses...' };
   showGlobalLoader(_msgMap[action]||'Memproses...', opts);
 

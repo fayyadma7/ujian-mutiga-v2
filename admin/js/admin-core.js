@@ -706,9 +706,8 @@ function initPage(idHalaman) {
     }
     if (idHalaman === 'jadwal') {
         if (typeof populateJadwalMapelDropdown === 'function') {
-            const _p = populateJadwalMapelDropdown();
-            if (_p && _p.then) _p.then(() => { if (typeof initCustomSelect === 'function') initCustomSelect('jadwal-mapel'); if (typeof syncCustomSelect === 'function') syncCustomSelect('jadwal-mapel'); });
-            else { if (typeof initCustomSelect === 'function') initCustomSelect('jadwal-mapel'); }
+            // jadwal-mapel sekarang searchable input, bukan csl select
+            populateJadwalMapelDropdown();
         }
         if (typeof loadJadwal === 'function') loadJadwal();
         // custom datetime picker — scrollbar jam selalu terlihat (desktop)

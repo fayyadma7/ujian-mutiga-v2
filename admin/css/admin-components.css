@@ -2196,3 +2196,9 @@ header, .card-panel, .soal-item,
 .jadwal-card-loading{ opacity: 0.6; pointer-events: none; filter: grayscale(0.2); }
 @keyframes jadwalPulse{ 0%{ opacity:0.6; } 50%{ opacity:1; } 100%{ opacity:0.6; } }
 .jadwal-pulse{ animation: jadwalPulse 1s ease-in-out infinite; }
+
+/* Sembunyikan custom select lama untuk jadwal-mapel (sudah jadi searchable input) */
+#jadwal-mapel.csl-native{ display:none !important; }
+.csl-container:has(#jadwal-mapel){ display:none !important; }
+#jadwal-mapel-csldd{ display:none !important; }
+#jadwal-mapel + .csl-container{ display:none !important; }

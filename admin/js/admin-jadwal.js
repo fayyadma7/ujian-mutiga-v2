@@ -8,8 +8,12 @@
 
 let editingJadwalId = null;
 
+let _jadwalMapelCache = [];
 async function populateJadwalMapelDropdown() {
     const select = document.getElementById('jadwal-mapel');
+    const searchInput = document.getElementById('jadwal-mapel-search');
+    const dropdown = document.getElementById('jadwal-mapel-dropdown');
+    const selectedEl = document.getElementById('jadwal-mapel-selected');
     if (!select) return;
     const previousValue = (select.value || '').trim();
     const _jmSesi = getGuruSession();
@@ -22,8 +26,9 @@ async function populateJadwalMapelDropdown() {
     if (error || !data) return;
     const mapelSet = new Set();
     data.forEach(d => { if (d.mapel) mapelSet.add(d.mapel.trim()); });
+    _jadwalMapelCache = [...mapelSet].sort((a,b)=>a.localeCompare(b,'id'));
     select.innerHTML = '<option value="">— Pilih Mapel dari Bank Soal —</option>';
-    [...mapelSet].sort().forEach(m => {
+    _jadwalMapelCache.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m;
         opt.textContent = m;
@@ -37,13 +42,134 @@ async function populateJadwalMapelDropdown() {
             opt.value = previousValue;
             opt.textContent = previousValue;
             select.appendChild(opt);
+            if(!_jadwalMapelCache.includes(previousValue)) _jadwalMapelCache.push(previousValue);
         }
         select.value = previousValue;
+        if(searchInput) searchInput.value = previousValue;
+        if(selectedEl) selectedEl.innerHTML = previousValue ? `Terpilih: <b style="color:#60a5fa;">${previousValue}</b>` : '';
+    } else {
+        if(searchInput && !searchInput.dataset.userTyped) searchInput.value = '';
+        if(selectedEl && !previousValue) selectedEl.innerHTML = '';
     }
-    if (typeof syncCustomSelect === 'function') try { syncCustomSelect('jadwal-mapel'); } catch(e){}
-    if (typeof initCustomSelect === 'function' && !select.dataset.cslReady) try { initCustomSelect('jadwal-mapel'); } catch(e){}
-    // pastikan button custom ter-sync setelah init
-    if (typeof syncCustomSelect === 'function') try { syncCustomSelect('jadwal-mapel'); } catch(e){}
+    // Hapus total custom select lama (csl) untuk select hidden — jangan pernah bikin duplikat
+    try{
+        // Hapus container csl yang terlanjur dibuat untuk #jadwal-mapel
+        const cslBtn = document.querySelector('#jadwal-mapel + .csl-container, .csl-container:has(#jadwal-mapel)');
+        // Fallback: cari semua csl yang wrap #jadwal-mapel
+        document.querySelectorAll('.csl-container').forEach(c=>{
+            if(c.contains(select)){
+                const b=c.querySelector('.csl-btn'); if(b) b.remove();
+                const d=c.querySelector('.csl-dropdown'); if(d && d.id!=='jadwal-mapel-dropdown') d.remove();
+                // jika container hanya berisi select hidden, hapus container-nya juga
+                if(c.children.length===1 && c.contains(select)){
+                    const par=c.parentNode;
+                    if(par){ par.insertBefore(select, c); c.remove(); }
+                } else {
+                    // kalau masih ada, hide saja
+                    c.style.display='none';
+                }
+                delete select.dataset.cslReady;
+            }
+        });
+        // Pastikan select tetap hidden dan tidak punya cslReady
+        select.style.display='none';
+        select.classList.remove('csl-native');
+        delete select.dataset.cslReady;
+        // Hapus juga dropdown lama csl untuk jadwal-mapel jika ada (bukan yang baru)
+        document.querySelectorAll('#jadwal-mapel-csldd').forEach(el=> el.remove());
+    }catch(e){}
+    // setup searchable dropdown — list hanya muncul saat ngetik, tidak langsung tampil semua
+    if(searchInput && dropdown){
+        if(!searchInput.dataset.jadwalSearchReady){
+            searchInput.dataset.jadwalSearchReady='1';
+            searchInput.addEventListener('input', ()=>{ searchInput.dataset.userTyped='1'; renderJadwalMapelDropdown(searchInput.value); dropdown.style.display='block'; });
+            searchInput.addEventListener('focus', ()=>{
+                const v=(searchInput.value||'').trim();
+                if(v) renderJadwalMapelDropdown(v);
+                else {
+                    dropdown.innerHTML='<div style="padding:10px; text-align:center; color:#64748b; font-size:12px;">Ketik untuk cari mapel...</div>';
+                    dropdown.style.display='block';
+                }
+            });
+            searchInput.addEventListener('blur', ()=> setTimeout(()=>{
+                dropdown.style.display='none';
+                // sync hidden select dengan ketikan (jika cocok dengan mapel yang ada)
+                const typed=(searchInput.value||'').trim();
+                const select2=document.getElementById('jadwal-mapel');
+                const selectedEl2=document.getElementById('jadwal-mapel-selected');
+                if(!typed){ if(select2) select2.value=''; if(selectedEl2) selectedEl2.innerHTML=''; return; }
+                const exact=_jadwalMapelCache.find(m=> m.toLowerCase()===typed.toLowerCase());
+                if(exact){
+                    selectJadwalMapel(exact);
+                } else {
+                    // jika tidak cocok persis, biarkan value kosong biar validasi gagal (harus pilih dari daftar)
+                    const hasExact=_jadwalMapelCache.some(m=> m.toLowerCase()===typed.toLowerCase());
+                    if(!hasExact && select2) select2.value='';
+                }
+            }, 180));
+            searchInput.addEventListener('keydown', (e)=>{
+                if(e.key==='Enter'){
+                    e.preventDefault();
+                    const typed=(searchInput.value||'').trim().toLowerCase();
+                    const first=_jadwalMapelCache.find(m=> m.toLowerCase().includes(typed));
+                    if(first) selectJadwalMapel(first);
+                } else if(e.key==='Escape'){ dropdown.style.display='none'; searchInput.blur(); }
+            });
+            // klik di luar tutup
+            document.addEventListener('click', (e)=>{
+                if(!searchInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display='none';
+            });
+        }
+        // awalnya hidden, hanya muncul saat user ketik/focus dengan isi
+        dropdown.style.display='none';
+    }
+}
+function renderJadwalMapelDropdown(filter){
+    const dropdown=document.getElementById('jadwal-mapel-dropdown');
+    if(!dropdown) return;
+    const q=(filter||'').trim().toLowerCase();
+    if(!q){
+        dropdown.innerHTML='<div style="padding:10px; text-align:center; color:#64748b; font-size:12px;">Ketik untuk cari mapel...</div>';
+        dropdown.style.display='block';
+        return;
+    }
+    const list = _jadwalMapelCache.filter(m=> m.toLowerCase().includes(q));
+    if(!list.length){
+        dropdown.innerHTML='<div style="padding:10px; text-align:center; color:#64748b; font-size:12px;">Tidak ada mapel cocok</div>';
+        dropdown.style.display='block';
+        return;
+    }
+    dropdown.innerHTML = list.map(m=> `<div class="csl-option" style="padding:8px 12px; cursor:pointer; border-radius:6px;" onmousedown="event.preventDefault(); selectJadwalMapel('${m.replace(/'/g,"\\'")}')">${m}</div>`).join('');
+    dropdown.style.display='block';
+}
+function selectJadwalMapel(val){
+    const select=document.getElementById('jadwal-mapel');
+    const searchInput=document.getElementById('jadwal-mapel-search');
+    const dropdown=document.getElementById('jadwal-mapel-dropdown');
+    const selectedEl=document.getElementById('jadwal-mapel-selected');
+    if(select){
+        let exists=[...select.options].some(o=>o.value===val);
+        if(!exists){
+            const opt=document.createElement('option');
+            opt.value=val; opt.textContent=val;
+            select.appendChild(opt);
+        }
+        select.value=val;
+        select.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    if(searchInput){ searchInput.value=val; searchInput.dataset.userTyped='1'; }
+    if(selectedEl) selectedEl.innerHTML = `Terpilih: <b style="color:#60a5fa;">${val}</b>`;
+    if(dropdown) dropdown.style.display='none';
+}
+function clearJadwalMapelSearch(){
+    const select=document.getElementById('jadwal-mapel');
+    const searchInput=document.getElementById('jadwal-mapel-search');
+    const dropdown=document.getElementById('jadwal-mapel-dropdown');
+    const selectedEl=document.getElementById('jadwal-mapel-selected');
+    if(select) select.value='';
+    if(searchInput) searchInput.value='';
+    if(selectedEl) selectedEl.innerHTML='';
+    if(dropdown) dropdown.style.display='none';
 }
 
 async function populateJadwalKelasOptions() {
@@ -166,11 +292,17 @@ function _syncJadwalMapelCustom() {
 
 function _resetJadwalFormUI() {
     const selMapel = document.getElementById('jadwal-mapel');
+    const searchInput = document.getElementById('jadwal-mapel-search');
+    const dropdown = document.getElementById('jadwal-mapel-dropdown');
+    const selectedEl = document.getElementById('jadwal-mapel-selected');
     if (selMapel) {
         selMapel.value = '';
         _syncJadwalMapelCustom();
         selMapel.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    if(searchInput){ searchInput.value=''; searchInput.dataset.userTyped=''; }
+    if(dropdown) dropdown.style.display='none';
+    if(selectedEl) selectedEl.innerHTML='';
     const sel = document.getElementById('jadwal-kelas-select');
     if (sel) [...sel.options].forEach(o => o.selected = false);
     renderJadwalKelasList();
@@ -200,6 +332,7 @@ function batalEditJadwal() {
     if (cancelBtn) cancelBtn.style.display = 'none';
     const statusEl = document.getElementById('status-jadwal');
     if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Mode edit dibatalkan</span>';
+    if(typeof showToast==='function') showToast('Mode edit dibatalkan','info');
     setTimeout(() => { if (statusEl) statusEl.innerHTML = ''; }, 2000);
 }
 
@@ -213,19 +346,27 @@ async function simpanJadwal() {
     const statusEl = document.getElementById('status-jadwal');
 
     if (!mapel) {
-        statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-circle"></i> Nama mata pelajaran wajib diisi!</span>`;
+        const msg='Nama mata pelajaran wajib dipilih!';
+        statusEl.innerHTML = `<span style="color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> ${msg}</span>`;
+        if(typeof showToast==='function') showToast(msg,'error');
         return;
     }
     if (!waktuMulaiRaw || !waktuSelesaiRaw) {
-        statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-circle"></i> Window waktu mulai dan selesai wajib diisi!</span>`;
+        const msg='Window waktu mulai dan selesai wajib diisi!';
+        statusEl.innerHTML = `<span style="color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> ${msg}</span>`;
+        if(typeof showToast==='function') showToast(msg,'error');
         return;
     }
     if (new Date(waktuSelesaiRaw) <= new Date(waktuMulaiRaw)) {
-        statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-circle"></i> Batas masuk harus lebih besar dari mulai masuk!</span>`;
+        const msg='Batas masuk harus lebih besar dari mulai masuk!';
+        statusEl.innerHTML = `<span style="color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> ${msg}</span>`;
+        if(typeof showToast==='function') showToast(msg,'error');
         return;
     }
     if (!durasiInput || durasiInput < 1) {
-        statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-circle"></i> Durasi ujian wajib diisi (minimal 1 menit)!</span>`;
+        const msg='Durasi ujian wajib diisi (minimal 1 menit)!';
+        statusEl.innerHTML = `<span style="color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> ${msg}</span>`;
+        if(typeof showToast==='function') showToast(msg,'error');
         return;
     }
 
@@ -240,9 +381,16 @@ async function simpanJadwal() {
         waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai,
         durasi_menit: durasiInput, is_aktif: true
     }]);
-    if (error) { statusEl.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Gagal: ${error.message}</span>`; return; }
+    if (error) {
+        const msg='Gagal menyimpan jadwal: '+error.message;
+        statusEl.innerHTML = `<span style="color:#fca5a5;"><i class="fas fa-times-circle"></i> ${msg}</span>`;
+        if(typeof showToast==='function') showToast(msg,'error');
+        return;
+    }
 
-    statusEl.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Jadwal "${mapel}" — ${durasiInput} menit/siswa berhasil disimpan!</span>`;
+    const successMsg=`Jadwal "${mapel}" — ${durasiInput} menit/siswa berhasil disimpan!`;
+    statusEl.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> ${successMsg}</span>`;
+    if(typeof showToast==='function') showToast(successMsg,'success');
     _resetJadwalFormUI();
     // pastikan tombol kembali ke mode simpan
     const _btnSimpan=document.getElementById('btn-submit-jadwal');
@@ -455,7 +603,8 @@ async function mulaiEditJadwal(id) {
     const { data, error } = await db.from('jadwal_ujian').select('*').eq('id', id).single();
     _editData=data; _editError=error;
     if (error || !data) {
-        if (typeof showToast === 'function') showToast('Gagal memuat jadwal: ' + (error?.message || 'tidak ditemukan'), 'error');
+        console.error('mulaiEditJadwal fetch error:', error);
+        if (typeof showToast === 'function') showToast('Gagal memuat jadwal: ' + (error?.message || error?.details || 'tidak ditemukan') + ' (id:'+id+')', 'error');
         return;
     }
 
@@ -464,6 +613,8 @@ async function mulaiEditJadwal(id) {
     // 1) Pastikan dropdown Mapel terisi dulu, lalu set value + sync custom select
     try { await populateJadwalMapelDropdown(); } catch(e){}
     const selMapel = document.getElementById('jadwal-mapel');
+    const searchInputEdit = document.getElementById('jadwal-mapel-search');
+    const selectedElEdit = document.getElementById('jadwal-mapel-selected');
     if (selMapel) {
         const targetMapel = (data.mapel || '').trim();
         if (targetMapel) {
@@ -473,8 +624,11 @@ async function mulaiEditJadwal(id) {
                 opt.value = targetMapel;
                 opt.textContent = targetMapel;
                 selMapel.appendChild(opt);
+                if(typeof _jadwalMapelCache !== 'undefined' && !_jadwalMapelCache.includes(targetMapel)) _jadwalMapelCache.push(targetMapel);
             }
             selMapel.value = targetMapel;
+            if(searchInputEdit){ searchInputEdit.value = targetMapel; searchInputEdit.dataset.userTyped='1'; }
+            if(selectedElEdit) selectedElEdit.innerHTML = `Terpilih: <b style="color:#60a5fa;">${targetMapel}</b>`;
             _syncJadwalMapelCustom();
             selMapel.dispatchEvent(new Event('change', { bubbles: true }));
         }
@@ -540,6 +694,7 @@ async function mulaiEditJadwal(id) {
 
     const statusEl = document.getElementById('status-jadwal');
     if (statusEl) statusEl.innerHTML = `<span style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle"></i> Mengedit "<b>${data.mapel}</b>" — ubah lalu klik Update</span>`;
+    if(typeof showToast==='function') showToast('Memuat jadwal "'+data.mapel+'" untuk diedit','info');
 
     const card = document.querySelector('#jadwal .card-panel');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
