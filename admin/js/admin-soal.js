@@ -121,7 +121,6 @@ async function populatePreviewMapel() {
                 </div>
                 <div class="banksoal-meta">
                     <span class="badge" style="background:rgba(15,23,42,.7); color:#94a3b8; border:1px solid rgba(255,255,255,.07); display:inline-flex; align-items:center; gap:6px;"><i class="far fa-file" style="font-size:11px; opacity:.7;"></i> ${info.count} SOAL</span>
-                    <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">${creatorHtml}</span>
                 </div>
                 <div class="banksoal-actions">
                     <button class="btn btn-outline" style="padding:6px 8px; font-size:11px;" onclick="bukaDetailSoal('${mapelEsc}')"><i class="fas fa-eye"></i> Lihat</button>
@@ -220,11 +219,11 @@ async function loadPreviewSoal() {
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <span class="badge" style="background:${s.tipe_soal === 'ESSAY' ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.1)'}; color:${s.tipe_soal === 'ESSAY' ? '#a5b4fc' : '#34d399'}; border:1px solid ${s.tipe_soal === 'ESSAY' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}; margin-right:10px;">${s.tipe_soal || 'PG'}</span>
-                        <button onclick="editSatuSoal(${s.id})" style="background:none; border:none; color:var(--primary); cursor:pointer; margin-right:10px;" title="Edit Soal ini">
-                            <i class="fas fa-edit"></i>
+                        <button onclick="editSatuSoal(${s.id})" class="btn-soal-edit" style="background:none; border:none; color:#3b82f6; cursor:pointer; margin-right:10px; transition:color 0.2s;" title="Edit Soal ini">
+                            <i class="fas fa-edit" style="color:#3b82f6;"></i>
                         </button>
-                        <button onclick="hapusSatuSoal(${s.id})" style="background:none; border:none; color:var(--danger); cursor:pointer;" title="Hapus Soal ini">
-                            <i class="fas fa-trash-alt"></i>
+                        <button onclick="hapusSatuSoal(${s.id})" class="btn-soal-delete" style="background:none; border:none; color:#ef4444; cursor:pointer; transition:color 0.2s;" title="Hapus Soal ini">
+                            <i class="fas fa-trash-alt" style="color:#ef4444;"></i>
                         </button>
                     </div>
                 </div>
@@ -1393,10 +1392,11 @@ document.getElementById('inputExcel')?.addEventListener('change', async function
             const { error } = await chunkedInsert('bank_soal', dataSoalSupabase);
             if (error) throw error;
             status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${isiExcel.length} baris soal untuk "${mapel}" tersimpan di database.</span>`;
+            showToast(`Sukses! ${isiExcel.length} soal untuk "${mapel}" berhasil disimpan!`, 'success');
             document.getElementById('inputExcel').value = '';
             await populatePreviewMapel();
             bukaDetailSoal(mapel);
-        } catch (err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal menyimpan soal: ${err.message}</span>`; }
+        } catch (err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal menyimpan soal: ${err.message}</span>`; showToast(`Gagal menyimpan soal: ${err.message}`, 'error'); }
     };
     reader.readAsArrayBuffer(file);
 });
@@ -1637,10 +1637,11 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
             const { error } = await chunkedInsert('bank_soal', soalArray);
             if (error) throw error;
             status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${soalArray.length} soal untuk "${mapel}" dari Word berhasil disimpan.</span>`;
+            showToast(`Sukses! ${soalArray.length} soal untuk "${mapel}" dari Word berhasil disimpan!`, 'success');
             document.getElementById('inputWord').value = '';
             await populatePreviewMapel();
             bukaDetailSoal(mapel);
-        }).catch(function(err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal mengekstrak Word: ${err.message}</span>`; });
+        }).catch(function(err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal mengekstrak Word: ${err.message}</span>`; showToast(`Gagal mengekstrak Word: ${err.message}`, 'error'); });
     };
     reader.readAsArrayBuffer(file);
 });

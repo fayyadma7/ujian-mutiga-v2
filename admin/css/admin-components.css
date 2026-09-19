@@ -285,6 +285,11 @@ tbody#tabel-jadwal tr td[data-label="Mapel"]::before{
 .soal-item li[style*="var(--success)"] *, .soal-item li[style*="--success"] *{ color:#34d399 !important; }
 .soal-item li[style*="bold"]{ color:#34d399 !important; }
 .soal-item div[style*="--success"] span, .soal-item span[style*="--success"]{ color:#10b981 !important; font-weight:800 !important; }
+/* Tombol edit/hapus preview soal — biru untuk edit, merah untuk hapus (override .soal-item * putih) */
+.soal-item .btn-soal-edit, .soal-item .btn-soal-edit i{ color:#3b82f6 !important; }
+.soal-item .btn-soal-delete, .soal-item .btn-soal-delete i{ color:#ef4444 !important; }
+.soal-item .btn-soal-edit:hover, .soal-item .btn-soal-edit:hover i{ color:#2563eb !important; }
+.soal-item .btn-soal-delete:hover, .soal-item .btn-soal-delete:hover i{ color:#dc2626 !important; }
 /* Rumus Excel dalam <code> — biar tetap terlihat di card gelap */
 code, code *{ background: rgba(255,255,255,0.08) !important; color:#f1f5f9 !important; border:1px solid rgba(255,255,255,0.12) !important; padding:2px 6px !important; border-radius:6px !important; font-family:ui-monospace,SFMono-Regular,Menlo,monospace !important; font-size:0.95em !important; }
 
@@ -2012,6 +2017,8 @@ header, .card-panel, .soal-item,
 .banksoal-grid{
   scrollbar-width: thin;
   scrollbar-color: rgba(59,130,246,0.38) transparent;
+  align-items: start;
+  grid-auto-rows: auto;
 }
 .banksoal-grid::-webkit-scrollbar{ width:8px; height:8px; }
 .banksoal-grid::-webkit-scrollbar-track{ background: rgba(255,255,255,0.03); border-radius:10px; }
@@ -2033,7 +2040,7 @@ header, .card-panel, .soal-item,
   content:''; position:absolute; left:0; top:14px; height:28px; width:3px; background:#3b82f6; border-radius:0 4px 4px 0;
 }
 .banksoal-card .banksoal-head{
-  display:flex; align-items:center; gap:10px; padding-right:28px; min-height:28px;
+  display:flex; align-items:flex-start; gap:10px; padding-right:28px; min-height:28px;
 }
 .banksoal-card .banksoal-icon{
   width:40px; height:40px; min-width:40px; border-radius:10px; background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.2);
@@ -2045,7 +2052,7 @@ header, .card-panel, .soal-item,
   word-break:break-word; overflow-wrap:anywhere;
   display:block;
 }
-.banksoal-card .banksoal-sub{ font-size:11px; color:#64748b; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.banksoal-card .banksoal-sub{ font-size:11px; color:#64748b; margin-top:3px; white-space:normal; overflow:visible; text-overflow:clip; word-break:break-word; overflow-wrap:anywhere; line-height:1.45; display:block; }
 .banksoal-card .banksoal-meta{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);
 }
@@ -2212,3 +2219,11 @@ header, .card-panel, .soal-item,
 .csl-container:has(#jadwal-mapel){ display:none !important; }
 #jadwal-mapel-csldd{ display:none !important; }
 #jadwal-mapel + .csl-container{ display:none !important; }
+
+/* Swal dark theme — samakan tema website (jangan putih) */
+.swal2-popup{ background:rgba(12,19,38,0.97) !important; color:#e2e8f0 !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:18px !important; backdrop-filter:blur(12px) !important; }
+.swal2-title{ color:#f1f5f9 !important; }
+.swal2-html-container{ color:#cbd5e1 !important; }
+.swal2-icon.swal2-question{ border-color:#60a5fa !important; color:#60a5fa !important; }
+.swal2-icon.swal2-success{ border-color:#10b981 !important; }
+.swal2-icon.swal2-info{ border-color:#38bdf8 !important; color:#38bdf8 !important; }

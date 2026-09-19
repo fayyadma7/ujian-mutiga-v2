@@ -477,14 +477,21 @@ const AIGenerator = {
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-    statusEl.innerHTML = '<span style="color:var(--accent,#8b5cf6);"><i class="fas fa-spinner fa-spin"></i> Menghubungi AI...</span>';
+    if (statusEl) statusEl.innerHTML = '';
 
     try {
       const conflictAction = await this._checkMapelConflict(mapel);
-      if (conflictAction === 'cancel') { statusEl.innerHTML = ''; return; }
+      if (conflictAction === 'cancel') return;
 
-      statusEl.innerHTML = '<span style="color:var(--accent,#8b5cf6);"><i class="fas fa-spinner fa-spin"></i> AI sedang menulis soal...</span>';
+      // overlay hanya muncul SETELAH konfirmasi Tambahkan/Timpa;
+      // jika mapel baru (tanpa modal) langsung muncul di sini
+      if (typeof showGlobalLoader === 'function') showGlobalLoader('AI sedang menulis soal...', { immediate: true });
+      else {
+        const _gl = document.getElementById('global-loader');
+        const _glT = document.getElementById('global-loader-text');
+        if (_glT) _glT.textContent = 'AI sedang menulis soal...';
+        if (_gl) { _gl.style.display = 'flex'; _gl.classList.add('show'); }
+      }
 
       const promptText = this._buildPrompt({ mapel, topik, fase, diff, jmlPg, jmlEssay, referensi });
 
@@ -496,10 +503,20 @@ const AIGenerator = {
       const totalDiminta = jmlPg + jmlEssay;
       if (soalArray.length > totalDiminta) soalArray.length = totalDiminta;
 
-      statusEl.innerHTML = '<span style="color:#10b981;"><i class="fas fa-spinner fa-spin"></i> Menyimpan ke database...</span>';
+      // update overlay text ke tahap menyimpan
+      {
+        const _glT = document.getElementById('global-loader-text');
+        if (_glT) _glT.textContent = 'Menyimpan ke database...';
+      }
 
-      const { error: insertError } = await chunkedInsert('bank_soal', soalArray);
+      const { error: insertError } = await chunkedInsert('bank_soal', soalArray, { silent: true });
       if (insertError) throw insertError;
+
+      if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+      else {
+        const _gl = document.getElementById('global-loader');
+        if (_gl) { _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; }, 220); }
+      }
 
       this.closeModal();
 
@@ -507,7 +524,7 @@ const AIGenerator = {
         ? `AI (${provider}) hanya menghasilkan ${soalArray.length} dari ${totalDiminta} soal. Yang ada telah disimpan.`
         : `${soalArray.length} soal untuk ${mapel} berhasil dibuat oleh ${provider}.`;
 
-      await Swal.fire({ icon: soalArray.length < totalDiminta ? 'info' : 'success', title: 'Generate Berhasil!', text: msg, confirmButtonColor: '#10b981' });
+      await Swal.fire({ icon: soalArray.length < totalDiminta ? 'info' : 'success', title: 'Generate Berhasil!', text: msg, confirmButtonColor: '#10b981', background: 'rgba(12,19,38,0.97)', color: '#e2e8f0' });
 
       await populatePreviewMapel();
       const optMapel = document.getElementById('preview-mapel');
@@ -522,8 +539,14 @@ const AIGenerator = {
       }
     } catch (err) {
       console.error('[AIGenerator]', err);
-      statusEl.innerHTML = `<span style="color:var(--danger,#ef4444);"><i class="fas fa-exclamation-triangle"></i> ${err.message}</span>`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger,#ef4444);"><i class="fas fa-exclamation-triangle"></i> ${err.message}</span>`;
+      showToast(err.message, 'error');
     } finally {
+      if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+      else {
+        const _gl = document.getElementById('global-loader');
+        if (_gl) { _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; }, 220); }
+      }
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-robot"></i> Generate Soal';
     }
@@ -536,11 +559,14 @@ const AIGenerator = {
     if (count > 0) {
       const result = await Swal.fire({
         title: 'Mapel Sudah Ada',
-        html: `<b>${mapel}</b> sudah memiliki <b>${count}</b> soal.`,
+        html: `<div style="color:#cbd5e1;">Mapel <b style="color:#f1f5f9;">${mapel}</b> sudah memiliki <b style="color:#fbbf24;">${count}</b> soal.</div><div style="margin-top:8px;font-size:12px;color:#94a3b8;">Pilih <b style="color:#34d399;">Tambahkan</b> untuk menambah soal baru, atau <b style="color:#f87171;">Timpa</b> untuk menghapus soal lama.</div>`,
         icon: 'question', showDenyButton: true,
         confirmButtonText: '<i class="fas fa-plus"></i> Tambahkan', confirmButtonColor: '#10b981',
         denyButtonText: '<i class="fas fa-trash-alt"></i> Timpa', denyButtonColor: '#ef4444',
-        cancelButtonText: 'Batal'
+        cancelButtonText: 'Batal', cancelButtonColor: '#334155',
+        background: 'rgba(12,19,38,0.97)',
+        color: '#e2e8f0',
+        customClass: { popup: 'swal-dark', title: 'swal-dark-title', htmlContainer: 'swal-dark-html' }
       });
       if (result.isConfirmed) return 'append';
       if (result.isDenied) {

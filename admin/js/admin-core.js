@@ -26,11 +26,13 @@ function loadScript(src) {
 }
 
 // ==================== CHUNKED INSERT ====================
-async function chunkedInsert(table, rows, chunkSize = 50) {
+async function chunkedInsert(table, rows, chunkSize = 50, opts = {}) {
+    if (typeof chunkSize === 'object' && chunkSize !== null) { opts = chunkSize; chunkSize = 50; }
+    if (typeof opts !== 'object' || opts === null) opts = {};
     const results = [];
     for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
-        const { data, error } = await adminDb.insert(table, chunk);
+        const { data, error } = await adminDb.insert(table, chunk, opts);
         if (error) return { error };
         results.push(data);
     }
