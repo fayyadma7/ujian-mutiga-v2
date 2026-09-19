@@ -525,6 +525,7 @@ async function bulkActionMonitoring(action) {
         const { data: backupData } = await db.from('jawaban_ujian').select('*').in('id', ids);
         const { error: batchErr } = await adminDb.batchDelete('jawaban_ujian', ids);
         if (batchErr) { showToast("Gagal menghapus: " + batchErr.message, 'error'); return; }
+        try{ const ch=db.channel('admin-kick'); ch.subscribe(async (st)=>{ if(st==='SUBSCRIBED'){ await ch.send({type:'broadcast', event:'kick', payload:{ids}}); setTimeout(()=>{ try{ db.removeChannel(ch);}catch(e){} }, 1200); } }); }catch(e){}
         const undoFunc = async () => {
             if (backupData && backupData.length > 0) { await chunkedInsert('jawaban_ujian', backupData); loadMonitoring(); showToast(`${ids.length} data siswa berhasil di-restore`, 'success'); }
         };
@@ -542,6 +543,8 @@ async function hapusDataNilai(id, nama) {
     const { error } = await adminDb.delete('jawaban_ujian', id);
     if (error) showToast("Gagal menghapus: " + error.message, 'error');
     else {
+        // broadcast kick biar browser siswa yang lagi di id itu langsung clear cache & reload (<1 detik, tanpa tunggu polling)
+        try{ const ch=db.channel('admin-kick'); ch.subscribe(async (st)=>{ if(st==='SUBSCRIBED'){ await ch.send({type:'broadcast', event:'kick', payload:{ids:[id]}}); setTimeout(()=>{ try{ db.removeChannel(ch);}catch(e){} }, 1200); } }); }catch(e){}
         const undoDelete = async () => {
             if (savedData) {
                 const { error: insertError } = await adminDb.insert('jawaban_ujian', [savedData]);

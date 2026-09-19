@@ -1670,16 +1670,28 @@
         html[data-theme="light"] .soal-item, html[data-theme="light"] .soal-item *,
         html[data-theme="low"] .soal-item, html[data-theme="low"] .soal-item *,
         html[data-theme="light"] .soal-text, html[data-theme="light"] .soal-text *,
-        html[data-theme="low"] .soal-text, html[data-theme="low"] .soal-text *{
+        html[data-theme="low"] .soal-text, html[data-theme="low"] .soal-text *,
+        html[data-theme="light"] .teks-pertanyaan, html[data-theme="light"] .teks-pertanyaan *,
+        html[data-theme="low"] .teks-pertanyaan, html[data-theme="low"] .teks-pertanyaan *{
             color: #1E293B !important;
         }
         html[data-theme="light"] .option-label, html[data-theme="light"] .option-label *,
-        html[data-theme="low"] .option-label, html[data-theme="low"] .option-label *{
+        html[data-theme="low"] .option-label, html[data-theme="low"] .option-label *,
+        html[data-theme="light"] .option-item, html[data-theme="light"] .option-item *,
+        html[data-theme="low"] .option-item, html[data-theme="low"] .option-item *{
             color: #334155 !important;
         }
         html[data-theme="light"] .option-item.selected, html[data-theme="light"] .option-item.selected *,
         html[data-theme="low"] .option-item.selected, html[data-theme="low"] .option-item.selected *{
             color: #0F172A !important;
+        }
+        html[data-theme="light"] .option-item, html[data-theme="low"] .option-item{
+            background: #F8FAFC !important;
+            border-color: #E2E8F0 !important;
+        }
+        html[data-theme="light"] .soal-item, html[data-theme="low"] .soal-item{
+            background: #FFFFFF !important;
+            border-color: #E2E8F0 !important;
         }
         html[data-theme="light"] .soal-text .katex, html[data-theme="light"] .soal-text .katex *,
         html[data-theme="low"] .soal-text .katex, html[data-theme="low"] .soal-text .katex *{
@@ -4509,6 +4521,86 @@
             console.error("Critical Supabase init error:", e);
         }
 
+        // — Fix hapus siswa saat sedang mengerjakan: bersihkan cache jika row dihapus admin —
+        function clearUjianCacheForIdUser(idUser){
+            if(!idUser) return;
+            const prefixes = [
+                "pelanggaran_", "log_pelanggaran_", "sesi_aktif_", "asas_", "waktu_mulai_", "waktu_", "urutan_", "durasi_", "ragu_", "device_token_", "jawaban_", "soal_", "essay_"
+            ];
+            // Hapus semua key yang mengandung idUser
+            try{
+                const toRemove=[];
+                for(let i=0;i<localStorage.length;i++){
+                    const k=localStorage.key(i);
+                    if(k && k.includes(idUser)) toRemove.push(k);
+                }
+                toRemove.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+            }catch(e){}
+            // Fallback: hapus prefix + idUser secara eksplisit
+            prefixes.forEach(p=>{
+                try{ localStorage.removeItem(p+idUser); }catch(e){}
+                try{ localStorage.removeItem(p+idUser.replace(/\s/g,'')); }catch(e){}
+            });
+            // Juga hapus yang tanpa idUser tapi terkait ujian
+            try{ localStorage.removeItem("idRowUjian"); }catch(e){}
+        }
+        let _ujianDeleteChannel=null;
+        let _adminKickChannel=null;
+        function stopUjianDeleteWatch(){ try{ if(_ujianDeleteChannel){ db.removeChannel(_ujianDeleteChannel); _ujianDeleteChannel=null; } }catch(e){} }
+        function stopAdminKickWatch(){ try{ if(_adminKickChannel){ db.removeChannel(_adminKickChannel); _adminKickChannel=null; } }catch(e){} }
+        function startUjianDeleteWatch(){
+            if(!window.idRowUjian) return;
+            stopUjianDeleteWatch();
+            try{
+                _ujianDeleteChannel = db.channel('ujian-delete-'+window.idRowUjian)
+                    .on('postgres_changes', {event:'DELETE', schema:'public', table:'jawaban_ujian'}, payload=>{
+                        const delId = payload.old && payload.old.id;
+                        if(delId && String(delId)===String(window.idRowUjian)){
+                            const n=document.getElementById('nama')?.value||"";
+                            const k=document.getElementById('kelas')?.value||"";
+                            const idUser=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
+                            // bersihkan cache khusus ujian ini saja, tanpa ubah fitur lain
+                            if(idUser) clearUjianCacheForIdUser(idUser);
+                            try{ localStorage.removeItem("waktu_"+idUser); }catch(e){}
+                            window.idRowUjian=null;
+                            stopUjianDeleteWatch(); stopAdminKickWatch();
+                            if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Pelanggaran & waktu akan direset. Silakan login ulang untuk memulai baru.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                        }
+                    }).subscribe();
+            }catch(e){ console.warn('delete watch fail',e); }
+        }
+        function startAdminKickWatch(){
+            if(!window.idRowUjian) return;
+            stopAdminKickWatch();
+            try{
+                _adminKickChannel = db.channel('admin-kick')
+                    .on('broadcast', {event:'kick'}, payload=>{
+                        const ids = payload.payload?.ids || [];
+                        if(ids.map(String).includes(String(window.idRowUjian))){
+                            const n=document.getElementById('nama')?.value||"";
+                            const k=document.getElementById('kelas')?.value||"";
+                            const idUser=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
+                            if(idUser) clearUjianCacheForIdUser(idUser);
+                            try{ localStorage.removeItem("waktu_"+idUser); }catch(e){}
+                            window.idRowUjian=null;
+                            stopUjianDeleteWatch(); stopAdminKickWatch();
+                            if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Silakan login ulang untuk memulai baru.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                        }
+                    }).subscribe();
+            }catch(e){ console.warn('kick watch fail',e); }
+        }
+        async function checkRowDeletedAndClear(){
+            if(!window.idRowUjian) return false;
+            try{
+                const { data, error } = await db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle();
+                if(error && error.code==='PGRST116') return true;
+                if(!data) return true;
+                return false;
+            }catch(e){ return false; }
+        }
+
         function formatNamaLengkap(input) {
             if (!input.value) return;
             input.value = input.value.toLowerCase().replace(/\b[a-z]/g, function (letter) {
@@ -5126,6 +5218,27 @@
                 }
                 // Existing session: hanya set ID dan flag lokal, tidak kirim status AKTIF lagi (handled di startHandler)
                 window.idRowUjian = existing.id;
+                try{ startUjianDeleteWatch(); }catch(e){}
+                try{ startAdminKickWatch(); }catch(e){}
+                // cek periodik tiap 15 detik: jika row dihapus admin saat sedang mengerjakan, bersihkan cache
+                try{
+                    if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                    window._ujianDeleteInterval = setInterval(async ()=>{
+                        if(!window.idRowUjian) return;
+                        const gone = await checkRowDeletedAndClear();
+                        if(gone){
+                            const n=document.getElementById('nama')?.value||"";
+                            const k=document.getElementById('kelas')?.value||"";
+                            const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||idUserLocal;
+                            clearUjianCacheForIdUser(idU);
+                            try{ localStorage.removeItem("waktu_"+idU); }catch(e){}
+                            window.idRowUjian=null;
+                            stopUjianDeleteWatch(); stopAdminKickWatch();
+                            clearInterval(window._ujianDeleteInterval);
+                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Waktu & pelanggaran akan direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                        }
+                    }, 15000);
+                }catch(e){}
                     localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                 // Generate & simpan device token untuk sesi ini
                 const existingToken = generateDeviceToken();
@@ -5153,6 +5266,27 @@
                 }
 
             } else {
+                // Jika tidak ada sesi aktif untuk nama/kelas/mapel ini tapi cache lama masih ada (admin baru hapus saat siswa sedang mengerjakan), bersihkan total biar fresh
+                try{
+                    const hadOldCache = localStorage.getItem("pelanggaran_" + idUserLocal) !== null || localStorage.getItem("waktu_mulai_" + idUserLocal) !== null || localStorage.getItem("sesi_aktif_" + idUserLocal) !== null;
+                    if(hadOldCache){
+                        // Selalu bersihkan jika existing null tapi cache ada — admin sudah hapus row, jangan bawa pelanggaran/waktu lama ke sesi baru
+                        clearUjianCacheForIdUser(idUserLocal);
+                        try{ localStorage.removeItem("waktu_" + idUserLocal); }catch(e){}
+                        try{ localStorage.removeItem("waktu_mulai_" + idUserLocal); }catch(e){}
+                        p_count = 0;
+                        try{ localStorage.setItem("pelanggaran_" + idUserLocal, "0"); }catch(e){}
+                        try{ localStorage.setItem("log_pelanggaran_" + idUserLocal, ""); }catch(e){}
+                        try{ localStorage.removeItem("urutan_" + idUserLocal); }catch(e){}
+                        try{ localStorage.removeItem("durasi_" + idUserLocal); }catch(e){}
+                        try{ localStorage.removeItem("ragu_" + idUserLocal); }catch(e){}
+                        // Juga cek row lama via window.idRowUjian jika ada, untuk jaga-jaga realtime
+                        if(window.idRowUjian){
+                            const gone = await checkRowDeletedAndClear();
+                            if(gone){ window.idRowUjian=null; stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }
+                        }
+                    }
+                }catch(e){}
                 // Buat sesi baru — dengan handle duplikat 23505 (klik 2x bareng)
                 const newToken = generateDeviceToken();
                 localStorage.setItem("device_token_" + idUserLocal, newToken);
@@ -5206,6 +5340,26 @@
                 }
                 if (inserted) {
                     window.idRowUjian = inserted.id;
+                    try{ startUjianDeleteWatch(); }catch(e){}
+                    try{ startAdminKickWatch(); }catch(e){}
+                    try{
+                        if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                        window._ujianDeleteInterval = setInterval(async ()=>{
+                            if(!window.idRowUjian) return;
+                            const gone = await checkRowDeletedAndClear();
+                            if(gone){
+                                const n=document.getElementById('nama')?.value||"";
+                                const k=document.getElementById('kelas')?.value||"";
+                                const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||idUserLocal;
+                                clearUjianCacheForIdUser(idU);
+                                try{ localStorage.removeItem("waktu_"+idU); }catch(e){}
+                                window.idRowUjian=null;
+                                stopUjianDeleteWatch(); stopAdminKickWatch();
+                                clearInterval(window._ujianDeleteInterval);
+                                Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Waktu & pelanggaran akan direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                            }
+                        }, 15000);
+                    }catch(e){}
                     aktifSignalSent = true;
                     localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                     if (inserted.created_at) localStorage.setItem(keyWaktu, new Date(inserted.created_at).toISOString());
@@ -5787,6 +5941,20 @@
         // Restore jawaban dari backup Supabase jika localStorage kosong/sebagian hilang
         async function restoreFromSupabase() {
             if (!window.idRowUjian) return;
+            // Jika row sudah dihapus admin saat sedang mengerjakan, bersihkan cache biar pelanggaran/waktu tidak kebawa
+            try{
+                const chk = await dbWithTimeout(db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle());
+                if(!chk || !chk.data){
+                    const n=document.getElementById('nama')?.value||"";
+                    const k=document.getElementById('kelas')?.value||"";
+                    const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
+                    if(idU) clearUjianCacheForIdUser(idU);
+                    window.idRowUjian=null;
+                    stopUjianDeleteWatch();
+                    if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                    return;
+                }
+            }catch(e){}
             // Cek urutan_soal — jika ada, berarti restore aman termasuk essay & format lama
             let cekUrutan = null;
             let urutanAda = false;

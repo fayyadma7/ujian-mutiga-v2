@@ -220,6 +220,7 @@ async function hapusDataNilai(id, nama) {
     const { error } = await adminDb.delete('jawaban_ujian', id);
     if (error) showToast("Gagal menghapus: " + error.message, 'error');
     else {
+        try{ const ch=db.channel('admin-kick'); ch.subscribe(async (st)=>{ if(st==='SUBSCRIBED'){ await ch.send({type:'broadcast', event:'kick', payload:{ids:[id]}}); setTimeout(()=>{ try{ db.removeChannel(ch);}catch(e){} }, 1200); } }); }catch(e){}
         const undoDelete = async () => {
             if (savedData) {
                 const { error: insertError } = await adminDb.insert('jawaban_ujian', [savedData]);
@@ -243,6 +244,7 @@ async function bulkActionNilai(action) {
     const { data: backupData } = await db.from('jawaban_ujian').select('*').in('id', ids);
     const { error: lBatchErr } = await adminDb.batchDelete('jawaban_ujian', ids);
     if (lBatchErr) { showToast("Gagal menghapus: " + lBatchErr.message, 'error'); return; }
+    try{ const ch=db.channel('admin-kick'); ch.subscribe(async (st)=>{ if(st==='SUBSCRIBED'){ await ch.send({type:'broadcast', event:'kick', payload:{ids}}); setTimeout(()=>{ try{ db.removeChannel(ch);}catch(e){} }, 1200); } }); }catch(e){}
     const undoFunc = async () => {
         if (backupData && backupData.length > 0) { await chunkedInsert('jawaban_ujian', backupData); loadNilaiSiswa(); showToast(`${ids.length} data nilai berhasil di-restore`, 'success'); }
     };
