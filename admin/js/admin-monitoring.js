@@ -19,6 +19,7 @@ let isSubscribing = false;
 let isLoadingMonitoring = false;
 const violationCooldownMs = 60000;
 const violationLastToastAt = new Map();
+let _monMapelCache = [];
 function scheduleReconnect(){
   if(intentionalClose) return;
   if(reconnectTimer) clearTimeout(reconnectTimer);
@@ -185,6 +186,25 @@ async function populateFilterKelas() {
             mapelList = [...s].sort();
         }
     } catch (_) { mapelList = allowedMapelList || []; }
+    // — COMPREHENSIVE: tambah riwayat agar mapel pernah diujikan tetap muncul
+    try{
+        const fetchMapels = async (table)=>{
+            let out=[]; let from=0; const PAGE=1000;
+            while(true){
+                const { data, error } = await db.from(table).select('mapel').range(from, from+PAGE-1);
+                if(error || !data || data.length===0) break;
+                out = out.concat(data);
+                if(data.length<PAGE) break;
+                from+=PAGE; if(from>10000) break;
+            }
+            return out;
+        };
+        const [jwbRows, jadRows] = await Promise.all([fetchMapels('jawaban_ujian'), fetchMapels('jadwal_ujian')]);
+        const compSet = new Set(mapelList);
+        (jwbRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+        (jadRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+        mapelList = [...compSet].sort((a,b)=>a.localeCompare(b,'id'));
+    }catch(_){}
 
     const prevKelas = selectKelas.value;
     const prevMapel = selectMapel.value;
@@ -209,10 +229,95 @@ async function populateFilterKelas() {
     if (mapelList.includes(prevMapel)) selectMapel.value = prevMapel;
     else selectMapel.value = '';
 
+    // searchable mapel — compact
+    _monMapelCache = [...mapelList];
+    try{
+        const inpMon=document.getElementById('filter-mapel-monitoring-search');
+        const selMon=document.getElementById('filter-mapel-monitoring');
+        const ddMon=document.getElementById('filter-mapel-monitoring-dropdown');
+        if(selMon && inpMon){
+            if(selMon.value) inpMon.value=selMon.value;
+            else if(!inpMon.dataset.userTyped) inpMon.value='';
+        }
+        // hapus csl lama untuk mapel monitoring
+        document.querySelectorAll('.csl-container').forEach(c=>{
+            if(c.contains(selectMapel)){
+                const b=c.querySelector('.csl-btn'); if(b) b.remove();
+                const d=c.querySelector('.csl-dropdown'); if(d && d.id!=='filter-mapel-monitoring-dropdown') d.remove();
+                if(c.children.length===1 && c.contains(selectMapel)){
+                    const par=c.parentNode; if(par){ par.insertBefore(selectMapel, c); c.remove(); }
+                } else c.style.display='none';
+                delete selectMapel.dataset.cslReady;
+            }
+        });
+        if(selectMapel){ selectMapel.style.display='none'; selectMapel.classList.remove('csl-native'); delete selectMapel.dataset.cslReady; }
+        document.querySelectorAll('#filter-mapel-monitoring-csldd').forEach(el=> el.remove());
+        if(inpMon && ddMon){
+            if(!inpMon.dataset.monSearchReady){
+                inpMon.dataset.monSearchReady='1';
+                inpMon.addEventListener('input', ()=>{ inpMon.dataset.userTyped='1'; renderMonMapelDropdown(inpMon.value); ddMon.style.display='block'; });
+                inpMon.addEventListener('focus', ()=>{
+                    const v=(inpMon.value||'').trim();
+                    if(v) renderMonMapelDropdown(v);
+                    else { ddMon.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Cari Mapel</div>'; ddMon.style.display='block'; }
+                });
+                inpMon.addEventListener('blur', ()=> setTimeout(()=>{
+                    ddMon.style.display='none';
+                    // jangan auto-refresh saat blur/klik kosong — hanya hide, revert input ke nilai terpilih
+                    const sel=document.getElementById('filter-mapel-monitoring');
+                    if(sel && inpMon){
+                        const cur=sel.value||'';
+                        if((inpMon.value||'').trim() !== cur) inpMon.value = cur;
+                    }
+                }, 180));
+                inpMon.addEventListener('keydown', (e)=>{
+                    if(e.key==='Enter'){
+                        e.preventDefault();
+                        const typed=(inpMon.value||'').trim().toLowerCase();
+                        const first=_monMapelCache.find(m=> m.toLowerCase().includes(typed));
+                        if(first) selectMonMapel(first);
+                    } else if(e.key==='Escape'){ ddMon.style.display='none'; inpMon.blur(); }
+                });
+                document.addEventListener('click', (e)=>{
+                    if(!inpMon.contains(e.target) && !ddMon.contains(e.target)) ddMon.style.display='none';
+                });
+            }
+            ddMon.style.display='none';
+        }
+    }catch(e){}
+
     if (typeof syncCustomSelect === 'function') {
         syncCustomSelect('filter-kelas-monitoring');
-        syncCustomSelect('filter-mapel-monitoring');
     }
+}
+
+function renderMonMapelDropdown(filter){
+    const dd=document.getElementById('filter-mapel-monitoring-dropdown');
+    if(!dd) return;
+    const q=(filter||'').trim().toLowerCase();
+    if(!q){
+        dd.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Cari Mapel</div>';
+        dd.style.display='block'; return;
+    }
+    const list=_monMapelCache.filter(m=> m.toLowerCase().includes(q));
+    if(!list.length){
+        dd.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Tidak ada mapel cocok</div>';
+        dd.style.display='block'; return;
+    }
+    dd.innerHTML=list.map(m=> `<div class="csl-option" style="padding:6px 10px; font-size:11px; cursor:pointer; border-radius:6px;" onmousedown="event.preventDefault(); selectMonMapel('${m.replace(/'/g,"\\'")}')">${m}</div>`).join('');
+    dd.style.display='block';
+}
+function selectMonMapel(val){
+    const sel=document.getElementById('filter-mapel-monitoring');
+    const inp=document.getElementById('filter-mapel-monitoring-search');
+    const dd=document.getElementById('filter-mapel-monitoring-dropdown');
+    if(sel){
+        let exists=[...sel.options].some(o=>o.value===val);
+        if(!exists){ const opt=document.createElement('option'); opt.value=val; opt.textContent=val; sel.appendChild(opt); }
+        sel.value=val; sel.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    if(inp){ inp.value=val; inp.dataset.userTyped='1'; }
+    if(dd) dd.style.display='none';
 }
 
 async function loadMonitoring() {
@@ -485,12 +590,15 @@ function clearDateFilter() {
 function clearFilterMonitoring() {
     document.getElementById('search-nama-monitoring').value = '';
     document.getElementById('filter-mapel-monitoring').value = '';
+    const inpMon=document.getElementById('filter-mapel-monitoring-search');
+    if(inpMon){ inpMon.value=''; inpMon.dataset.userTyped=''; }
+    const ddMon=document.getElementById('filter-mapel-monitoring-dropdown');
+    if(ddMon) ddMon.style.display='none';
     document.getElementById('filter-kelas-monitoring').value = '';
     document.getElementById('filter-tgl-awal-monitoring').value = '';
     document.getElementById('filter-tgl-akhir-monitoring').value = '';
     document.getElementById('date-filter-label').textContent = 'Semua Tanggal';
     if (typeof syncCustomSelect === 'function') {
-        syncCustomSelect('filter-mapel-monitoring');
         syncCustomSelect('filter-kelas-monitoring');
     }
     currentMonStatus = 'ALL';

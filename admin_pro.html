@@ -919,17 +919,28 @@
 
                     <!-- TABEL DAFTAR JADWAL — hanya 3 baris terlihat, scroll vertikal+horizontal -->
                     <div class="card-panel">
-                        <div class="panel-header" style="flex-wrap:wrap; gap:12px;">
-                            <h3 class="panel-title">Daftar Jadwal Ujian</h3>
-                            <div style="display: flex; gap: 10px; align-items:center; flex-wrap:wrap;">
-                                <input type="text" id="search-jadwal" class="form-control" placeholder="Cari Jadwal Ujian" style="width:220px; padding:7px 12px; font-size:13px;" onkeyup="filterJadwal()" oninput="filterJadwal()">
-                                <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#f87171; border:1px solid rgba(239, 68, 68, 0.25);"
-                                    onclick="bulkActionJadwal('delete')">
-                                    <i class="fas fa-trash-alt"></i> Hapus Terpilih
-                                </button>
-                                <button class="btn btn-outline" onclick="loadJadwal()">
-                                    <i class="fas fa-sync-alt"></i> Refresh
-                                </button>
+                        <div class="panel-header" style="flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+                            <h3 class="panel-title" style="flex:0 0 auto;">Daftar Jadwal Ujian</h3>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:1; justify-content:flex-end; max-width:560px;">
+                                <input type="text" id="search-jadwal" class="form-control" placeholder="Cari Jadwal Ujian" style="flex:1 1 140px; min-width:120px; max-width:180px; padding:6px 10px; font-size:11px;" onkeyup="filterJadwal()" oninput="filterJadwal()">
+                                <select id="sort-jadwal" style="display:none;" onchange="handleSortJadwal(this.value)">
+                                    <option value="">Urutkan</option>
+                                    <option value="date-asc">Tanggal ▲ Terdekat</option>
+                                    <option value="date-desc">Tanggal ▼ Terjauh</option>
+                                    <option value="mod-desc">Modifikasi Terbaru</option>
+                                    <option value="mod-asc">Modifikasi Terlama</option>
+                                    <option value="az">Nama A-Z</option>
+                                    <option value="za">Nama Z-A</option>
+                                </select>
+                                <div style="display:flex; gap:8px; flex:0 0 auto;">
+                                    <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#f87171; border:1px solid rgba(239, 68, 68, 0.25); padding:6px 12px; font-size:11px; border-radius:8px; white-space:nowrap;"
+                                        onclick="bulkActionJadwal('delete')">
+                                        <i class="fas fa-trash-alt"></i> Hapus Terpilih
+                                    </button>
+                                    <button class="btn btn-outline" onclick="loadJadwal()" style="padding:6px 12px; font-size:11px; border-radius:8px; white-space:nowrap;">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="jadwal-scroll-wrapper">
@@ -984,10 +995,11 @@
                                         </div>
                                     </div>
                                 </div>
-                                <select id="filter-mapel-monitoring" style="display:none;"
-                                    onchange="currentMonPage=1; loadMonitoring()">
-                                    <option value="">Semua Mapel</option>
-                                </select>
+                                <div style="position:relative; min-width:130px; width:140px;">
+                                    <input type="text" id="filter-mapel-monitoring-search" class="form-control" placeholder="Cari Mapel" autocomplete="off" style="padding:6px 10px; font-size:11px; width:100%;">
+                                    <select id="filter-mapel-monitoring" style="display:none;" onchange="currentMonPage=1; loadMonitoring()"><option value="">Semua Mapel</option></select>
+                                    <div id="filter-mapel-monitoring-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:180px; overflow-y:auto; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.4); z-index:20; font-size:11px;"></div>
+                                </div>
                                 <select id="filter-kelas-monitoring" style="display:none;"
                                     onchange="currentMonPage=1; loadMonitoring()">
                                     <option value="">Semua Kelas</option>
@@ -1112,10 +1124,11 @@
                                         </div>
                                     </div>
                                 </div>
-                                <select id="filter-mapel-laporan" style="display:none;"
-                                    onchange="currentLapPage=1; loadNilaiSiswa()">
-                                    <option value="">Semua Mapel</option>
-                                </select>
+                                <div style="position:relative; min-width:130px; width:140px;">
+                                    <input type="text" id="filter-mapel-laporan-search" class="form-control" placeholder="Cari Mapel" autocomplete="off" style="padding:6px 10px; font-size:11px; width:100%;">
+                                    <select id="filter-mapel-laporan" style="display:none;" onchange="currentLapPage=1; loadNilaiSiswa()"><option value="">Semua Mapel</option></select>
+                                    <div id="filter-mapel-laporan-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:180px; overflow-y:auto; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.4); z-index:20; font-size:11px;"></div>
+                                </div>
                                 <select id="filter-kelas-laporan" style="display:none;"
                                     onchange="currentLapPage=1; loadNilaiSiswa()">
                                     <option value="">Semua Kelas</option>

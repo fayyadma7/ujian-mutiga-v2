@@ -701,7 +701,6 @@ function initPage(idHalaman) {
     }
     if (idHalaman === 'laporan') {
         if (typeof initCustomSelect === 'function') {
-            initCustomSelect('filter-mapel-laporan');
             initCustomSelect('filter-kelas-laporan');
         }
         if (typeof loadNilaiSiswa === 'function') loadNilaiSiswa();
@@ -710,6 +709,9 @@ function initPage(idHalaman) {
         if (typeof populateJadwalMapelDropdown === 'function') {
             // jadwal-mapel sekarang searchable input, bukan csl select
             populateJadwalMapelDropdown();
+        }
+        if (typeof initCustomSelect === 'function') {
+            try{ initCustomSelect('sort-jadwal'); }catch(e){}
         }
         if (typeof loadJadwal === 'function') loadJadwal();
         // custom datetime picker — scrollbar jam selalu terlihat (desktop)
@@ -735,14 +737,12 @@ function initPage(idHalaman) {
     }
     if (idHalaman === 'analisis-soal-page') {
         if (typeof initCustomSelect === 'function') {
-            initCustomSelect('ana-filter-mapel');
             initCustomSelect('ana-filter-kelas');
         }
         if (typeof populateAnalisisFilters === 'function') populateAnalisisFilters();
     }
     if (idHalaman === 'monitoring') {
         if (typeof initCustomSelect === 'function') {
-            initCustomSelect('filter-mapel-monitoring');
             initCustomSelect('filter-kelas-monitoring');
         }
         if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
@@ -754,16 +754,18 @@ function initPage(idHalaman) {
             const pending = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
             if (pending) {
                 const sel = document.getElementById('filter-mapel-monitoring');
+                const inp = document.getElementById('filter-mapel-monitoring-search');
                 if (sel) {
                     let exists = [...sel.options].some(o => o.value === pending);
                     if (!exists) {
                         const opt = document.createElement('option');
                         opt.value = pending; opt.textContent = pending;
                         sel.appendChild(opt);
+                        if(typeof _monMapelCache !== 'undefined' && !_monMapelCache.includes(pending)) _monMapelCache.push(pending);
                     }
                     sel.value = pending;
-                    if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-mapel-monitoring');
                 }
+                if (inp) { inp.value = pending; inp.dataset.userTyped='1'; }
                 window._pendingMonMapel = null;
                 try{ sessionStorage.removeItem('_pendingMonMapel'); }catch(_){}
             }

@@ -7,7 +7,8 @@
 // ============================================================
 
 let editingJadwalId = null;
-
+let _jadwalLastData = [];
+let _jadwalSortBy = '';
 let _jadwalMapelCache = [];
 async function populateJadwalMapelDropdown() {
     const select = document.getElementById('jadwal-mapel');
@@ -449,12 +450,31 @@ async function loadJadwal() {
         return;
     }
 
+    // simpan untuk sort tanpa refetch
+    _jadwalLastData = [...data];
+    let displayData = [...data];
+    if(_jadwalSortBy){
+        const getT = v=> v? new Date(v).getTime():0;
+        const getMod = j=> j.created_at ? getT(j.created_at) : (j.id||0);
+        displayData.sort((a,b)=>{
+            switch(_jadwalSortBy){
+                case 'date-asc': return getT(a.waktu_mulai) - getT(b.waktu_mulai);
+                case 'date-desc': return getT(b.waktu_mulai) - getT(a.waktu_mulai);
+                case 'mod-desc': return getMod(b) - getMod(a);
+                case 'mod-asc': return getMod(a) - getMod(b);
+                case 'az': return String(a.mapel||'').localeCompare(String(b.mapel||''),'id');
+                case 'za': return String(b.mapel||'').localeCompare(String(a.mapel||''),'id');
+                default: return 0;
+            }
+        });
+    }
+
     tbody.innerHTML = '';
     if (jadwalTimeout) { clearTimeout(jadwalTimeout); jadwalTimeout = null; }
 
     let nextRefreshTime = Infinity;
 
-    data.forEach(j => {
+    displayData.forEach(j => {
         const isAktif = j.is_aktif === true;
         const checked = isAktif ? 'checked' : '';
         const creatorName = j.guru ? j.guru.nama : (j.created_by ? 'Tidak diketahui' : '<span style="color:var(--text-muted);font-size:11px;">—</span>');
@@ -1118,7 +1138,51 @@ function filterJadwal(){
     else card.style.setProperty('display','none','important');
   });
 }
+function handleSortJadwal(val){
+  _jadwalSortBy = val || '';
+  if(_jadwalLastData && _jadwalLastData.length){
+    // re-render dari cache tanpa fetch ulang
+    const tbody=document.getElementById('tabel-jadwal');
+    if(tbody){
+      // trigger re-render via loadJadwal dengan data cache? simplest: panggil loadJadwal tapi akan fetch lagi
+      // kita sort DOM langsung untuk hemat request
+      const rows=[...tbody.querySelectorAll('tr')].filter(r=> !r.querySelector('td[colspan]'));
+      // jika belum ada data cache, fallback load
+      if(!rows.length){ loadJadwal(); return; }
+      // buat map id -> row untuk reorder berdasarkan sorted displayData
+      const sorted=[..._jadwalLastData];
+      if(_jadwalSortBy){
+        const getT=v=> v? new Date(v).getTime():0;
+        const getMod=j=> j.created_at? getT(j.created_at): (j.id||0);
+        sorted.sort((a,b)=>{
+          switch(_jadwalSortBy){
+            case 'date-asc': return getT(a.waktu_mulai)-getT(b.waktu_mulai);
+            case 'date-desc': return getT(b.waktu_mulai)-getT(a.waktu_mulai);
+            case 'mod-desc': return getMod(b)-getMod(a);
+            case 'mod-asc': return getMod(a)-getMod(b);
+            case 'az': return String(a.mapel||'').localeCompare(String(b.mapel||''),'id');
+            case 'za': return String(b.mapel||'').localeCompare(String(a.mapel||''),'id');
+            default: return 0;
+          }
+        });
+      }
+      // reorder DOM sesuai sorted order
+      const idToRow=new Map();
+      rows.forEach(r=>{
+        const cb=r.querySelector('.cb-jadwal'); if(cb) idToRow.set(String(cb.value), r);
+      });
+      sorted.forEach(j=>{
+        const row=idToRow.get(String(j.id));
+        if(row) tbody.appendChild(row);
+      });
+      try{ if(document.getElementById('search-jadwal')?.value) filterJadwal(); }catch(e){}
+      return;
+    }
+  }
+  loadJadwal();
+}
 window.filterJadwal = filterJadwal;
+window.handleSortJadwal = handleSortJadwal;
 // expose
 window.openDTP = openDTP; window.closeDTP = closeDTP; window.initCustomDateTimePicker = initCustomDateTimePicker;
 window._dtpInitNow = _dtpInitNow;

@@ -7,6 +7,8 @@
 //            exportExcel
 // ============================================================
 
+let _lapMapelCache = [];
+
 // --- LAPORAN UTAMA ---
 async function loadNilaiSiswa() {
     const tbody = document.getElementById('tabel-data-nilai');
@@ -32,7 +34,7 @@ async function loadNilaiSiswa() {
         else allowedMapels = [];
     }
 
-    // Populate dropdown filter HARUS dari data master: mapel dari bank_soal, kelas dari tabel kelas (bukan dari jawaban_ujian)
+    // Populate dropdown filter — COMPREHENSIVE: bank_soal + riwayat jawaban_ujian + jadwal_ujian
     if (selectMapel && selectKelas) {
         let mapelList = [];
         if (allowedMapels !== null) {
@@ -45,6 +47,25 @@ async function loadNilaiSiswa() {
                 mapelList = [...s].sort();
             } catch (_) { mapelList = []; }
         }
+        // — gabungkan riwayat agar mapel pernah diujikan tetap muncul di pencarian
+        try{
+            const fetchMapels = async (table)=>{
+                let out=[]; let from=0; const PAGE=1000;
+                while(true){
+                    const { data, error } = await db.from(table).select('mapel').range(from, from+PAGE-1);
+                    if(error || !data || data.length===0) break;
+                    out = out.concat(data);
+                    if(data.length<PAGE) break;
+                    from+=PAGE; if(from>10000) break;
+                }
+                return out;
+            };
+            const [jwbRows, jadRows] = await Promise.all([fetchMapels('jawaban_ujian'), fetchMapels('jadwal_ujian')]);
+            const compSet = new Set(mapelList);
+            (jwbRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+            (jadRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+            mapelList = [...compSet].sort((a,b)=>a.localeCompare(b,'id'));
+        }catch(_){}
         let kelasList = [];
         try {
             const { data: kelasRaw } = await db.from('kelas').select('nama').eq('is_aktif', true).order('nama', { ascending: true });
@@ -64,9 +85,66 @@ async function loadNilaiSiswa() {
         else { selectKelas.value = ''; filterKelas = ''; }
 
         if (typeof syncCustomSelect === 'function') {
-            syncCustomSelect('filter-mapel-laporan');
             syncCustomSelect('filter-kelas-laporan');
         }
+        // searchable mapel — compact (mirip analisis)
+        try{
+            _lapMapelCache = [...mapelList];
+            const selLap = document.getElementById('filter-mapel-laporan');
+            const inpLap = document.getElementById('filter-mapel-laporan-search');
+            const ddLap = document.getElementById('filter-mapel-laporan-dropdown');
+            if (selLap && inpLap) {
+                if (selLap.value) inpLap.value = selLap.value;
+                else if (!inpLap.dataset.userTyped) inpLap.value = '';
+            }
+            // hapus csl lama
+            document.querySelectorAll('.csl-container').forEach(c=>{
+                const s=selLap;
+                if(s && c.contains(s)){
+                    const b=c.querySelector('.csl-btn'); if(b) b.remove();
+                    const d=c.querySelector('.csl-dropdown'); if(d && d.id!=='filter-mapel-laporan-dropdown') d.remove();
+                    if(c.children.length===1 && c.contains(s)){
+                        const par=c.parentNode; if(par){ par.insertBefore(s, c); c.remove(); }
+                    } else c.style.display='none';
+                    delete s.dataset.cslReady;
+                }
+            });
+            if(selLap){ selLap.style.display='none'; selLap.classList.remove('csl-native'); delete selLap.dataset.cslReady; }
+            document.querySelectorAll('#filter-mapel-laporan-csldd').forEach(el=> el.remove());
+            if (inpLap && ddLap) {
+                if (!inpLap.dataset.lapSearchReady) {
+                    inpLap.dataset.lapSearchReady='1';
+                    inpLap.addEventListener('input', ()=>{ inpLap.dataset.userTyped='1'; renderLapMapelDropdown(inpLap.value); ddLap.style.display='block'; });
+                    inpLap.addEventListener('focus', ()=>{
+                        const v=(inpLap.value||'').trim();
+                        if(v) renderLapMapelDropdown(v);
+                        else { ddLap.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Cari Mapel</div>'; ddLap.style.display='block'; }
+                    });
+                    inpLap.addEventListener('blur', ()=> setTimeout(()=>{
+                        ddLap.style.display='none';
+                        // jangan auto-refresh saat blur/klik kosong — hanya hide, revert input ke nilai terpilih
+                        const sel=document.getElementById('filter-mapel-laporan');
+                        if(sel && inpLap){
+                            const cur=sel.value||'';
+                            // kembalikan tampilan input ke nilai filter yang aktif, tanpa trigger change
+                            if((inpLap.value||'').trim() !== cur) inpLap.value = cur;
+                        }
+                    }, 180));
+                    inpLap.addEventListener('keydown', (e)=>{
+                        if(e.key==='Enter'){
+                            e.preventDefault();
+                            const typed=(inpLap.value||'').trim().toLowerCase();
+                            const first=_lapMapelCache.find(m=> m.toLowerCase().includes(typed));
+                            if(first) selectLapMapel(first);
+                        } else if(e.key==='Escape'){ ddLap.style.display='none'; inpLap.blur(); }
+                    });
+                    document.addEventListener('click', (e)=>{
+                        if(!inpLap.contains(e.target) && !ddLap.contains(e.target)) ddLap.style.display='none';
+                    });
+                }
+                ddLap.style.display='none';
+            }
+        }catch(e){}
     }
 
     let query = db.from('jawaban_ujian').select('*', { count: 'exact' });
@@ -187,15 +265,48 @@ function sortLaporanData(data) {
     return sorted;
 }
 
+// --- SEARCHABLE MAPEL helpers (compact) ---
+function renderLapMapelDropdown(filter){
+    const dd=document.getElementById('filter-mapel-laporan-dropdown');
+    if(!dd) return;
+    const q=(filter||'').trim().toLowerCase();
+    if(!q){
+        dd.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Cari Mapel</div>';
+        dd.style.display='block'; return;
+    }
+    const list=_lapMapelCache.filter(m=> m.toLowerCase().includes(q));
+    if(!list.length){
+        dd.innerHTML='<div style="padding:8px; text-align:center; color:#64748b; font-size:11px;">Tidak ada mapel cocok</div>';
+        dd.style.display='block'; return;
+    }
+    dd.innerHTML=list.map(m=> `<div class="csl-option" style="padding:6px 10px; font-size:11px; cursor:pointer; border-radius:6px;" onmousedown="event.preventDefault(); selectLapMapel('${m.replace(/'/g,"\\'")}')">${m}</div>`).join('');
+    dd.style.display='block';
+}
+function selectLapMapel(val){
+    const sel=document.getElementById('filter-mapel-laporan');
+    const inp=document.getElementById('filter-mapel-laporan-search');
+    const dd=document.getElementById('filter-mapel-laporan-dropdown');
+    if(sel){
+        let exists=[...sel.options].some(o=>o.value===val);
+        if(!exists){ const opt=document.createElement('option'); opt.value=val; opt.textContent=val; sel.appendChild(opt); }
+        sel.value=val; sel.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    if(inp){ inp.value=val; inp.dataset.userTyped='1'; }
+    if(dd) dd.style.display='none';
+}
+
 // --- CLEAR FILTERS ---
 function clearFilterLaporan() {
     document.getElementById('search-nama-laporan').value = '';
     document.getElementById('filter-mapel-laporan').value = '';
+    const inpLap=document.getElementById('filter-mapel-laporan-search');
+    if(inpLap){ inpLap.value=''; inpLap.dataset.userTyped=''; }
+    const ddLap=document.getElementById('filter-mapel-laporan-dropdown');
+    if(ddLap) ddLap.style.display='none';
     document.getElementById('filter-kelas-laporan').value = '';
     document.getElementById('filter-tgl-awal-laporan').value = '';
     document.getElementById('filter-tgl-akhir-laporan').value = '';
     document.getElementById('date-filter-label-laporan').textContent = 'Semua Tanggal';
-    syncCustomSelect('filter-mapel-laporan');
     syncCustomSelect('filter-kelas-laporan');
     currentLapPage = 1;
     loadNilaiSiswa();

@@ -45,6 +45,25 @@ async function populateAnalisisFilters() {
             mapels = [...s].sort();
         } catch (_) { mapels = []; }
     }
+    // — COMPREHENSIVE: tambah riwayat agar mapel pernah diujikan tetap muncul di pencarian
+    try{
+        const fetchMapels = async (table)=>{
+            let out=[]; let from=0; const PAGE=1000;
+            while(true){
+                const { data, error } = await db.from(table).select('mapel').range(from, from+PAGE-1);
+                if(error || !data || data.length===0) break;
+                out = out.concat(data);
+                if(data.length<PAGE) break;
+                from+=PAGE; if(from>10000) break;
+            }
+            return out;
+        };
+        const [jwbRows, jadRows] = await Promise.all([fetchMapels('jawaban_ujian'), fetchMapels('jadwal_ujian')]);
+        const compSet = new Set(mapels);
+        (jwbRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+        (jadRows||[]).forEach(r=>{ if(r.mapel) compSet.add(r.mapel.trim()); });
+        mapels = [...compSet].sort((a,b)=>a.localeCompare(b,'id'));
+    }catch(_){}
 
     // Kelas HARUS dari tabel kelas master (is_aktif true), bukan dari jawaban_ujian
     let kelass = [];
