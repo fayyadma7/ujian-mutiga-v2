@@ -723,6 +723,11 @@
 @media (max-width: 480px){
   .jadwal-scroll-wrapper{ max-height: 520px !important; max-height: min(520px, 66vh) !important; }
 }
+
+@media (max-width: 768px){
+  tbody#tabel-jadwal{ grid-template-columns: 1fr !important; }
+}
+
 /* Scroll hint untuk wrapper yang masih pakai overflow-x di desktop */
 .table-scroll-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
 /* Pastikan switch toggle tetap kelihatan di card */

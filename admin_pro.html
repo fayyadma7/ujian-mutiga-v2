@@ -34,9 +34,9 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
     <link rel="stylesheet" href="admin/css/admin-base.css?v=9">
-    <link rel="stylesheet" href="admin/css/admin-components.css?v=3">
+    <link rel="stylesheet" href="admin/css/admin-components.css?v=4">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
-    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=27">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=28">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=5">
     <style>
         .pwd-toggle-glass{
@@ -840,79 +840,85 @@
             </section>
 
 
-            <!-- HALAMAN: PENJADWALAN -->
+            <!-- HALAMAN: PENJADWALAN — form horizontal di atas, daftar di bawah -->
             <section id="jadwal" class="page-section">
-                <div style="display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start;">
 
-                    <!-- FORM TAMBAH JADWAL -->
+                    <!-- FORM TAMBAH JADWAL — HORIZONTAL -->
                     <div class="card-panel">
                         <div class="panel-header">
                             <h3 class="panel-title">Buat Jadwal Baru</h3>
                         </div>
-                        <div class="form-group">
-                            <label>Nama Mata Pelajaran</label>
-                            <select id="jadwal-mapel" class="form-control">
-                                <option value="">— Pilih Mapel dari Bank Soal —</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Kelas Peserta <small style="color:var(--text-muted);font-weight:400;">— klik per kelas, kosongkan = semua kelas</small></label>
-                            <div id="jadwal-kelas-chips" class="chips-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
-                            <div id="jadwal-kelas-list" class="form-control" style="min-height:120px;max-height:160px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px;">
-                                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Memuat kelas...</div>
-                            </div>
-                            <select id="jadwal-kelas-select" style="display:none;" multiple></select>
-                            <small style="color:var(--text-muted);font-size:11px;">Klik kelas untuk pilih/batal — terpilih = biru.</small>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-calendar-check"></i> Window Waktu Ujian <span
-                                    style="font-size:11px; color:var(--text-muted); font-weight:400;">(kapan siswa boleh
-                                    login & mulai)</span></label>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; min-width:0;">
-                                <div style="min-width:0; overflow:hidden;">
-                                    <small
-                                        style="color:var(--text-muted); font-size:10px; display:block; margin-bottom:4px;">📅
-                                        Mulai Masuk</small>
-                                    <input type="datetime-local" id="jadwal-waktu" class="form-control"
-                                        style="padding: 8px 5px; font-size:12px;">
+                        <div class="jadwal-form-grid">
+                            <div class="jadwal-form-col" style="display:flex; flex-direction:column; gap:14px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>Nama Mata Pelajaran</label>
+                                    <select id="jadwal-mapel" class="form-control">
+                                        <option value="">— Pilih Mapel dari Bank Soal —</option>
+                                    </select>
                                 </div>
-                                <div style="min-width:0; overflow:hidden;">
-                                    <small
-                                        style="color:var(--text-muted); font-size:10px; display:block; margin-bottom:4px;">🔒
-                                        Batas Masuk</small>
-                                    <input type="datetime-local" id="jadwal-selesai" class="form-control"
-                                        style="padding: 8px 5px; font-size:12px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>Kelas Peserta <small style="color:var(--text-muted);font-weight:400;">— klik per kelas, kosongkan = semua kelas</small></label>
+                                    <div id="jadwal-kelas-chips" class="chips-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
+                                    <div id="jadwal-kelas-list" class="form-control" style="min-height:110px;max-height:150px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px;">
+                                        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Memuat kelas...</div>
+                                    </div>
+                                    <select id="jadwal-kelas-select" style="display:none;" multiple></select>
+                                    <small style="color:var(--text-muted);font-size:11px;">Klik kelas untuk pilih/batal — terpilih = biru.</small>
                                 </div>
                             </div>
-                            <div
-                                style="margin-top:6px; font-size:11px; color:var(--text-muted); background:rgba(255, 255, 255, 0.02); padding:6px 10px; border-radius:6px; border-left:3px solid var(--primary); border: 1px solid var(--border); border-top-left-radius: 0; border-bottom-left-radius: 0;">
-                                <i class="fas fa-info-circle"></i> Siswa hanya bisa mulai ujian di dalam rentang waktu ini.
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-stopwatch"></i> Durasi Ujian per Siswa</label>
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <input type="number" id="jadwal-durasi" class="form-control" min="1" max="300"
-                                    placeholder="Contoh: 90" style="width:120px; font-size:14px; font-weight:600;">
-                                <span style="font-size:14px; color:var(--text-muted); font-weight:600;">menit</span>
-                                <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                    <button type="button" onclick="document.getElementById('jadwal-durasi').value=45"
-                                        style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">45'</button>
-                                    <button type="button" onclick="document.getElementById('jadwal-durasi').value=60"
-                                        style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">60'</button>
-                                    <button type="button" onclick="document.getElementById('jadwal-durasi').value=90"
-                                        style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">90'</button>
-                                    <button type="button" onclick="document.getElementById('jadwal-durasi').value=120"
-                                        style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">120'</button>
+                            <div class="jadwal-form-col" style="display:flex; flex-direction:column; gap:14px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label><i class="fas fa-stopwatch"></i> Durasi Ujian per Siswa</label>
+                                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <input type="number" id="jadwal-durasi" class="form-control" min="1" max="300"
+                                            placeholder="Contoh: 90" style="width:110px; font-size:14px; font-weight:600; flex-shrink:0;">
+                                        <span style="font-size:14px; color:var(--text-muted); font-weight:600;">menit</span>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <button type="button" onclick="document.getElementById('jadwal-durasi').value=45"
+                                                style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">45'</button>
+                                            <button type="button" onclick="document.getElementById('jadwal-durasi').value=60"
+                                                style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">60'</button>
+                                            <button type="button" onclick="document.getElementById('jadwal-durasi').value=90"
+                                                style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">90'</button>
+                                            <button type="button" onclick="document.getElementById('jadwal-durasi').value=120"
+                                                style="padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:rgba(255, 255, 255, 0.05); color:var(--text-main); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">120'</button>
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="margin-top:6px; font-size:11px; color:var(--text-muted); background:rgba(16, 185, 129, 0.03); padding:6px 10px; border-radius:6px; border-left:3px solid #10b981; border: 1px solid rgba(16, 185, 129, 0.15); border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                        <i class="fas fa-user-clock"></i> Timer siswa dimulai saat klik <b>"Mulai Ujian"</b>.
+                                    </div>
                                 </div>
-                            </div>
-                            <div
-                                style="margin-top:6px; font-size:11px; color:var(--text-muted); background:rgba(16, 185, 129, 0.03); padding:6px 10px; border-radius:6px; border-left:3px solid #10b981; border: 1px solid rgba(16, 185, 129, 0.15); border-top-left-radius: 0; border-bottom-left-radius: 0;">
-                                <i class="fas fa-user-clock"></i> Timer siswa dimulai saat mereka klik <b>"Mulai Ujian"</b> dan akan berjalan selama durasi ini.
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label><i class="fas fa-calendar-check"></i> Window Waktu Ujian <span
+                                            style="font-size:11px; color:var(--text-muted); font-weight:400;">(kapan siswa boleh
+                                            login & mulai)</span></label>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; min-width:0;">
+                                        <div style="min-width:0; overflow:hidden;">
+                                            <small
+                                                style="color:var(--text-muted); font-size:10px; display:block; margin-bottom:4px;">📅
+                                                Mulai Masuk</small>
+                                            <input type="datetime-local" id="jadwal-waktu" class="form-control"
+                                                style="padding: 8px 5px; font-size:12px;">
+                                        </div>
+                                        <div style="min-width:0; overflow:hidden;">
+                                            <small
+                                                style="color:var(--text-muted); font-size:10px; display:block; margin-bottom:4px;">🔒
+                                                Batas Masuk</small>
+                                            <input type="datetime-local" id="jadwal-selesai" class="form-control"
+                                                style="padding: 8px 5px; font-size:12px;">
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="margin-top:6px; font-size:11px; color:var(--text-muted); background:rgba(255, 255, 255, 0.02); padding:6px 10px; border-radius:6px; border-left:3px solid var(--primary); border: 1px solid var(--border); border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                        <i class="fas fa-info-circle"></i> Siswa hanya bisa mulai ujian di dalam rentang waktu ini.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <button id="btn-submit-jadwal" class="btn btn-primary"
-                            style="width: 100%; justify-content: center;" onclick="simpanJadwal()">
+                            style="width: 100%; justify-content: center; margin-top:16px;" onclick="simpanJadwal()">
                             <i class="fas fa-plus"></i> Simpan Jadwal
                         </button>
                         <div id="status-jadwal" style="margin-top: 12px; font-weight: 500; text-align: center;"></div>
@@ -933,21 +939,7 @@
                             </div>
                         </div>
                         <div class="jadwal-scroll-wrapper">
-                        <table style="width:100%; table-layout:auto;">
-                            <thead>
-                                <tr>
-                                    <th style="width:40px; text-align:center;"><input type="checkbox" id="select-all-jadwal"
-                                            onchange="toggleSelectAll('jadwal')"></th>
-                                    <th style="text-align:left; min-width:160px;">MATA PELAJARAN</th>
-                                    <th style="text-align:center; min-width:180px;">TARGET KELAS</th>
-                                    <th style="text-align:center; min-width:200px; white-space:nowrap;">WAKTU PELAKSANAAN</th>
-                                    <th style="text-align:center; min-width:80px; white-space:nowrap;">DURASI</th>
-                                    <th style="text-align:center; min-width:110px;">STATUS</th>
-                                    <th style="text-align:center; min-width:90px;">AKTIFKAN</th>
-                                    <th style="text-align:center; min-width:120px;">DIBUAT OLEH</th>
-                                    <th style="text-align:center; min-width:90px;">OPSI</th>
-                                </tr>
-                            </thead>
+                        <table style="width:100%; table-layout:auto; border-collapse: separate; border-spacing: 0;">
                             <tbody id="tabel-jadwal">
                                 <tr>
                                     <td colspan="9" style="text-align:center; padding: 20px;">Memuat jadwal...</td>
@@ -2460,9 +2452,20 @@
         });
     </script>
 
+    <!-- Global Loading Overlay — animasi saat klik yang delay -->
+    <div id="global-loader" style="display:none; position:fixed; inset:0; background:rgba(4,8,18,0.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:9998; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s ease;">
+        <div style="background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:28px 36px; display:flex; flex-direction:column; align-items:center; gap:14px; box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(0.96); transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1); min-width:220px;" id="global-loader-card">
+            <div style="width:48px; height:48px; border-radius:50%; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.2); display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-spinner fa-spin" style="font-size:22px; color:#60a5fa;"></i>
+            </div>
+            <div id="global-loader-text" style="font-family:'Outfit',sans-serif; font-size:13px; font-weight:700; color:#e2e8f0; letter-spacing:0.3px; text-align:center;">Memproses...</div>
+            <div style="font-size:11px; color:#64748b; text-align:center;">Mohon tunggu sebentar</div>
+        </div>
+    </div>
+
     <script src="admin/js/admin-core.js?v=3"></script>
     <!-- Eager preload jadwal picker (desktop scrollbar fix) — also lazy-loaded via admin-core -->
-    <script src="admin/js/admin-jadwal.js?v=7" defer></script>
+    <script src="admin/js/admin-jadwal.js?v=8" defer></script>
     <script>
     // Fallback: paksa init picker desktop segera setelah load (jika lazy belum sempat)
     (function(){

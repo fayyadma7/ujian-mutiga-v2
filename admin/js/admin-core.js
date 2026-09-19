@@ -388,7 +388,7 @@ function hentikanRealtimeGuru() {
 // ==================== GURU STATUS ONLINE & HEARTBEAT ====================
 async function setGuruStatusOnline(guruId) {
     try {
-        await adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() });
+        await adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() }, {silent:true});
         try {
             await fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
                 method: 'POST',
@@ -452,7 +452,7 @@ async function scheduleNextAutoDeactivate() {
         if (idsToDeactivate.length > 0) {
             let updateError = null;
             for (const did of idsToDeactivate) {
-                const { error: e } = await adminDb.update('jadwal_ujian', did, { is_aktif: false });
+                const { error: e } = await adminDb.update('jadwal_ujian', did, { is_aktif: false }, {silent:true});
                 if (e) updateError = e;
             }
             idsToDeactivate.forEach(id => _deactivatingIds.delete(id));
@@ -1193,7 +1193,7 @@ function logoutGuru() {
         if (res.isConfirmed) {
             const sesi = getGuruSession();
             if (sesi && sesi.id) {
-                try { await adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() }); } catch (_) {}
+                try { await adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() }, {silent:true}); } catch (_) {}
             }
             // Cleanup all channels & intervals
             if (typeof monitoringChannel !== 'undefined' && monitoringChannel) { db.removeChannel(monitoringChannel); monitoringChannel = null; }
@@ -1354,7 +1354,7 @@ window.addEventListener('beforeunload', () => {
                 keepalive: true
             });
         } catch (_) {}
-        try { adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() }).catch(() => {}); } catch (_) {}
+        try { adminDb.update('guru', sesi.id, { status: 'offline', last_seen: new Date().toISOString() }, {silent:true}).catch(() => {}); } catch (_) {}
     }
 });
 
@@ -1462,4 +1462,35 @@ function syncBottomNavActive(idHalaman){
         syncBottomNavActive(idHalaman);
         if(window.innerWidth<=768) closeMobileSidebar();
     };
+})();
+
+// ==================== GLOBAL CLICK ANIMASI — feedback instan saat delay ====================
+(function(){
+  // Ripple + scale untuk semua tombol
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('button, .btn, [role="button"]');
+    if(!btn) return;
+    if(btn.closest('#global-loader')) return;
+    // animasi scale cepat
+    const origTrans = btn.style.transform;
+    btn.style.transform = 'scale(0.96)';
+    setTimeout(()=>{ try{ btn.style.transform = origTrans; }catch(_){} }, 140);
+    // jika tombol memicu aksi delay (hapus/edit/simpan/toggle/bulk), beri is-loading 400ms minimal biar user lihat feedback
+    const onclick = (btn.getAttribute('onclick')||'') + ' ' + (btn.id||'');
+    const isDelayAction = /hapus|delete|edit|update|simpan|bulk|toggle|load|refresh|hapusJadwal|hapusSatu|rename|cut|move/i.test(onclick);
+    if(isDelayAction && !btn.classList.contains('is-loading')){
+      btn.classList.add('is-loading');
+      // lepas setelah 700ms atau saat global-loader hilang (mana yang lebih lama)
+      setTimeout(()=> btn.classList.remove('is-loading'), 900);
+    }
+  }, true);
+  // Pastikan global-loader juga hilang saat navigasi
+  const _hide = window.hideGlobalLoader;
+  if(_hide){
+    const origHide = _hide;
+    window.hideGlobalLoader = function(){
+      origHide();
+      document.querySelectorAll('.btn.is-loading').forEach(b=> setTimeout(()=>b.classList.remove('is-loading'), 400));
+    };
+  }
 })();

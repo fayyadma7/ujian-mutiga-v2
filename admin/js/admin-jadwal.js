@@ -205,8 +205,10 @@ function batalEditJadwal() {
 
 async function simpanJadwal() {
     const mapel = document.getElementById('jadwal-mapel').value.trim();
-    const waktuMulaiRaw = document.getElementById('jadwal-waktu').value;
-    const waktuSelesaiRaw = document.getElementById('jadwal-selesai').value;
+    const elWM=document.getElementById('jadwal-waktu');
+    const elWS=document.getElementById('jadwal-selesai');
+    const waktuMulaiRaw = (elWM && elWM.dataset && elWM.dataset.iso) ? elWM.dataset.iso : (elWM ? elWM.value : '');
+    const waktuSelesaiRaw = (elWS && elWS.dataset && elWS.dataset.iso) ? elWS.dataset.iso : (elWS ? elWS.value : '');
     const durasiInput = parseInt(document.getElementById('jadwal-durasi').value);
     const statusEl = document.getElementById('status-jadwal');
 
@@ -415,7 +417,25 @@ async function hapusJadwal(id, mapel) {
 }
 
 async function mulaiEditJadwal(id) {
+    // — Loader instan untuk edit (tanpa delay 300ms) biar konsisten —
+    const _triggerBtn = (typeof event !== 'undefined' && event?.currentTarget) ? event.currentTarget : document.activeElement;
+    const _isBtn = _triggerBtn && _triggerBtn.tagName === 'BUTTON';
+    const _origHTML = _isBtn ? _triggerBtn.innerHTML : null;
+    const _origDis = _isBtn ? _triggerBtn.disabled : null;
+    let _cardEl = null;
+    try{
+        if(_isBtn){ _triggerBtn.classList.add('is-loading'); _triggerBtn.disabled=true; _triggerBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memuat...'; }
+        const _gl=document.getElementById('global-loader');
+        const _glTxt=document.getElementById('global-loader-text');
+        if(_gl){ _gl.style.display='flex'; void _gl.offsetWidth; _gl.classList.add('show'); _gl.style.opacity='1'; if(_glTxt) _glTxt.textContent='Memuat jadwal...'; }
+        // tandai card yang di-edit biar ada pulse
+        _cardEl = _isBtn ? _triggerBtn.closest('tr') : null;
+        if(_cardEl) _cardEl.classList.add('jadwal-pulse');
+    }catch(e){}
+    let _editData=null, _editError=null;
+    try{
     const { data, error } = await db.from('jadwal_ujian').select('*').eq('id', id).single();
+    _editData=data; _editError=error;
     if (error || !data) {
         if (typeof showToast === 'function') showToast('Gagal memuat jadwal: ' + (error?.message || 'tidak ditemukan'), 'error');
         return;
@@ -451,7 +471,15 @@ async function mulaiEditJadwal(id) {
         const d = new Date(isoStr);
         if (isNaN(d.getTime())) return '';
         const pad = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function toISOFromDisplayOrInput(el){
+        if(!el) return '';
+        if(el.dataset && el.dataset.iso) return el.dataset.iso;
+        const v=(el.value||'').trim();
+        const p=_dtpParseDisplay(v);
+        if(p){ const pad=n=>String(n).padStart(2,'0'); return `${p.y}-${pad(p.m+1)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}`; }
+        return v;
     }
 
     let selesaiVal = data.waktu_selesai;
@@ -463,8 +491,10 @@ async function mulaiEditJadwal(id) {
         }
     }
 
-    document.getElementById('jadwal-waktu').value = toLocalDatetimeInput(data.waktu_mulai);
-    document.getElementById('jadwal-selesai').value = toLocalDatetimeInput(selesaiVal);
+    const elW = document.getElementById('jadwal-waktu');
+    const elS = document.getElementById('jadwal-selesai');
+    if(elW){ elW.value = toLocalDatetimeInput(data.waktu_mulai); try{ const dW=new Date(data.waktu_mulai); if(!isNaN(dW.getTime())){ const pad=n=>String(n).padStart(2,'0'); elW.dataset.iso=`${dW.getFullYear()}-${pad(dW.getMonth()+1)}-${pad(dW.getDate())}T${pad(dW.getHours())}:${pad(dW.getMinutes())}`; } }catch(e){} }
+    if(elS && selesaiVal){ elS.value = toLocalDatetimeInput(selesaiVal); try{ const dS=new Date(selesaiVal); if(!isNaN(dS.getTime())){ const pad=n=>String(n).padStart(2,'0'); elS.dataset.iso=`${dS.getFullYear()}-${pad(dS.getMonth()+1)}-${pad(dS.getDate())}T${pad(dS.getHours())}:${pad(dS.getMinutes())}`; } }catch(e){} }
     document.getElementById('jadwal-durasi').value = data.durasi_menit || '';
 
     const btnSubmit = document.getElementById('btn-submit-jadwal');
@@ -497,14 +527,25 @@ async function mulaiEditJadwal(id) {
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     // fokus ke mapel agar user langsung lihat terisi
     if (selMapel) selMapel.focus();
+    }catch(_e){ if(typeof showToast==='function') showToast('Gagal memuat jadwal','error'); }
+    finally{
+        try{
+            const _gl=document.getElementById('global-loader');
+            if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; }, 220); const _glTxt=document.getElementById('global-loader-text'); if(_glTxt) _glTxt.textContent='Memproses...'; }
+            if(_cardEl) _cardEl.classList.remove('jadwal-pulse');
+            if(_isBtn){ _triggerBtn.classList.remove('is-loading'); _triggerBtn.disabled=_origDis; _triggerBtn.innerHTML=_origHTML; }
+        }catch(e){}
+    }
 }
 
 async function updateJadwal() {
     if (!editingJadwalId) return;
     const mapelEl = document.getElementById('jadwal-mapel');
     const mapel = mapelEl ? mapelEl.value.trim() : '';
-    const mulaiRaw = document.getElementById('jadwal-waktu').value;
-    const selesaiRaw = document.getElementById('jadwal-selesai').value;
+    const elMR=document.getElementById('jadwal-waktu');
+    const elSR=document.getElementById('jadwal-selesai');
+    const mulaiRaw = (elMR && elMR.dataset && elMR.dataset.iso) ? elMR.dataset.iso : (elMR ? elMR.value : '');
+    const selesaiRaw = (elSR && elSR.dataset && elSR.dataset.iso) ? elSR.dataset.iso : (elSR ? elSR.value : '');
     const durasiInput = parseInt(document.getElementById('jadwal-durasi').value);
 
     if (!mapel) return showToast('Mapel wajib dipilih!', 'error');
@@ -582,11 +623,24 @@ const _dtpMonthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','O
 
 function _dtpPad(n){ return String(n).padStart(2,'0'); }
 function _dtpToInputVal(s){ return `${s.y}-${_dtpPad(s.m+1)}-${_dtpPad(s.d)}T${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }
+function _dtpFormatDisplay(s){ return `${_dtpPad(s.d)}/${_dtpPad(s.m+1)}/${s.y} ${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }
+function _dtpToISOVal(s){ return `${s.y}-${_dtpPad(s.m+1)}-${_dtpPad(s.d)}T${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }
+function _dtpParseDisplay(v){
+    if(!v) return null;
+    // dd/mm/yyyy HH:MM  atau  dd-mm-yyyy HH:MM  atau  yyyy-mm-ddTHH:MM
+    let m = v.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{1,2})/);
+    if(m){ return { y:parseInt(m[3]), m:parseInt(m[2])-1, d:parseInt(m[1]), h:parseInt(m[4]), mi:parseInt(m[5]) }; }
+    m = v.match(/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{1,2})/);
+    if(m){ return { y:parseInt(m[1]), m:parseInt(m[2])-1, d:parseInt(m[3]), h:parseInt(m[4]), mi:parseInt(m[5]) }; }
+    return null;
+}
 function _dtpFromInputVal(v){
     if(!v) return null;
     const d = new Date(v);
-    if(isNaN(d.getTime())) return null;
-    return { y:d.getFullYear(), m:d.getMonth(), d:d.getDate(), h:d.getHours(), mi:d.getMinutes() };
+    if(!isNaN(d.getTime())) return { y:d.getFullYear(), m:d.getMonth(), d:d.getDate(), h:d.getHours(), mi:d.getMinutes() };
+    const p = _dtpParseDisplay(v);
+    if(p) return p;
+    return null;
 }
 function _dtpDaysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
 function _dtpEnsureDom(){
@@ -650,7 +704,10 @@ function closeDTP(){
 }
 function _dtpSyncInput(){
     if(!_dtpActive) return;
-    _dtpActive.value = _dtpToInputVal(_dtpState);
+    const iso = _dtpToISOVal(_dtpState);
+    const disp = _dtpFormatDisplay(_dtpState);
+    _dtpActive.value = disp;
+    try{ _dtpActive.dataset.iso = iso; _dtpActive.dataset.display = disp; }catch(e){}
     _dtpActive.dispatchEvent(new Event('change',{bubbles:true}));
     _dtpActive.dispatchEvent(new Event('input',{bubbles:true}));
 }
@@ -804,6 +861,20 @@ function _dtpRender(){
     if(hList) hList.style.overflowY = 'scroll';
     if(miList) miList.style.overflowY = 'scroll';
 }
+function _dtpSyncDisplayFromISO(el){
+    if(!el) return;
+    const iso = el.dataset && el.dataset.iso ? el.dataset.iso : el.value;
+    if(!iso) return;
+    const d = new Date(iso);
+    if(isNaN(d.getTime())){
+        const p=_dtpParseDisplay(iso);
+        if(p){ el.value=_dtpFormatDisplay(p); el.dataset.iso=_dtpToISOVal(p); }
+        return;
+    }
+    const s={y:d.getFullYear(), m:d.getMonth(), d:d.getDate(), h:d.getHours(), mi:d.getMinutes()};
+    el.value=_dtpFormatDisplay(s);
+    el.dataset.iso=_dtpToISOVal(s);
+}
 function initCustomDateTimePicker(){
     _dtpEnsureDom();
     ['jadwal-waktu','jadwal-selesai'].forEach(id=>{
@@ -814,7 +885,7 @@ function initCustomDateTimePicker(){
         inp.setAttribute('readonly','readonly');
         inp.setAttribute('inputmode','none');
         inp.classList.add('dtp-input');
-        inp.setAttribute('placeholder','dd/mm/yyyy --:--');
+        inp.setAttribute('placeholder','dd/mm/yyyy HH:MM');
         inp.setAttribute('autocomplete','off');
         // bungkus dengan wrapper + ikon kalender agar tetap terlihat seperti native (desktop)
         try{
