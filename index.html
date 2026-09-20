@@ -6162,25 +6162,47 @@
         // Dipanggil: saat pelanggaran terjadi (isViolation=true)
         // Kirim sinyal ke Supabase
         // Hanya mengirim status *PELANGGARAN*; status *AKTIF* sudah dikirim sekali pada startHandler.
-        function kirimSinyalAktif(isViolation = false, detailStatus = "") {
-            if (!window.idRowUjian) return;
-            const updateData = { pelanggaran: p_count };
-            if (isViolation) {
-                // Sertakan log detail pelanggaran
+        // Helper: append 1 entry log ke DB tanpa timpa (via RPC, tahan ganti device)
+        async function appendLogPelanggaranDB(entry) {
+            if (!window.idRowUjian || !entry) return;
+            try {
+                // Coba RPC append (append-only di DB)
+                const { error } = await db.rpc('append_log_pelanggaran', { p_id: window.idRowUjian, p_entry: entry });
+                if (!error) return;
+                // fallback jika RPC belum ada (sebelum migrasi push) — timpa full log
+                console.warn('[Log] RPC append belum ada, fallback timpa:', error.message);
+            } catch (e) { console.warn('[Log] RPC append error', e); }
+            // fallback: kirim full log (best-effort)
+            try {
                 const n = document.getElementById('nama').value;
                 const m = document.getElementById('mapel').value;
                 const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
                 const savedLog = localStorage.getItem("log_pelanggaran_" + idUser);
-                if (savedLog) updateData.log_pelanggaran = savedLog;
-
-                updateData.status = 'PELANGGARAN (' + (detailStatus || 'Keluar Halaman') + ') - ' + new Date().toLocaleTimeString('id-ID');
-                db.from('jawaban_ujian').update(updateData).eq('id', window.idRowUjian)
-                    .then(() => console.log('[Monitor] Sinyal pelanggaran terkirim:', updateData.status))
+                if (savedLog) {
+                    await db.from('jawaban_ujian').update({ log_pelanggaran: savedLog, pelanggaran: p_count }).eq('id', window.idRowUjian);
+                }
+            } catch(_){}
+        }
+        function kirimSinyalAktif(isViolation = false, detailStatus = "") {
+            if (!window.idRowUjian) return;
+            if (isViolation) {
+                const statusStr = 'PELANGGARAN (' + (detailStatus || 'Keluar Halaman') + ') - ' + new Date().toLocaleTimeString('id-ID');
+                // 1) update status+pelanggaran (GREATEST di DB jaga angka, tapi status tetap kami set)
+                db.from('jawaban_ujian').update({ pelanggaran: p_count, status: statusStr }).eq('id', window.idRowUjian)
+                    .then(() => console.log('[Monitor] Sinyal pelanggaran terkirim:', statusStr))
                     .catch(err => console.warn('[Monitor] Gagal kirim sinyal pelanggaran:', err));
+                // 2) append log entry terpisah (tidak timpa) — ambil entry terakhir dari localStorage
+                try {
+                    const n = document.getElementById('nama').value;
+                    const m = document.getElementById('mapel').value;
+                    const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
+                    const savedLog = localStorage.getItem("log_pelanggaran_" + idUser) || '';
+                    const lastEntry = savedLog.split('\n').filter(Boolean).pop() || '';
+                    if (lastEntry) appendLogPelanggaranDB(lastEntry);
+                } catch(_){}
             } else {
-                updateData.status = 'MENGERJAKAN';
-                db.from('jawaban_ujian').update(updateData).eq('id', window.idRowUjian)
-                    .then(() => console.log('[Monitor] Sinyal kembali mengerjakan terkirim:', updateData.status))
+                db.from('jawaban_ujian').update({ pelanggaran: p_count, status: 'MENGERJAKAN' }).eq('id', window.idRowUjian)
+                    .then(() => console.log('[Monitor] Sinyal kembali mengerjakan terkirim:', 'MENGERJAKAN'))
                     .catch(err => console.warn('[Monitor] Gagal kirim sinyal kembali mengerjakan:', err));
             }
         }
