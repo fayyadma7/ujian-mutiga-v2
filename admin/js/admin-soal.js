@@ -582,23 +582,27 @@ async function bulkActionSoal(action) {
             inputValidator: (value) => { if (!value) return 'Nama mapel tidak boleh kosong!'; }
         });
         if (newMapel) {
-            Swal.fire({ title: 'Memproses...', allowOutsideClick: false });
-            Swal.showLoading();
+            const _moveMsg = isCopy ? `Menyalin ${ids.length} soal ke ${newMapel}...` : `Memindahkan ${ids.length} soal ke ${newMapel}...`;
+            if (typeof showGlobalLoader === 'function') showGlobalLoader(_moveMsg, { immediate: true });
+            else { const _gl=document.getElementById('global-loader'); const _glT=document.getElementById('global-loader-text'); if(_glT) _glT.textContent=_moveMsg; if(_gl){ _gl.style.display='flex'; _gl.classList.add('show'); } }
+            const _hideMoveLoader = ()=>{ if(typeof hideGlobalLoader==='function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } } };
             if (isCopy) {
                 const { data: soalToCopy, error: fetchErr } = await db.from('bank_soal').select('*').in('id', ids);
-                if (fetchErr || !soalToCopy) return Swal.fire('Gagal!', fetchErr ? fetchErr.message : 'Gagal mengambil data soal', 'error');
+                if (fetchErr || !soalToCopy) { _hideMoveLoader(); return Swal.fire({ icon:'error', title:'Gagal!', text: fetchErr ? fetchErr.message : 'Gagal mengambil data soal', background:'rgba(15,23,42,0.98)', color:'#f1f5f9', confirmButtonColor:'#3b82f6' }); }
                 const newSoalArray = soalToCopy.map(s => { const { id, created_at, ...rest } = s; rest.mapel = newMapel; return rest; });
-                const { error: insertErr } = await chunkedInsert('bank_soal', newSoalArray);
-                if (insertErr) Swal.fire('Gagal!', insertErr.message, 'error');
-                else Swal.fire('Berhasil!', `${ids.length} soal berhasil disalin ke mapel ${newMapel}`, 'success').then(() => populatePreviewMapel());
+                const { error: insertErr } = await chunkedInsert('bank_soal', newSoalArray, { silent: true });
+                _hideMoveLoader();
+                if (insertErr) Swal.fire({ icon:'error', title:'Gagal!', text: insertErr.message, background:'rgba(15,23,42,0.98)', color:'#f1f5f9', confirmButtonColor:'#3b82f6' });
+                else Swal.fire({ icon:'success', title:'Berhasil!', text: `${ids.length} soal berhasil disalin ke mapel ${newMapel}`, background:'rgba(15,23,42,0.98)', color:'#f1f5f9', confirmButtonColor:'#10b981' }).then(() => populatePreviewMapel());
             } else {
                 let moveErr = null;
                 for (const sid of ids) {
-                    const { error: e } = await adminDb.update('bank_soal', sid, { mapel: newMapel });
+                    const { error: e } = await adminDb.update('bank_soal', sid, { mapel: newMapel }, { silent: true });
                     if (e) moveErr = e;
                 }
-                if (moveErr) Swal.fire('Gagal!', moveErr.message, 'error');
-                else Swal.fire('Berhasil!', `${ids.length} soal berhasil dipindahkan ke mapel ${newMapel}`, 'success').then(() => { loadPreviewSoal(); populatePreviewMapel(); });
+                _hideMoveLoader();
+                if (moveErr) Swal.fire({ icon:'error', title:'Gagal!', text: moveErr.message, background:'rgba(15,23,42,0.98)', color:'#f1f5f9', confirmButtonColor:'#3b82f6' });
+                else Swal.fire({ icon:'success', title:'Berhasil!', text: `${ids.length} soal berhasil dipindahkan ke mapel ${newMapel}`, background:'rgba(15,23,42,0.98)', color:'#f1f5f9', confirmButtonColor:'#10b981' }).then(() => { loadPreviewSoal(); populatePreviewMapel(); });
             }
         }
     }

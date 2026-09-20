@@ -702,7 +702,8 @@ async function handleUploadDarurat(event) {
 
     let successCount = 0, failCount = 0, failDetails = [];
 
-    Swal.fire({ title: 'Mengoreksi Jawaban...', html: 'Sistem sedang membaca file dan memasukkan nilai ke database...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    if(typeof showGlobalLoader==='function') showGlobalLoader('Mengoreksi jawaban...', {immediate:true});
+    else { const _gl=document.getElementById('global-loader'); const _glT=document.getElementById('global-loader-text'); if(_glT) _glT.textContent='Mengoreksi jawaban...'; if(_gl){ _gl.style.display='flex'; _gl.classList.add('show'); } }
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -724,7 +725,7 @@ async function handleUploadDarurat(event) {
             let idRow = null;
             if (cekSesi) idRow = cekSesi.id;
             else {
-                const { data: inserted, error: errIns } = await adminDb.insert('jawaban_ujian', [{ nama: n, kelas: k, mapel: m, status: 'AKTIF (OFFLINE)', skor_pg: null, jawaban_essay: '', pelanggaran: 0, durasi: '-', created_at: new Date().toISOString() }]);
+                const { data: inserted, error: errIns } = await adminDb.insert('jawaban_ujian', [{ nama: n, kelas: k, mapel: m, status: 'AKTIF (OFFLINE)', skor_pg: null, jawaban_essay: '', pelanggaran: 0, durasi: '-', created_at: new Date().toISOString() }], {silent:true});
                 if (errIns) throw errIns;
                 if (inserted && inserted.length > 0) idRow = inserted[0].id;
             }
@@ -733,7 +734,7 @@ async function handleUploadDarurat(event) {
                 p_id_row: idRow, p_nama: n, p_kelas: k, p_mapel: m,
                 p_jawaban: payloadJawaban, p_pelanggaran: 0, p_durasi: 'Upload Manual',
                 p_status: "SELESAI - " + new Date().toLocaleTimeString('id-ID')
-            });
+            }, {silent:true});
             if (error) throw new Error(`RPC koreksi_dan_submit gagal: ${error.message || JSON.stringify(error)}`);
             successCount++;
         } catch (err) {
@@ -744,12 +745,14 @@ async function handleUploadDarurat(event) {
 
     event.target.value = '';
 
+    if(typeof hideGlobalLoader==='function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
+
     let htmlResult = `Berhasil diproses: <b>${successCount}</b> file<br>Gagal diproses: <b>${failCount}</b> file`;
     if (failDetails.length > 0) {
         htmlResult += '<hr style="margin:10px 0;">';
         failDetails.forEach(fd => { htmlResult += `<div style="text-align:left;font-size:12px;margin:5px 0;padding:5px;background:rgba(239,68,68,0.1);border-radius:4px;"><strong>${fd.file}</strong><br>${fd.error}</div>`; });
     }
 
-    Swal.fire({ title: 'Upload Selesai!', html: htmlResult, icon: successCount > 0 ? 'success' : 'warning', confirmButtonColor: '#3b82f6' });
+    Swal.fire({ title: 'Upload Selesai!', html: htmlResult, icon: successCount > 0 ? 'success' : 'warning', confirmButtonColor: '#3b82f6', background:'rgba(15,23,42,0.98)', color:'#f1f5f9' });
     if (successCount > 0 && typeof loadNilaiSiswa === 'function') loadNilaiSiswa();
 }

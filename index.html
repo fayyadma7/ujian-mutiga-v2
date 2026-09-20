@@ -2789,16 +2789,19 @@
             color:rgba(255,255,255,0.55);display:flex;align-items:center;gap:8px;white-space:nowrap;
         }
         .theme-pill{
-            display:flex;align-items:center;gap:4px;
+            display:grid;grid-template-columns:1fr 1fr;gap:4px;
             background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.08);
-            border-radius:999px;padding:4px;
+            border-radius:16px;padding:4px;
         }
+        html[data-theme="low-dark"] .theme-pill{ background:rgba(15,23,42,0.6) !important; border-color:rgba(51,65,85,0.5) !important; }
+        html[data-theme="low-dark"] .theme-btn{ color:rgba(226,232,240,0.7) !important; }
+        html[data-theme="low-dark"] .theme-btn.active{ background:#1E293B !important; color:#E2E8F0 !important; border-color:#334155 !important; box-shadow:none !important; }
         .theme-btn{
-            display:inline-flex;align-items:center;gap:6px;
-            padding:7px 14px;border-radius:999px;border:1px solid transparent;
-            font-family:"Plus Jakarta Sans",sans-serif;font-size:12px;font-weight:700;
-            cursor:pointer;transition:all 0.2s ease;
-            color:rgba(255,255,255,0.6);background:transparent;
+            display:inline-flex;align-items:center;justify-content:center;gap:6px;
+            padding:8px 10px;border-radius:999px;border:1px solid transparent;
+            font-family:"Plus Jakarta Sans",sans-serif;font-size:11px;font-weight:700;
+            cursor:pointer;transition:all 0.2s ease;white-space:nowrap;
+            color:rgba(255,255,255,0.6);background:transparent;width:100%;
         }
         .theme-btn:hover{color:white;background:rgba(255,255,255,0.07)}
         .theme-btn.active{
@@ -3111,7 +3114,46 @@
         html[data-theme="light"] .overlay-card [style*="rgba(255,255,255"], html[data-theme="low"] .overlay-card [style*="rgba(255,255,255"]{color:#475569 !important}
         html[data-theme="light"] .modal-card strong[style], html[data-theme="low"] .modal-card strong[style]{color:#0F172A !important}
 
-        @media (max-width:600px){.theme-switcher{flex-direction:column;align-items:stretch;padding:12px 16px}.theme-pill{justify-content:center}.theme-btn{flex:1;justify-content:center;padding:8px 10px;font-size:11px}}
+        /* ===================== MODE HEMAT GELAP ===================== */
+        html[data-theme="low-dark"]{color-scheme: dark}
+        html[data-theme="low-dark"], html[data-theme="low-dark"] body{background:#020617 !important}
+        html[data-theme="low-dark"] .bg-scene, html[data-theme="low-dark"] .bg-grid, html[data-theme="low-dark"] .bg-orb{display:none !important}
+        html[data-theme="low-dark"] .landing-bg-wrap, html[data-theme="low-dark"] .landing-bg-image, html[data-theme="low-dark"] .landing-overlay{display:none !important;background:none !important;filter:none !important}
+        html[data-theme="low-dark"] #landing-page, html[data-theme="low-dark"] .hero, html[data-theme="low-dark"] .hero-left, html[data-theme="low-dark"] .hero-right, html[data-theme="low-dark"] .top-bar{background:transparent !important;background-color:transparent !important;box-shadow:none !important;border:none !important}
+        html[data-theme="low-dark"] #landing-page{background:#020617 !important}
+        html[data-theme="low-dark"] *:not(.loader-ring):not(.fa-spin):not(.fa-circle-notch),
+        html[data-theme="low-dark"] *::before, html[data-theme="low-dark"] *::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+        html[data-theme="low-dark"] .loader-ring{animation:spin 0.8s linear infinite !important; border-color:#1E293B !important; border-top-color:#38BDF8 !important; width:42px !important; height:42px !important; border-width:3px !important}
+        html[data-theme="low-dark"] .fa-spin, html[data-theme="low-dark"] .fa-circle-notch{animation:spin 0.8s linear infinite !important}
+        html[data-theme="low-dark"] .rules-card, html[data-theme="low-dark"] .login-card, html[data-theme="low-dark"] .exam-header-card, html[data-theme="low-dark"] .soal-item, html[data-theme="low-dark"] .sidebar-navigasi-sticky, html[data-theme="low-dark"] #navbar-ujian, html[data-theme="low-dark"] .modal-card, html[data-theme="low-dark"] .overlay-card, html[data-theme="low-dark"] #start-overlay .modal-card{background:#0F172A !important;border:1px solid #1E293B !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;filter:none !important;box-shadow:none !important}
+        html[data-theme="low-dark"] .login-card{box-shadow:0 1px 4px rgba(0,0,0,0.3) !important}
+        html[data-theme="low-dark"] .login-card-header{background:#0F172A !important;border-bottom:1px solid #1E293B !important}
+        html[data-theme="low-dark"] .login-title{color:#E2E8F0 !important}
+        html[data-theme="low-dark"] .login-subtitle, html[data-theme="low-dark"] .login-field-label{color:#94A3B8 !important}
+        html[data-theme="low-dark"] .login-input{background:#020617 !important;border:1px solid #334155 !important;color:#E2E8F0 !important;box-shadow:none !important}
+        html[data-theme="low-dark"] .login-input::placeholder{color:#64748B !important}
+        html[data-theme="low-dark"] .login-field-icon{color:#64748B !important}
+        html[data-theme="low-dark"] .theme-switcher{background:#0F172A !important;border:1px solid #1E293B !important;border-top:none !important}
+        html[data-theme="low-dark"] .theme-switcher-label{color:#64748B !important}
+        html[data-theme="low-dark"] .theme-pill{background:#020617 !important;border:1px solid #1E293B !important}
+        html[data-theme="low-dark"] .top-bar-brand-text .line1{color:#94A3B8 !important}
+        html[data-theme="low-dark"] .top-bar-brand-text .line2{color:#E2E8F0 !important}
+        html[data-theme="low-dark"] .hero-title{color:#E2E8F0 !important}
+        html[data-theme="low-dark"] .hero-desc{color:#94A3B8 !important}
+        html[data-theme="low-dark"] .hero-eyebrow{background:#0F172A !important;border:1px solid #1E293B !important;color:#94A3B8 !important}
+        html[data-theme="low-dark"] .soal-text{color:#E2E8F0 !important}
+        html[data-theme="low-dark"] .soal-num-badge{background:#1E293B !important;border:1px solid #334155 !important;color:#94A3B8 !important}
+        html[data-theme="low-dark"] .soal-num-badge.answered{background:rgba(16,185,129,0.15) !important;border-color:rgba(16,185,129,0.3) !important;color:#34D399 !important}
+        html[data-theme="low-dark"] .option-item{background:#0F172A !important;border:1px solid #1E293B !important;box-shadow:none !important}
+        html[data-theme="low-dark"] .option-item.selected{background:rgba(30,41,59,0.8) !important;border-color:#38BDF8 !important}
+        html[data-theme="low-dark"] .option-key{background:#020617 !important;border:1px solid #334155 !important;color:#94A3B8 !important}
+        html[data-theme="low-dark"] .option-label{color:#CBD5E1 !important}
+        html[data-theme="low-dark"] #navbar-ujian{background:#0F172A !important;border-bottom:1px solid #1E293B !important}
+        html[data-theme="low-dark"] #timer-box{background:#020617 !important;border:1px solid #334155 !important;color:#E2E8F0 !important}
+        html[data-theme="low-dark"] .exam-user-name{color:#E2E8F0 !important}
+        html[data-theme="low-dark"] body, html[data-theme="low-dark"] .hero-title, html[data-theme="low-dark"] .login-title, html[data-theme="low-dark"] .modal-title{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif !important}
+
+        @media (max-width:600px){.theme-switcher{flex-direction:column;align-items:stretch;padding:12px 16px}.theme-pill{grid-template-columns:1fr 1fr;gap:4px}.theme-btn{justify-content:center;padding:8px 10px;font-size:11px}}
 
         /* ===================== FIX: PORTRAIT LOCK + KEYBOARD BUG (HP) ===================== */
         /* paksa portrait: jika landscape di HP, tampilkan warning suruh putar */
@@ -3859,6 +3901,7 @@
                         <button type="button" class="theme-btn active" data-theme="dark" onclick="setExamTheme('dark')" aria-checked="true" role="radio"><i class="fas fa-moon"></i> Gelap</button>
                         <button type="button" class="theme-btn" data-theme="light" onclick="setExamTheme('light')" aria-checked="false" role="radio"><i class="fas fa-sun"></i> Terang</button>
                         <button type="button" class="theme-btn" data-theme="low" onclick="setExamTheme('low')" aria-checked="false" role="radio"><i class="fas fa-bolt"></i> Hemat</button>
+                        <button type="button" class="theme-btn" data-theme="low-dark" onclick="setExamTheme('low-dark')" aria-checked="false" role="radio"><i class="fas fa-bolt"></i> Hemat Gelap</button>
                     </div>
                 </div>
                 <div class="login-card-body">
@@ -4127,9 +4170,9 @@
             });
         }
         function applyExamTheme(t){
-            if(["dark","light","low"].indexOf(t)===-1) t="dark";
+            if(["dark","light","low","low-dark"].indexOf(t)===-1) t="dark";
             document.documentElement.setAttribute("data-theme", t);
-            toggleGoogleFonts(t==="low");
+            toggleGoogleFonts(t==="low" || t==="low-dark");
             try{ localStorage.setItem("exam_theme", t); }catch(e){}
             document.querySelectorAll(".theme-btn").forEach(function(b){
                 var on=b.getAttribute("data-theme")===t;
@@ -4141,8 +4184,8 @@
         function initExamTheme(){
             try{
                 var saved=localStorage.getItem("exam_theme");
-                var theme=(saved && ["dark","light","low"].indexOf(saved)!==-1) ? saved : "dark";
-                toggleGoogleFonts(theme==="low");
+                var theme=(saved && ["dark","light","low","low-dark"].indexOf(saved)!==-1) ? saved : "dark";
+                toggleGoogleFonts(theme==="low" || theme==="low-dark");
                 applyExamTheme(theme);
             }catch(e){ applyExamTheme("dark"); }
         }
