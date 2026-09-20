@@ -441,38 +441,33 @@ async function renameMapel(oldMapel) {
         `${jadwalCount ? ` + <b>${jadwalCount} jadwal ujian</b> <span style="color:#10b981;">(otomatis sync)</span>` : ` <span style="color:#64748b;">(tidak ada jadwal terkait)</span>`}`+
         `</div>`, 'Konfirmasi Rename');
     if (!finalOk) return;
-    // Loading mulus — pakai fa-spin (anti-lag, tetap muter di mode hemat) bukan Swal.showLoading yang ke-freeze
-    Swal.fire({
-        title: 'Menyimpan...',
-        html: `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 0;">
-            <i class="fas fa-spinner fa-spin" style="font-size:20px; color:#60a5fa;"></i>
-            <span>Merename ${isAdmin ? total : own} soal${jadwalCount ? ` + ${jadwalCount} jadwal` : ''}...</span>
-        </div>`,
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        background: 'rgba(15,23,42,0.98)', color: '#f1f5f9'
-    });
+    const _renameMsg = `Merename ${isAdmin ? total : own} soal${jadwalCount ? ` + ${jadwalCount} jadwal` : ''}...`;
+    if (typeof showGlobalLoader === 'function') showGlobalLoader(_renameMsg, { immediate: true });
+    else { const _gl=document.getElementById('global-loader'); const _glT=document.getElementById('global-loader-text'); if(_glT) _glT.textContent=_renameMsg; if(_gl){ _gl.style.display='flex'; _gl.classList.add('show'); } }
     let resData, rnErr;
     try {
-        const updRes = await adminDb.updateWhere('bank_soal', { mapel: oldMapel }, { mapel: newMapel });
+        const updRes = await adminDb.updateWhere('bank_soal', { mapel: oldMapel }, { mapel: newMapel }, { silent: true });
         resData = updRes.data; rnErr = updRes.error;
         if (rnErr && String(rnErr.message).includes('Unknown action')) {
-            const fb = await adminDb.renameMapel(oldMapel, newMapel);
+            const fb = await adminDb.renameMapel(oldMapel, newMapel, { silent: true });
             resData = fb.data; rnErr = fb.error;
         }
     } catch (e) {
         rnErr = e;
     }
     if (rnErr) {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
         Swal.fire({ icon: 'error', title: 'Gagal Rename', text: rnErr.message || String(rnErr), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
         return;
     }
     if (resData && resData.error) {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
         Swal.fire({ icon: 'error', title: 'Gagal Rename', text: resData.error.message || JSON.stringify(resData.error), background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
         return;
     }
     const affected = Array.isArray(resData) ? resData.length : (resData && typeof resData === 'object' && 'length' in resData ? resData.length : (isAdmin ? total : own));
     if (affected === 0) {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
         Swal.fire({ icon: 'warning', title: 'Tidak ada perubahan', text: isAdmin ? 'Mapel tidak ditemukan atau sudah di-rename' : 'Tidak ada soal milik Anda dengan mapel tersebut', background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#f59e0b' });
         return;
     }
@@ -481,7 +476,7 @@ async function renameMapel(oldMapel) {
     let jadwalErr = null;
     if (jadwalCount > 0) {
         try {
-            const jUpd = await adminDb.updateWhere('jadwal_ujian', { mapel: oldMapel }, { mapel: newMapel });
+            const jUpd = await adminDb.updateWhere('jadwal_ujian', { mapel: oldMapel }, { mapel: newMapel }, { silent: true });
             if (jUpd.error) jadwalErr = jUpd.error;
             else if (Array.isArray(jUpd.data)) jadwalSynced = jUpd.data.length;
             else jadwalSynced = jadwalCount; // fallback jika proxy tidak return array (head:false biasanya return array)
@@ -492,6 +487,7 @@ async function renameMapel(oldMapel) {
             }
         } catch (e) { jadwalErr = e; }
     }
+    if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
     if (jadwalErr) {
         Swal.fire({ icon: 'warning', title: 'Soal ter-rename, jadwal gagal sync', html: `Soal: ${affected} berhasil<br>Jadwal gagal: ${jadwalErr.message || jadwalErr}<br>Silakan ubah manual di Penjadwalan.`, background: 'rgba(15,23,42,0.98)', color: '#f1f5f9', confirmButtonColor: '#f59e0b' });
     } else {
