@@ -3153,6 +3153,25 @@
         html[data-theme="low-dark"] .exam-user-name{color:#E2E8F0 !important}
         html[data-theme="low-dark"] body, html[data-theme="low-dark"] .hero-title, html[data-theme="low-dark"] .login-title, html[data-theme="low-dark"] .modal-title{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif !important}
 
+        /* Hemat — hapus efek glowing untuk hemat RAM (low & low-dark) */
+        html[data-theme="low"] .bg-orb, html[data-theme="low-dark"] .bg-orb,
+        html[data-theme="low"] .landing-orb, html[data-theme="low-dark"] .landing-orb,
+        html[data-theme="low"] .bg-grid, html[data-theme="low-dark"] .bg-grid{ display:none !important; background:none !important; box-shadow:none !important; filter:none !important; }
+        html[data-theme="low"] *:not(.loader-ring):not(.fa-spin):not(.fa-circle-notch),
+        html[data-theme="low-dark"] *:not(.loader-ring):not(.fa-spin):not(.fa-circle-notch){ text-shadow:none !important; }
+        html[data-theme="low"] .btn:not(.loader-ring), html[data-theme="low-dark"] .btn:not(.loader-ring),
+        html[data-theme="low"] .login-card, html[data-theme="low-dark"] .login-card,
+        html[data-theme="low"] .rules-card, html[data-theme="low-dark"] .rules-card,
+        html[data-theme="low"] .soal-item, html[data-theme="low-dark"] .soal-item,
+        html[data-theme="low"] .exam-header-card, html[data-theme="low-dark"] .exam-header-card,
+        html[data-theme="low"] .modal-card, html[data-theme="low-dark"] .modal-card,
+        html[data-theme="low"] .overlay-card, html[data-theme="low-dark"] .overlay-card,
+        html[data-theme="low"] #navbar-ujian, html[data-theme="low-dark"] #navbar-ujian,
+        html[data-theme="low"] .theme-btn.active, html[data-theme="low-dark"] .theme-btn.active{ box-shadow:none !important; filter:none !important; }
+        html[data-theme="low"] [style*="drop-shadow"], html[data-theme="low-dark"] [style*="drop-shadow"],
+        html[data-theme="low"] [style*="box-shadow"], html[data-theme="low-dark"] [style*="box-shadow"]{ filter:none !important; box-shadow:none !important; }
+        html[data-theme="low"] .hero-eyebrow .dot, html[data-theme="low-dark"] .hero-eyebrow .dot{ box-shadow:none !important; filter:none !important; animation:none !important; }
+
         @media (max-width:600px){.theme-switcher{flex-direction:column;align-items:stretch;padding:12px 16px}.theme-pill{grid-template-columns:1fr 1fr;gap:4px}.theme-btn{justify-content:center;padding:8px 10px;font-size:11px}}
 
         /* ===================== FIX: PORTRAIT LOCK + KEYBOARD BUG (HP) ===================== */
