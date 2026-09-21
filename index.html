@@ -4275,7 +4275,8 @@
         async function scheduleFlush() {
             if (_flushing) return;
             if (_flushTimer) clearTimeout(_flushTimer);
-            _flushTimer = setTimeout(doFlush, 1500);
+            // hemat PostgREST: 1.5s -> 10s (kirim setelah 10 detik diam, bukan tiap klik)
+            _flushTimer = setTimeout(doFlush, 10000);
         }
 
         // Helper: tambah timeout ke promise Supabase (30 detik)
@@ -4329,20 +4330,7 @@
                     _flushing = false;
                     return;
                 }
-                // Token check (dengan timeout)
-                const myToken = localStorage.getItem("device_token_" + getQueueUserId());
-                if (myToken) {
-                    try {
-                        const { data: tokenCheck } = await dbWithTimeout(
-                            db.from('jawaban_ujian').select('device_token').eq('id', window.idRowUjian).maybeSingle()
-                        );
-                        if (tokenCheck && tokenCheck.device_token !== myToken) {
-                            showSesiDiambilAlih();
-                            _flushing = false;
-                            return;
-                        }
-                    } catch (e) { /* skip token check error */ }
-                }
+                // Token check per-flush dihapus (hemat 50% PostgREST) — sudah ada periodic 45-75s + cek pas Kirim
                 // Kirim 1 request sequential ke Supabase (PG + essay sekaligus) dengan timeout
                 const updateData = {};
                 if (snapshot.hasValue) updateData.jawaban_pg = snapshot.pg;
@@ -4395,6 +4383,10 @@
             }
             // Gagal 3x — data masih aman di payload submit, jangan panik
         }
+
+        // Flush paksa saat tab hidden/close — biar debounce 10s tidak hilang kalau anak tutup tab sebelum 10 detik
+        document.addEventListener('visibilitychange', ()=>{ if(document.hidden && window.idRowUjian){ if(_flushTimer){ clearTimeout(_flushTimer); _flushTimer=null; } doFlush(); } });
+        window.addEventListener('pagehide', ()=>{ if(window.idRowUjian){ try{ if(_flushTimer){ clearTimeout(_flushTimer); _flushTimer=null; } doFlush(); }catch(e){} } });
 
         // ===== AKHIR WRITE QUEUE =====
 
@@ -6674,6 +6666,42 @@ let aktifSignalSent = false;
             tampilkanWarningAntiCheat('Menempel teks (Paste) tidak diizinkan selama ujian.');
         });
 
+        // --- Tracking keyboard & essay-focus untuk anti-cheat (abaikan blur saat keyboard essay) ---
+        // Tombol centang ✓ di atas keyboard Android (Gboard Done) memicu window blur sesaat —
+        // itu interaksi keyboard normal, BUKAN pindah aplikasi, jadi harus diabaikan.
+        window._lastEssayFocusAt = 0;
+        window._kbOpen = false;
+        (function(){
+            var vvKb = window.visualViewport;
+            function updKb(){
+                if(!vvKb) return;
+                // keyboard kebuka = tinggi visualViewport jauh lebih kecil dari window
+                window._kbOpen = (window.innerHeight - vvKb.height) > 120;
+            }
+            if(vvKb){ vvKb.addEventListener('resize', updKb); vvKb.addEventListener('scroll', updKb); }
+        })();
+        document.addEventListener('focusin', function(e) {
+            if (e.target && (e.target.classList.contains('essay-textarea') || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
+                window._lastEssayFocusAt = Date.now();
+                window._kbOpen = true;
+            }
+        });
+        document.addEventListener('focusout', function(e) {
+            if (e.target && (e.target.classList.contains('essay-textarea') || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
+                // beri jeda: keyboard tutup (klik ✓) butuh ~1-2 detik animasi, jangan langsung anggap kb tutup
+                setTimeout(function(){ window._kbOpen = false; }, 2000);
+            }
+        });
+        function _isKeyboardInteraction(){
+            // keyboard lagi kebuka ATAU baru aja fokus essay (<2.5 detik) = interaksi keyboard normal
+            if (window._kbOpen) return true;
+            if (Date.now() - (window._lastEssayFocusAt || 0) < 2500) return true;
+            if (document.body.classList.contains('kb-open')) return true;
+            var ae = document.activeElement;
+            if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return true;
+            return false;
+        }
+
         // --- Scroll otomatis saat fokus essay agar tidak tertutup keyboard HP — FIX iPhone loncat 10→5 ---
         document.addEventListener('focusin', function(e) {
             if (e.target && e.target.classList.contains('essay-textarea')) {
@@ -6805,10 +6833,11 @@ let aktifSignalSent = false;
             }
         });
 
-        // 1. Deteksi Keluar Halaman/Tab (iPhone zoom dikecualikan)
+        // 1. Deteksi Keluar Halaman/Tab (iPhone zoom + keyboard essay dikecualikan)
         document.addEventListener("visibilitychange", () => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             try{ if(typeof isZoomActive==='function' && isZoomActive()) return; if(isZooming) return; }catch(e){}
+            try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
             if (document.hidden) {
                 setTimeout(() => {
                     try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
@@ -6822,14 +6851,17 @@ let aktifSignalSent = false;
             }
         });
 
-        // 2. Deteksi Kehilangan Fokus (Window Blur) - iPhone zoom dikecualikan
+        // 2. Deteksi Kehilangan Fokus (Window Blur) - iPhone zoom + keyboard essay dikecualikan
         window.addEventListener("blur", () => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>{isViolating=false},300); return; } if(isZooming) return; }catch(e){}
-            // iPhone: blur saat pinch-zoom sering terjadi, beri jeda lebih lama dan cek ulang fokus
-            const blurDelay = isIOS ? 400 : 100;
+            // Keyboard essay (tombol ✓ Done di Gboard): blur sesaat saat keyboard tutup = normal, abaikan
+            try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ setTimeout(()=>{isViolating=false},300); return; } }catch(e){}
+            // Android: animasi keyboard tutup butuh waktu, beri jeda lebih lama dan cek ulang fokus
+            const blurDelay = isIOS ? 400 : 600;
             setTimeout(() => {
                 try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
+                try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
                 if(document.hasFocus && document.hasFocus()){ isViolating=false; return; }
                 catatPelanggaran(
                     "Kehilangan Fokus", 
