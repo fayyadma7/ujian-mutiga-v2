@@ -6,10 +6,10 @@
 // FIX: mulaiEditJadwal sekarang auto-fill mapel + sync custom select
 // ============================================================
 
-let editingJadwalId = null;
-let _jadwalLastData = [];
-let _jadwalSortBy = '';
-let _jadwalMapelCache = [];
+var editingJadwalId = typeof editingJadwalId !== 'undefined' ? editingJadwalId : null;
+var _jadwalLastData = typeof _jadwalLastData !== 'undefined' ? _jadwalLastData : [];
+var _jadwalSortBy = typeof _jadwalSortBy !== 'undefined' ? _jadwalSortBy : '';
+var _jadwalMapelCache = typeof _jadwalMapelCache !== 'undefined' ? _jadwalMapelCache : [];
 async function populateJadwalMapelDropdown() {
     const select = document.getElementById('jadwal-mapel');
     const searchInput = document.getElementById('jadwal-mapel-search');
@@ -803,12 +803,12 @@ function loadJadwalGuruOptions() {}
 // Pengganti picker native yang scrollbar-nya hilang/kepotong.
 // Kolom jam & menit dibuat scroll mandiri dengan thumb biru tebal.
 // ============================================================
-let _dtpActive = null;
-let _dtpState = { y: 2026, m: 8, d: 16, h: 13, mi: 34 };
-let _dtpOverlay = null, _dtpPopup = null;
-let _dtpMPOpen = false;
-const _dtpMonthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const _dtpMonthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+var _dtpActive = typeof _dtpActive !== 'undefined' ? _dtpActive : null;
+var _dtpState = typeof _dtpState !== 'undefined' ? _dtpState : { y: 2026, m: 8, d: 16, h: 13, mi: 34 };
+var _dtpOverlay = typeof _dtpOverlay !== 'undefined' ? _dtpOverlay : null, _dtpPopup = typeof _dtpPopup !== 'undefined' ? _dtpPopup : null;
+var _dtpMPOpen = typeof _dtpMPOpen !== 'undefined' ? _dtpMPOpen : false;
+var _dtpMonthNames = typeof _dtpMonthNames !== 'undefined' ? _dtpMonthNames : ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+var _dtpMonthShort = typeof _dtpMonthShort !== 'undefined' ? _dtpMonthShort : ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
 function _dtpPad(n){ return String(n).padStart(2,'0'); }
 function _dtpToInputVal(s){ return `${s.y}-${_dtpPad(s.m+1)}-${_dtpPad(s.d)}T${_dtpPad(s.h)}:${_dtpPad(s.mi)}`; }

@@ -17,6 +17,9 @@ const db = supabase.createClient(supabaseUrl, supabaseKey);
 // --- LAZY LOAD SCRIPT HELPER ---
 function loadScript(src) {
     return new Promise((resolve, reject) => {
+        const base = src.split('?')[0];
+        const existing = document.querySelector(`script[src*="${base}"]`);
+        if (existing) { resolve(); return; }
         const s = document.createElement('script');
         s.src = src;
         s.onload = resolve;
@@ -671,7 +674,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
     const moduleMap = {
         'dashboard': 'admin-dashboard.js',
         'bank-soal': 'admin-soal.js?v=8',
-        'jadwal': 'admin-jadwal.js?v=7',
+        'jadwal': 'admin-jadwal.js?v=8',
         'monitoring': 'admin-monitoring.js',
         'laporan': 'admin-laporan.js',
         'analisis-soal-page': 'admin-analisis.js',
@@ -679,9 +682,11 @@ function bukaHalaman(idHalaman, elemenTombol) {
         'akun-guru': 'admin-guru.js'
     };
     const scriptName = moduleMap[idHalaman];
-    if (scriptName && typeof window[`__${scriptName.replace('.js', '')}_loaded`] === 'undefined') {
+    const _baseKey = scriptName ? scriptName.split('?')[0].replace('.js','') : '';
+    const _alreadyLoaded = _baseKey && (typeof window[`__${_baseKey}_loaded`] !== 'undefined' || document.querySelector(`script[src*="${_baseKey}.js"]`) !== null);
+    if (scriptName && !_alreadyLoaded) {
         loadScript(`admin/js/${scriptName}`).then(() => {
-            window[`__${scriptName.replace('.js', '')}_loaded`] = true;
+            window[`__${_baseKey}_loaded`] = true;
             // After load, call the init function
             initPage(idHalaman);
         }).catch(err => {
@@ -900,13 +905,31 @@ function animateCounter(id, targetValue) {
 
 async function updateLandingSiswaAktif() {
     try {
-        const { data: siswaData } = await db.from('jawaban_ujian').select('status');
-        let activeCount = 0;
-        if (siswaData) activeCount = siswaData.filter(s => !String(s.status).startsWith('SELESAI')).length;
-        animateCounter('landing-siswa-aktif', activeCount);
+        // sinkron dengan dashboard & monitoring global (count head, tanpa filter, tanpa realtime channel)
+        const { count: activeCount } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true }).not('status', 'like', 'SELESAI%');
+        animateCounter('landing-siswa-aktif', activeCount || 0);
     } catch (e) {
         console.error('❌ Gagal memperbarui statistik siswa aktif di landing page:', e);
     }
+}
+// — Sync landing tanpa realtime: polling ringan saat overlay terlihat + helper sync dari monitoring —
+var _landingPoll = typeof _landingPoll !== 'undefined' ? _landingPoll : null;
+if (!_landingPoll) {
+    _landingPoll = setInterval(() => {
+        const ov = document.getElementById('landingOverlay');
+        const visible = ov && !ov.classList.contains('hidden') && ov.style.display !== 'none' && ov.offsetParent !== null;
+        if (visible && typeof updateLandingSiswaAktif === 'function' && !document.hidden) updateLandingSiswaAktif();
+    }, 15000);
+    window._landingPoll = _landingPoll;
+}
+function syncLandingSiswaAktifFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, tglAwal, tglAkhir){
+    try{
+        const isGlobal = !filterKelas && !filterMapel && !searchName && !tglAwal && !tglAkhir;
+        if(!isGlobal) return;
+        const ov=document.getElementById('landingOverlay');
+        if(!ov || ov.classList.contains('hidden')) return;
+        animateCounter('landing-siswa-aktif', cntAktif || 0);
+    }catch(_){}
 }
 
 async function updateLandingTotalSoal() {

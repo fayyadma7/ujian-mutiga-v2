@@ -9,17 +9,17 @@
 //            bulkActionMonitoring, hapusDataNilai, handleUploadDarurat
 // ============================================================
 
-const violationTracker = new Map();
-const seenIdsGlobal = new Set();
-let monitoringChannel = null;
-let reconnectTimer = null;
-let reconnectAttempts = 0;
-let intentionalClose = false;
-let isSubscribing = false;
-let isLoadingMonitoring = false;
-const violationCooldownMs = 60000;
-const violationLastToastAt = new Map();
-let _monMapelCache = [];
+var violationTracker = typeof violationTracker !== 'undefined' ? violationTracker : new Map();
+var seenIdsGlobal = typeof seenIdsGlobal !== 'undefined' ? seenIdsGlobal : new Set();
+var monitoringChannel = typeof monitoringChannel !== 'undefined' ? monitoringChannel : null;
+var reconnectTimer = typeof reconnectTimer !== 'undefined' ? reconnectTimer : null;
+var reconnectAttempts = typeof reconnectAttempts !== 'undefined' ? reconnectAttempts : 0;
+var intentionalClose = typeof intentionalClose !== 'undefined' ? intentionalClose : false;
+var isSubscribing = typeof isSubscribing !== 'undefined' ? isSubscribing : false;
+var isLoadingMonitoring = typeof isLoadingMonitoring !== 'undefined' ? isLoadingMonitoring : false;
+var violationCooldownMs = typeof violationCooldownMs !== 'undefined' ? violationCooldownMs : 60000;
+var violationLastToastAt = typeof violationLastToastAt !== 'undefined' ? violationLastToastAt : new Map();
+var _monMapelCache = typeof _monMapelCache !== 'undefined' ? _monMapelCache : [];
 function scheduleReconnect(){
   if(intentionalClose) return;
   if(reconnectTimer) clearTimeout(reconnectTimer);
@@ -111,7 +111,7 @@ async function startRealtimeMonitoring() {
                 }
                 if (perluReload && document.getElementById('monitoring').classList.contains('active')) {
                     if (window._monDebounce) clearTimeout(window._monDebounce);
-                    window._monDebounce = setTimeout(() => { loadMonitoring(); }, 1000);
+                    window._monDebounce = setTimeout(() => { loadMonitoring({silent:true}); }, 1000);
                 }
             }
         )
@@ -320,25 +320,39 @@ function selectMonMapel(val){
     if(dd) dd.style.display='none';
 }
 
-let _prevMonDataMap = new Map();
-function _setMonLoading(on){
+var _prevMonDataMap = typeof _prevMonDataMap !== 'undefined' ? _prevMonDataMap : new Map();
+function _setMonLoading(on, silent){
+    if(silent) return;
     const ov=document.getElementById('monitoring-loading-overlay');
+    const wrap=document.getElementById('monitoring-table-wrap');
     if(ov){ ov.classList.toggle('show', !!on); ov.setAttribute('aria-hidden', on?'false':'true'); }
+    if(wrap){ wrap.classList.toggle('mon-loading', !!on); }
+    document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.classList.toggle('mon-stats-loading', !!on); });
 }
-let _pendingMonReload = false;
-async function loadMonitoring() {
+var _pendingMonReload = typeof _pendingMonReload !== 'undefined' ? _pendingMonReload : false;
+var _pendingMonSilent = typeof _pendingMonSilent !== 'undefined' ? _pendingMonSilent : false;
+var _monSearchDebounce = typeof _monSearchDebounce !== 'undefined' ? _monSearchDebounce : null;
+function onMonSearchInput(){
+    currentMonPage = 1;
+    if(_monSearchDebounce) clearTimeout(_monSearchDebounce);
+    _monSearchDebounce = setTimeout(()=> loadMonitoring(), 300);
+}
+async function loadMonitoring(opts) {
+    const _isSilent = !!(opts && opts.silent);
     if(isLoadingMonitoring){
         _pendingMonReload = true;
+        _pendingMonSilent = _pendingMonSilent || _isSilent;
+        // jika yang pending adalah filter (non-silent), pastikan overlay tetap tampil
+        if(!_isSilent) _pendingMonSilent = false;
         return;
     }
     isLoadingMonitoring = true;
-    // FIX: hanya tampilkan overlay full jika belum ada rows (load pertama) — untuk filter/sort pakai row-level blur saja
-    const _tbodyEarly = document.getElementById('tabel-monitoring');
-    const _hadRowsEarly = _tbodyEarly && (_tbodyEarly.querySelectorAll('tr').length>1 || (_tbodyEarly.textContent && !_tbodyEarly.textContent.includes('Memuat') && !_tbodyEarly.textContent.includes('Belum ada data')));
-    if(!_hadRowsEarly) _setMonLoading(true);
+    // Untuk filter/sort/clear/search/pagination — tampilkan overlay animasi konsisten seperti laporan/jadwal
+    // Untuk realtime silent — jangan tampilkan overlay full, hanya row-level blur
+    _setMonLoading(true, _isSilent);
     try{
     const tbody = document.getElementById('tabel-monitoring');
-    if(!tbody){ _setMonLoading(false); isLoadingMonitoring=false; return; }
+    if(!tbody){ _setMonLoading(false, _isSilent); isLoadingMonitoring=false; return; }
     const filterKelas = document.getElementById('filter-kelas-monitoring')?.value || '';
     const filterMapel = document.getElementById('filter-mapel-monitoring')?.value || '';
     const filterTglAwal = document.getElementById('filter-tgl-awal-monitoring')?.value || '';
@@ -352,11 +366,14 @@ async function loadMonitoring() {
             try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) { c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; } }); }catch(e){}
         }
     }
-    // jangan kosongkan tbody di sini — overlay yang menutupi, tinggi tabel tetap terjaga
-    const _hadRows = tbody.querySelectorAll('tr').length>1 || (tbody.textContent && !tbody.textContent.includes('Memuat'));
-    if(!_hadRows){
+    // Pertahankan tinggi tabel saat loading — jangan kosongkan jika sudah ada rows, cukup blur via overlay (anti shrink/grow seperti jadwal)
+    const _txtEarly = (tbody.textContent||'');
+    const _isPlaceholderEarly = _txtEarly.includes('Memuat') || _txtEarly.includes('Belum ada');
+    const _hasValidRows = tbody.children.length>0 && !_isPlaceholderEarly;
+    if(!_hasValidRows && !_isPlaceholderEarly){
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
     }
+    // jika sudah ada placeholder atau rows valid, biarkan tetap tampil di bawah overlay blur — tinggi stabil via min-height
 
     // ambil jadwal dengan waktu sekarang (biar tidak selalu Seni Budaya pertama) — is_aktif + now dalam window
     const { data: _allJadwal } = await db.from('jadwal_ujian').select('kelas,mapel,waktu_mulai,waktu_selesai,durasi_menit').eq('is_aktif', true);
@@ -457,6 +474,10 @@ async function loadMonitoring() {
     if (elSelesai) elSelesai.innerText = String(cntSelesai);
     if (elPlg) elPlg.innerText = String(cntPelanggaran);
     if (elBelum) elBelum.innerText = String(cntBelum);
+    // sync ke dashboard & landing tanpa realtime channel (jika filter global)
+    try{ if(typeof syncDashboardSedangFromMonitoring==='function') syncDashboardSedangFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
+    try{ if(typeof syncLandingSiswaAktifFromMonitoring==='function') syncLandingSiswaAktifFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
+    try{ const _isGlobal = !filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir; if(_isGlobal){ const _de=document.getElementById('tot-sedang-ujian'); if(_de) _de.innerText = String(cntAktif); const _le=document.getElementById('landing-siswa-aktif'); if(_le) _le.innerText = String(cntAktif); } }catch(_){}
     // jika langsung buka Live tanpa filter dan tidak ada jadwal now, jangan paksa filter AKTIF/BELUM (0) — reset ke ALL biar 1434 SELESAI tetap kelihatan
     // juga jika ada 1 AKTIF tapi user tidak klik card, tetap tampil ALL biar tidak kosong
     if(!filterKelas && !filterMapel && (currentMonStatus === 'AKTIF' || currentMonStatus === 'BELUM')){
@@ -526,7 +547,7 @@ async function loadMonitoring() {
             const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
             banner.style.display = 'none';
             if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
-            _setMonLoading(false); isLoadingMonitoring=false;
+            _setMonLoading(false, _isSilent); isLoadingMonitoring=false;
             return;
         }
         // FIX: single query dengan range+count (seperti admin-laporan.js) — hindari double-await reuse builder yang bikin kosong
@@ -578,7 +599,7 @@ async function loadMonitoring() {
             banner.style.display = 'none';
         }
         if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(totalItems); }catch(e){}
-        _setMonLoading(false); isLoadingMonitoring=false;
+        _setMonLoading(false, _isSilent); isLoadingMonitoring=false;
         return;
     }
 
@@ -663,6 +684,9 @@ async function loadMonitoring() {
     const _elAktif2=document.getElementById('mon-aktif'); if(_elAktif2) _elAktif2.innerText = String(cntAktif);
     const _elSelesai2=document.getElementById('mon-selesai'); if(_elSelesai2) _elSelesai2.innerText = String(cntSelesai);
     const _elPlg2=document.getElementById('mon-pelanggaran'); if(_elPlg2) _elPlg2.innerText = String(cntPelanggaran);
+    try{ if(typeof syncDashboardSedangFromMonitoring==='function') syncDashboardSedangFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
+    try{ if(typeof syncLandingSiswaAktifFromMonitoring==='function') syncLandingSiswaAktifFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
+    try{ const _isGlobalZ = !filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir; if(_isGlobalZ){ const _deZ=document.getElementById('tot-sedang-ujian'); if(_deZ) _deZ.innerText = String(cntAktif); const _leZ=document.getElementById('landing-siswa-aktif'); if(_leZ) _leZ.innerText = String(cntAktif); } }catch(_){}
     if (cntAktif === 0 && !adaUjianAktif) {
         banner.style.display = 'flex';
         banner.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp; Semua siswa sudah selesai & tidak ada ujian yang sedang berlangsung.';
@@ -678,11 +702,12 @@ async function loadMonitoring() {
         });
     }catch(e){}
     }catch(e){ console.warn('[monitoring] load error',e); }finally{
-        _setMonLoading(false); isLoadingMonitoring=false;
+        _setMonLoading(false, _isSilent); isLoadingMonitoring=false;
         if(_pendingMonReload){
-            _pendingMonReload=false;
+            const _nextSilent = _pendingMonSilent;
+            _pendingMonReload=false; _pendingMonSilent=false;
             // delay sedikit biar UI sempat update, lalu reload dengan filter terbaru (AKTIF/SELESAI)
-            setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80);
+            setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(_nextSilent ? {silent:true} : {}); }, 80);
         }
     }
 }

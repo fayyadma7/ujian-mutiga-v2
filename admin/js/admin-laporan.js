@@ -7,7 +7,7 @@
 //            exportExcel
 // ============================================================
 
-let _lapMapelCache = [];
+var _lapMapelCache = typeof _lapMapelCache !== 'undefined' ? _lapMapelCache : [];
 
 function _setLapLoading(on){
     const ov=document.getElementById('laporan-loading-overlay');
@@ -425,13 +425,16 @@ async function exportExcel() {
         try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'); }
         catch (err) { return showToast('Gagal memuat library Excel', 'error'); }
     }
-    const mapel = document.getElementById('filter-mapel-laporan').value;
-    const kelas = document.getElementById('filter-kelas-laporan').value;
-    if (!mapel || !kelas) {
-        showToast("Silakan pilih 'Mapel' dan 'Kelas' terlebih dahulu di dropdown filter sebelum mengekspor data ke Excel.", 'info');
+    const mapel = (document.getElementById('filter-mapel-laporan')?.value || '').trim();
+    const kelas = (document.getElementById('filter-kelas-laporan')?.value || '').trim();
+    if (!mapel) {
+        showToast("Silakan pilih 'Mapel' terlebih dahulu di dropdown filter sebelum mengekspor. Kelas opsional — kosongkan untuk ekspor semua kelas pada mapel tersebut.", 'info');
         return;
     }
-    const { data, error } = await db.from('jawaban_ujian').select('*').eq('mapel', mapel).eq('kelas', kelas).order('nama', { ascending: true });
+    let _q = db.from('jawaban_ujian').select('*').eq('mapel', mapel);
+    if (kelas) _q = _q.eq('kelas', kelas);
+    _q = _q.order('kelas', { ascending: true }).order('nama', { ascending: true });
+    const { data, error } = await _q;
     if (error || !data || data.length === 0) { showToast("Tidak ada data nilai untuk diekspor.", 'error'); return; }
 
     // Ambil nomor soal essay untuk mapping jawaban legacy "|||" tanpa nomor
@@ -491,7 +494,9 @@ async function exportExcel() {
         const lineCount = essayVal ? String(essayVal).split('\n').length : 1;
         worksheet['!rows'][r] = { hpt: Math.max(20, lineCount * 15) };
     }
-    XLSX.writeFile(workbook, `Nilai_${mapel}_${kelas}.xlsx`.replace(/\s+/g, '_'), { cellStyles: true });
+    const safeMapel = mapel.replace(/\s+/g, '_');
+    const safeKelas = kelas ? kelas.replace(/\s+/g, '_') : 'SemuaKelas';
+    XLSX.writeFile(workbook, `Nilai_${safeMapel}_${safeKelas}.xlsx`, { cellStyles: true });
 }
 
 async function exportLaporan() { return exportExcel(); }

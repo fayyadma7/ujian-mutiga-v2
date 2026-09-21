@@ -21,13 +21,11 @@ async function updateDashboardStats() {
     const elSoal = document.getElementById('tot-soal');
     if (elSoal) elSoal.innerText = jmlSoal || 0;
 
-    // 3. Siswa Sedang Ujian — status BELUM SELESAI (menggantikan Rata-rata Nilai)
+    // 3. Siswa Sedang Ujian — sinkron dengan Live Monitoring (count head:true, tanpa filter, tanpa realtime channel)
     try {
-        const { data: ujianData } = await db.from('jawaban_ujian').select('status');
-        let sedang = 0;
-        if (ujianData) sedang = ujianData.filter(r => !String(r.status || '').startsWith('SELESAI')).length;
+        const { count: sedang } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true }).not('status', 'like', 'SELESAI%');
         const elSedang = document.getElementById('tot-sedang-ujian');
-        if (elSedang) elSedang.innerText = sedang;
+        if (elSedang) elSedang.innerText = sedang || 0;
     } catch (_) {
         const elSedang = document.getElementById('tot-sedang-ujian');
         if (elSedang) elSedang.innerText = '0';
@@ -193,6 +191,29 @@ async function loadRecentActivity() {
         `;
     });
     container.innerHTML = html;
+}
+
+// — Sync tanpa realtime channel: polling ringan + sync saat Live Monitoring update global —
+var _dashSedangPoll = typeof _dashSedangPoll !== 'undefined' ? _dashSedangPoll : null;
+if (!_dashSedangPoll) {
+    _dashSedangPoll = setInterval(() => {
+        if (document.getElementById('dashboard')?.classList.contains('active') && typeof updateDashboardStats === 'function' && !document.hidden) {
+            updateDashboardStats();
+        }
+    }, 12000);
+    window._dashSedangPoll = _dashSedangPoll;
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && document.getElementById('dashboard')?.classList.contains('active') && typeof updateDashboardStats === 'function') updateDashboardStats();
+    });
+}
+// helper dipanggil dari monitoring saat hitungan global selesai (tanpa channel)
+function syncDashboardSedangFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, tglAwal, tglAkhir) {
+    try {
+        const isGlobal = !filterKelas && !filterMapel && !searchName && !tglAwal && !tglAkhir;
+        if (!isGlobal) return;
+        const el = document.getElementById('tot-sedang-ujian');
+        if (el) el.innerText = String(cntAktif ?? 0);
+    } catch (_) {}
 }
 
 async function playWelcomeSound() {
