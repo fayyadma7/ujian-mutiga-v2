@@ -747,11 +747,13 @@ function initPage(idHalaman) {
         }
         if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
         if (typeof populateFilterKelas === 'function') {
-            // dukung pending dari sessionStorage (jika set sebelum lazy-load)
+            // dukung pending dari sessionStorage (jika set sebelum lazy-load) — mapel & kelas
             if (!window._pendingMonMapel) { try{ window._pendingMonMapel = sessionStorage.getItem('_pendingMonMapel'); }catch(_){} }
+            if (!window._pendingMonKelas) { try{ window._pendingMonKelas = sessionStorage.getItem('_pendingMonKelas'); }catch(_){} }
             populateFilterKelas().then(() => {
-            // jika datang dari klik Jadwal Aktif di dashboard, auto-filter mapel
+            // jika datang dari klik Jadwal Aktif di dashboard, auto-filter mapel + kelas
             const pending = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
+            const pendingK = window._pendingMonKelas || (()=>{ try{return sessionStorage.getItem('_pendingMonKelas')}catch(_){return null}})();
             if (pending) {
                 const sel = document.getElementById('filter-mapel-monitoring');
                 const inp = document.getElementById('filter-mapel-monitoring-search');
@@ -768,6 +770,21 @@ function initPage(idHalaman) {
                 if (inp) { inp.value = pending; inp.dataset.userTyped='1'; }
                 window._pendingMonMapel = null;
                 try{ sessionStorage.removeItem('_pendingMonMapel'); }catch(_){}
+            }
+            if (pendingK) {
+                const selK = document.getElementById('filter-kelas-monitoring');
+                if (selK) {
+                    let existsK = [...selK.options].some(o => o.value === pendingK);
+                    if (!existsK) {
+                        const optK = document.createElement('option');
+                        optK.value = pendingK; optK.textContent = pendingK;
+                        selK.appendChild(optK);
+                    }
+                    selK.value = pendingK;
+                    if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-kelas-monitoring');
+                }
+                window._pendingMonKelas = null;
+                try{ sessionStorage.removeItem('_pendingMonKelas'); }catch(_){}
             }
             if (typeof loadMonitoring === 'function') loadMonitoring();
             });

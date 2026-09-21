@@ -367,6 +367,13 @@ async function loadMonitoring() {
     let autoKelas = filterKelas;
     let autoMapel = filterMapel;
     let hasJadwalForFilter = false;
+    // Normalisasi untuk cek jadwal — handle format "id::Nama", comma, trim, case-insensitive
+    const normKelas = (k) => (k||'').trim().toLowerCase();
+    const kelasInJadwal = (jKelas, targetKelas) => {
+        let k = (jKelas||'').trim();
+        if(k.includes('::')) k = k.split('::')[1];
+        return k.split(',').map(s=> normKelas(s)).includes(normKelas(targetKelas));
+    };
     if(!filterKelas && !filterMapel && adaUjianAktif){
         // filter kosong + ada jadwal now → tampil semua jadwal aktif (p_kelas=null, p_mapel=null → RPC semua)
         hasJadwalForFilter = true;
@@ -374,14 +381,28 @@ async function loadMonitoring() {
     } else if((filterKelas || filterMapel) && adaUjianAktif){
         // jika user sudah pilih filter, cek apakah ada jadwal untuk filter itu — biar BELUM tetap muncul walau filter cuma mapel
         hasJadwalForFilter = jadwalAktifRows.some(j=>{
-            const jMapelOk = !filterMapel || j.mapel === filterMapel;
+            const jMapelOk = !filterMapel || normKelas(j.mapel) === normKelas(filterMapel);
             if(!jMapelOk) return false;
             if(!filterKelas) return true;
-            let kls = j.kelas || ''; if(kls.includes('::')) kls = kls.split('::')[1];
-            return kls.split(',').map(s=>s.trim()).includes(filterKelas);
+            return kelasInJadwal(j.kelas, filterKelas);
         });
-        // jika filterMapel ada tapi filterKelas kosong, tetap anggap ada jadwal untuk mapel itu
-        if(filterMapel && !filterKelas && jadwalAktifRows.some(j=> j.mapel===filterMapel)) hasJadwalForFilter = true;
+        // jika filterMapel ada tapi filterKelas kosong, tetap anggap ada jadwal untuk mapel itu (case-insensitive)
+        if(filterMapel && !filterKelas && jadwalAktifRows.some(j=> normKelas(j.mapel)===normKelas(filterMapel))) hasJadwalForFilter = true;
+        // FIX: untuk klik dari dashboard, jadwal mungkin is_aktif true tapi waktu sudah lewat sedikit (now 1 menit lewat) — dashboard masih anggap aktif, monitoring sudah tidak
+        // jadi kalau filterMapel+kelas ada tapi hasJadwalForFilter false karena window, tetap paksa campuran biar BELUM muncul (jangan kosong)
+        if(!hasJadwalForFilter && (filterMapel || filterKelas)){
+            // cek tanpa window time (hanya is_aktif + mapel+kelas) — untuk handle klik dashboard yang baru lewat waktu
+            const hasJadwalTanpaWindow = (_allJadwal||[]).some(j=>{
+                if(!j.is_aktif) return false;
+                if(filterMapel && normKelas(j.mapel) !== normKelas(filterMapel)) return false;
+                if(filterKelas && !kelasInJadwal(j.kelas, filterKelas)) return false;
+                return true;
+            });
+            if(hasJadwalTanpaWindow){
+                console.warn('[monitoring] hasJadwalForFilter false karena window, tapi jadwal tanpa window ada — paksa useCampuran untuk', filterMapel, filterKelas);
+                hasJadwalForFilter = true;
+            }
+        }
     }
 
     // helper: apply base filters (kelas, mapel, search, tanggal) — tanpa status
@@ -394,8 +415,13 @@ async function loadMonitoring() {
         return q;
     };
 
-    // pakai RPC campuran jika ada jadwal (baik auto maupun filter user) — campur Sudah+BELUM, beda status; p_kelas boleh null (semua kelas mapel itu)
-    const useCampuran = !!(hasJadwalForFilter || (adaUjianAktif && autoKelas && autoMapel) || (filterMapel && hasJadwalForFilter));
+    // pakai RPC campuran hanya jika user sudah filter (kelas/mapel) dan ada jadwal untuk filter itu
+    // JANGAN pakai untuk buka langsung tanpa filter (ALL) — biar histori 1435 tetap kelihatan, bukan 0 karena JOIN jadwal aktif
+    let useCampuran = !!( (filterKelas || filterMapel) && hasJadwalForFilter );
+    // fallback: kalau buka langsung tanpa filter (ALL) jangan paksa campuran, tampilkan histori penuh
+    if(!filterKelas && !filterMapel && currentMonStatus === 'ALL'){
+        useCampuran = false;
+    }
 
     // 1) Hitung kartu ringkasan — SELALU pakai base filter saja (tanpa status), agar klik card tidak bikin 0 semua
     let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
@@ -444,36 +470,64 @@ async function loadMonitoring() {
         _isCampuranMode = true;
         try{
             const _s = getGuruSession(); const _gid = _s ? parseInt(_s.id) : null; const _isAdmin = _s ? !!_s.isAdmin : true;
+            // FIX: untuk monitoring live, guru harus lihat semua BELUM di kelas itu (bukan hanya buatannya) — paksa true biar tidak 0
+            // dan untuk p_only_active_now: kalau filter spesifik dari dashboard, longgarkan window (false) biar tidak kosong karena telat 1 menit
+            const _monIsAdminForRpc = true; // selalu true untuk live monitoring — semua siswa di kelas itu terlihat
+            const _onlyActiveNow = (!filterKelas && !filterMapel) ? true : false;
             const startIdxTmp = (currentMonPage - 1) * ITEMS_PER_PAGE;
-            // hitung total via RPC count — kosong => null, p_only_active_now=true untuk Live (BELUM hanya saat jadwal sedang berlangsung)
-            const { data: cntVal, error: cntErr } = await db.rpc('get_live_campuran_count', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_guru_id: _gid, p_is_admin: _isAdmin, p_only_active_now: true });
+            // hitung total via RPC count — kosong => null
+            const { data: cntVal, error: cntErr } = await db.rpc('get_live_campuran_count', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             totalItems = cntVal || 0;
             totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
             if(currentMonPage > totalPages) currentMonPage = totalPages;
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
-            const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _isAdmin, p_only_active_now: true });
+            const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             if(rpcErr) throw rpcErr;
             // filter status di JS (campur, beda status) — AKTIF = MENGERJAKAN/PELANGGARAN+BELUM, SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0
             let filtered = (rpcData||[]).map(r=>({ id:r.siswa_id, nama:r.nama, kelas:r.kelas_nama, mapel:r.mapel, status:r.status, pelanggaran:r.pelanggaran, skor_pg:r.skor_pg, created_at:r.created_at, is_belum:r.is_belum }));
             if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI'));
             else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
             else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
-            data = filtered;
-            error = null;
+            // FIX: kalau RPC campuran kosong tapi histori ada (cntAktif+cntSelesai >0), jangan tampil kosong — fallback ke histori penuh
+            // ini kejadian saat buka langsung tanpa filter tapi ada jadwal aktif kecil yang belum ada data
+            if(filtered.length === 0 && (cntAktif + cntSelesai) > 0){
+                // jika filter spesifik (kelas/mapel) sengaja kosong karena tidak ada data untuk jadwal itu, 
+                // dan totalItems RPC juga 0, anggap campuran tidak ada data → fallback ke histori (biar tidak kosong)
+                // kecuali memang filter sengaja (akan ditangani fallback)
+                console.warn('[monitoring] campuran kosong padahal histori ada ('+cntSelesai+' selesai), fallback ke histori');
+                _isCampuranMode = false;
+                // jangan return, biarkan fallback di bawah jalan
+                data = null;
+            } else {
+                data = filtered;
+                error = null;
+            }
         }catch(e){ console.warn('[monitoring campuran] fallback',e); _isCampuranMode=false; }
     }
+    // safety: jika campuran masih aktif tapi data null karena fallback di atas, paksa _isCampuranMode false
+    if(_isCampuranMode && !data){
+        _isCampuranMode = false;
+    }
     if(!_isCampuranMode){
+        // FIX: single query dengan range+count (seperti admin-laporan.js) — hindari double-await reuse builder yang bikin kosong
+        startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
         let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
         if (currentMonStatus === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
         else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
         else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
-        const { count: totalItemsCount } = await query;
-        totalItems = totalItemsCount || 0;
+        const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
+        data = res.data; error = res.error; totalItems = res.count || 0;
         totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-        if (currentMonPage > totalPages) currentMonPage = totalPages;
-        startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
-        const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
-        data = res.data; error = res.error;
+        if (currentMonPage > totalPages) {
+            currentMonPage = totalPages;
+            startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
+            let q2 = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
+            if (currentMonStatus === 'AKTIF') q2 = q2.not('status', 'like', 'SELESAI%');
+            else if (currentMonStatus === 'SELESAI') q2 = q2.like('status', 'SELESAI%');
+            else if (currentMonStatus === 'PELANGGARAN') q2 = q2.gt('pelanggaran', 0);
+            const res2 = await q2.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
+            data = res2.data; error = res2.error;
+        }
     }
 
     if (error || !data || data.length === 0) {
