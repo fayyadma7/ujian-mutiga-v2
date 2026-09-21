@@ -751,22 +751,25 @@ function sortMonitoringData(data) {
                 valA = (a.kelas || '').toLowerCase();
                 valB = (b.kelas || '').toLowerCase();
                 break;
-            case 'status':
-                const statusA = String(a.status || '').toUpperCase();
-                const statusB = String(b.status || '').toUpperCase();
-                const isASelesai = statusA.startsWith('SELESAI');
-                const isBSelesai = statusB.startsWith('SELESAI');
-                const isAPlg = statusA.startsWith('PELANGGARAN');
-                const isBPlg = statusB.startsWith('PELANGGARAN');
-                if (isAPlg && !isBPlg) return -1;
-                if (!isAPlg && isBPlg) return 1;
-                if (isAPlg && isBPlg) { const tA = new Date(a.created_at || '').getTime(); const tB = new Date(b.created_at || '').getTime(); return dir === 'asc' ? tA - tB : tB - tA; }
-                if (isASelesai && !isBSelesai) return 1;
-                if (!isASelesai && isBSelesai) return -1;
-                if (isASelesai && isBSelesai) return dir === 'asc' ? statusA.localeCompare(statusB) : statusB.localeCompare(statusA);
-                const tA = new Date(a.created_at || '').getTime();
-                const tB = new Date(b.created_at || '').getTime();
-                return dir === 'asc' ? tA - tB : tB - tA;
+            case 'status': {
+                // Urutan status: BELUM(0) → MENGERJAKAN(1) → PELANGGARAN(2) → SELESAI(3)
+                // asc (↑): BELUM, MENGERJAKAN, PELANGGARAN, SELESAI — desc (↓): sebaliknya
+                const rankStatus = (s) => {
+                    if (s.is_belum === true || String(s.status) === 'BELUM MENGERJAKAN') return 0;
+                    const st = String(s.status || '').toUpperCase();
+                    if (st.startsWith('SELESAI')) return 3;
+                    if (st.startsWith('PELANGGARAN')) return 2;
+                    return 1;
+                };
+                const rA = rankStatus(a), rB = rankStatus(b);
+                if (rA !== rB) return dir === 'asc' ? rA - rB : rB - rA;
+                const tA = new Date(a.created_at || '').getTime() || 0;
+                const tB = new Date(b.created_at || '').getTime() || 0;
+                if (tA !== tB) return dir === 'asc' ? tA - tB : tB - tA;
+                return dir === 'asc'
+                    ? String(a.nama || '').localeCompare(String(b.nama || ''))
+                    : String(b.nama || '').localeCompare(String(a.nama || ''));
+            }
             case 'pelanggaran':
                 valA = parseInt(a.pelanggaran) || 0;
                 valB = parseInt(b.pelanggaran) || 0;
