@@ -260,6 +260,7 @@ tbody tr { transition: background-color 0.2s; }
 }
 .monitoring-table-wrap .table-loading-overlay.show,
 .laporan-table-wrap .table-loading-overlay.show{ opacity:1; pointer-events:auto; }
+.row-updating{ filter:blur(2px); opacity:0.7; transition:filter 0.3s, opacity 0.3s; }
 .table-loading-card{
   background: rgba(15,23,42,0.96);
   border: 1px solid rgba(255,255,255,0.08);

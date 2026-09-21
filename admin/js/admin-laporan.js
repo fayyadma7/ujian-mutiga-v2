@@ -155,6 +155,31 @@ async function loadNilaiSiswa() {
         }catch(e){}
     }
 
+    // laporan: BELUM hanya jika user sudah pilih filter (kelas+mapel) dan ada jadwal untuk itu — jangan auto saat filter kosong (biar laporan tampil semua/history, tidak paksa Seni Budaya)
+    let autoLapKelas = filterKelas;
+    let autoLapMapel = filterMapel;
+    let jadwalAktifLap = null;
+    let useLapCampuran = false;
+    try{
+        const { data: jadLap } = await db.from('jadwal_ujian').select('kelas,mapel').eq('is_aktif', true);
+        if(jadLap && jadLap.length && filterKelas && filterMapel){
+            // hanya jika user sudah pilih keduanya — cek jadwal cocok, baru pakai campuran untuk tampilkan BELUM
+            const hasJadwalForFilter = jadLap.some(j=>{
+                if(j.mapel !== filterMapel) return false;
+                let kls = j.kelas || ''; if(kls.includes('::')) kls = kls.split('::')[1];
+                return kls.split(',').map(s=>s.trim()).includes(filterKelas);
+            });
+            if(hasJadwalForFilter){
+                jadwalAktifLap = { kelas: filterKelas, mapel: filterMapel };
+                useLapCampuran = true;
+            } else {
+                // tetap coba walau jadwal tidak exact (mis. is_aktif false tapi baru selesai) — biar BELUM tetap bisa muncul untuk filter yang dipilih
+                jadwalAktifLap = { kelas: filterKelas, mapel: filterMapel };
+                useLapCampuran = true;
+            }
+        }
+    }catch(e){}
+
     let query = db.from('jawaban_ujian').select('*', { count: 'exact' });
     if (filterMapel) query = query.eq('mapel', filterMapel);
     else if (allowedMapels && allowedMapels.length > 0) query = query.in('mapel', allowedMapels);
@@ -167,10 +192,26 @@ async function loadNilaiSiswa() {
     const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
 
     let allData, totalCount, error;
-    try{
-        const res = await query.order('created_at', { ascending: false }).range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
-        allData=res.data; totalCount=res.count; error=res.error;
-    }catch(e){ error=e; }
+    let _isLapCampuran = false;
+    if(useLapCampuran){
+        _isLapCampuran = true;
+        try{
+            const _s = getGuruSession(); const _gid = _s ? parseInt(_s.id) : null; const _isAdmin = _s ? !!_s.isAdmin : true;
+            const { data: cntVal } = await db.rpc('get_live_campuran_count', { p_kelas: autoLapKelas || null, p_mapel: autoLapMapel || null, p_search: searchNameLap || null, p_guru_id: _gid, p_is_admin: _isAdmin });
+            totalCount = cntVal || 0;
+            const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoLapKelas || null, p_mapel: autoLapMapel || null, p_search: searchNameLap || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _isAdmin });
+            if(rpcErr) throw rpcErr;
+            // rpc returns campur Sudah+BELUM already, map to laporan shape
+            allData = (rpcData||[]).map(r=>({ id: r.siswa_id, nama: r.nama, kelas: r.kelas_nama, mapel: r.mapel, status: r.status, pelanggaran: r.pelanggaran === '-' ? 0 : r.pelanggaran, skor_pg: r.skor_pg, durasi: r.is_belum ? '-' : '-', created_at: r.created_at, is_belum: r.is_belum }));
+            error = null;
+        }catch(e){ _isLapCampuran=false; }
+    }
+    if(!_isLapCampuran){
+        try{
+            const res = await query.order('created_at', { ascending: false }).range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
+            allData=res.data; totalCount=res.count; error=res.error;
+        }catch(e){ error=e; }
+    }
     if (error) {
         _setLapLoading(false);
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171;"><i class="fas fa-exclamation-triangle"></i> Gagal mengambil data!</td></tr>';
@@ -204,37 +245,40 @@ async function loadNilaiSiswa() {
     const highlight = (text, q) => q ? text.replace(new RegExp(q, 'gi'), match => `<mark style="background-color:yellow;padding:0;">${match}</mark>`) : text;
 
     sortedData.forEach((siswa, index) => {
+        const isBelumLap = siswa.is_belum === true || String(siswa.status)==='BELUM MENGERJAKAN';
         const displayNama = highlight(siswa.nama, searchNameLap);
         const safeNama2 = (siswa.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-        const hapusBtn = _lapIsAdmin
+        const hapusBtn = (!isBelumLap && _lapIsAdmin)
             ? `<button class="btn btn-outline" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="hapusDataNilai(${siswa.id}, '${safeNama2}')" title="Hapus Data">
                     <i class="fas fa-trash"></i> Hapus
                </button>`
             : '';
+        const statusBadgeLap = isBelumLap
+            ? `<span class="badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);white-space:nowrap;display:inline-block;font-size:11px;">⏳ BELUM MENGERJAKAN</span>`
+            : `<span class="badge" style="background:${String(siswa.status).includes('PELANGGARAN') ? '#fee2e2' : '#d1fae5'};color:${String(siswa.status).includes('PELANGGARAN') ? '#ef4444' : '#065f46'};border:none;white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">${siswa.status || 'SELESAI'}</span>`;
+        const skorDisplay = isBelumLap ? '-' : (siswa.skor_pg !== null ? siswa.skor_pg : '-');
+        const plgDisplay = isBelumLap ? '<span style="color:#94a3b8;">-</span>' : ((siswa.pelanggaran || 0) > 0
+                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${(siswa.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran</button>`
+                        : `<span style="font-size:12px;font-weight:600;color:#10b981;"><i class="fas fa-check-circle"></i> Bersih</span>`);
         tbody.innerHTML += `
             <tr>
-                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-laporan" value="${siswa.id}"></td>
+                <td data-label="" style="text-align:center;">${isBelumLap ? '' : `<input type="checkbox" class="cb-laporan" value="${siswa.id}">`}</td>
                 <td data-label="No" style="text-align:center;">${startIdx + index + 1}</td>
                 <td data-label="Nama Siswa" style="font-weight:600;">
                     <span class="mon-no-mobile" style="display:none; width:26px; height:26px; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.28); border-radius:7px; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#93c5fd; flex-shrink:0;">${startIdx + index + 1}</span>
                     <span class="mon-nama-text">${displayNama}</span>
                 </td>
                 <td data-label="Kelas / Mapel" style="text-align:center;">
-                    <span class="badge" style="display:inline-block;margin-bottom:4px;">${siswa.kelas.includes('::') ? siswa.kelas.split('::')[1] : siswa.kelas}</span><br>
+                    <span class="badge" style="display:inline-block;margin-bottom:4px;">${(siswa.kelas||'').includes('::') ? siswa.kelas.split('::')[1] : siswa.kelas}</span><br>
                     <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${siswa.mapel}</span>
                 </td>
-                <td data-label="Skor PG" style="text-align:center;font-weight:700;color:var(--primary);font-size:16px;"><span class="skor-value">${siswa.skor_pg !== null ? siswa.skor_pg : '-'}</span></td>
+                <td data-label="Skor PG" style="text-align:center;font-weight:700;color:var(--primary);font-size:16px;"><span class="skor-value">${skorDisplay}</span></td>
                 <td data-label="Durasi & Pelanggaran" style="text-align:center;">
                     <span style="font-size:13px;color:var(--text-main);">${siswa.durasi || '-'}</span><br>
-                    ${(siswa.pelanggaran || 0) > 0
-                        ? `<button onclick="lihatPelanggaran(${siswa.id}, '${(siswa.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;font-size:12px;font-weight:600;color:#ef4444;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${siswa.pelanggaran} Pelanggaran</button>`
-                        : `<span style="font-size:12px;font-weight:600;color:#10b981;"><i class="fas fa-check-circle"></i> Bersih</span>`
-                    }
+                    ${plgDisplay}
                 </td>
                 <td data-label="Status" style="text-align:center;">
-                    <span class="badge" style="background:${String(siswa.status).includes('PELANGGARAN') ? '#fee2e2' : '#d1fae5'};color:${String(siswa.status).includes('PELANGGARAN') ? '#ef4444' : '#065f46'};border:none;white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">
-                        ${siswa.status || 'SELESAI'}
-                    </span>
+                    ${statusBadgeLap}
                 </td>
                 <td data-label="Aksi" style="text-align:center;">${hapusBtn}</td>
             </tr>

@@ -320,6 +320,7 @@ function selectMonMapel(val){
     if(dd) dd.style.display='none';
 }
 
+let _prevMonDataMap = new Map();
 function _setMonLoading(on){
     const ov=document.getElementById('monitoring-loading-overlay');
     if(ov){ ov.classList.toggle('show', !!on); ov.setAttribute('aria-hidden', on?'false':'true'); }
@@ -337,14 +338,51 @@ async function loadMonitoring() {
     const filterTglAkhir = document.getElementById('filter-tgl-akhir-monitoring')?.value || '';
     const searchName = (document.getElementById('search-nama-monitoring')?.value || '').toLowerCase();
     const banner = document.getElementById('mon-status-banner');
+    // jika langsung buka tanpa filter apapun, paksa ALL biar 1435 SELESAI langsung kelihatan (bukan AKTIF 0) — selalu reset ke ALL saat filter kosong
+    if(!filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir){
+        if(currentMonStatus !== 'ALL'){
+            currentMonStatus = 'ALL';
+            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) { c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; } }); }catch(e){}
+        }
+    }
     // jangan kosongkan tbody di sini — overlay yang menutupi, tinggi tabel tetap terjaga
     const _hadRows = tbody.querySelectorAll('tr').length>1 || (tbody.textContent && !tbody.textContent.includes('Memuat'));
     if(!_hadRows){
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
     }
 
-    const { data: jadwalAktif } = await db.from('jadwal_ujian').select('id').eq('is_aktif', true);
-    const adaUjianAktif = jadwalAktif && jadwalAktif.length > 0;
+    // ambil jadwal dengan waktu sekarang (biar tidak selalu Seni Budaya pertama) — is_aktif + now dalam window
+    const { data: _allJadwal } = await db.from('jadwal_ujian').select('kelas,mapel,waktu_mulai,waktu_selesai,durasi_menit').eq('is_aktif', true);
+    const nowMon = new Date();
+    const jadwalAktifRows = (_allJadwal||[]).filter(j=>{
+        try{
+            const m = new Date(j.waktu_mulai);
+            let s = j.waktu_selesai ? new Date(j.waktu_selesai) : new Date(m.getTime() + (j.durasi_menit||90)*60000);
+            return nowMon >= m && nowMon <= s;
+        }catch(e){ return false; }
+    });
+    const adaUjianAktif = jadwalAktifRows && jadwalAktifRows.length > 0;
+
+    // auto dari jadwal aktif jika filter kosong — jangan ambil cuma first, biar tidak ngunci Seni Budaya; kosong = tampil semua jadwal aktif (campur)
+    let autoKelas = filterKelas;
+    let autoMapel = filterMapel;
+    let hasJadwalForFilter = false;
+    if(!filterKelas && !filterMapel && adaUjianAktif){
+        // filter kosong + ada jadwal now → tampil semua jadwal aktif (p_kelas=null, p_mapel=null → RPC semua)
+        hasJadwalForFilter = true;
+        autoKelas = ''; autoMapel = '';
+    } else if((filterKelas || filterMapel) && adaUjianAktif){
+        // jika user sudah pilih filter, cek apakah ada jadwal untuk filter itu — biar BELUM tetap muncul walau filter cuma mapel
+        hasJadwalForFilter = jadwalAktifRows.some(j=>{
+            const jMapelOk = !filterMapel || j.mapel === filterMapel;
+            if(!jMapelOk) return false;
+            if(!filterKelas) return true;
+            let kls = j.kelas || ''; if(kls.includes('::')) kls = kls.split('::')[1];
+            return kls.split(',').map(s=>s.trim()).includes(filterKelas);
+        });
+        // jika filterMapel ada tapi filterKelas kosong, tetap anggap ada jadwal untuk mapel itu
+        if(filterMapel && !filterKelas && jadwalAktifRows.some(j=> j.mapel===filterMapel)) hasJadwalForFilter = true;
+    }
 
     // helper: apply base filters (kelas, mapel, search, tanggal) — tanpa status
     const applyBaseFilters = (q) => {
@@ -355,6 +393,9 @@ async function loadMonitoring() {
         if (filterTglAkhir) q = q.lte('created_at', filterTglAkhir + 'T23:59:59');
         return q;
     };
+
+    // pakai RPC campuran jika ada jadwal (baik auto maupun filter user) — campur Sudah+BELUM, beda status; p_kelas boleh null (semua kelas mapel itu)
+    const useCampuran = !!(hasJadwalForFilter || (adaUjianAktif && autoKelas && autoMapel) || (filterMapel && hasJadwalForFilter));
 
     // 1) Hitung kartu ringkasan — SELALU pakai base filter saja (tanpa status), agar klik card tidak bikin 0 semua
     let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
@@ -381,20 +422,59 @@ async function loadMonitoring() {
     if (elAktif) elAktif.innerText = String(cntAktif);
     if (elSelesai) elSelesai.innerText = String(cntSelesai);
     if (elPlg) elPlg.innerText = String(cntPelanggaran);
+    // jika langsung buka Live tanpa filter dan tidak ada jadwal now, jangan paksa filter AKTIF (0) — reset ke ALL biar 1434 SELESAI tetap kelihatan
+    // juga jika ada 1 AKTIF tapi user tidak klik card, tetap tampil ALL biar tidak kosong
+    if(!filterKelas && !filterMapel && currentMonStatus === 'AKTIF'){
+        // jika AKTIF cuma 1 tapi total 1435, user pasti mau lihat semua, bukan cuma 1
+        if(cntAktif <= 1 && (cntSelesai + cntAktif) > 10){
+            currentMonStatus = 'ALL';
+            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) c.style.borderWidth='2px'; }); }catch(e){}
+        }
+        // jika tidak ada jadwal now dan AKTIF 0, juga reset
+        if(!adaUjianAktif && cntAktif === 0 && cntSelesai > 0){
+            currentMonStatus = 'ALL';
+            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) c.style.borderWidth='2px'; }); }catch(e){}
+        }
+    }
 
-    // 2) Query tabel — base + status filter (untuk pagination & rows)
-    let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
-    if (currentMonStatus === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
-    else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
-    else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
-
-    const { count: totalItemsCount } = await query;
-    const totalItems = totalItemsCount || 0;
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-    if (currentMonPage > totalPages) currentMonPage = totalPages;
-    const startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
-
-    const { data, error } = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
+    // 2) Query tabel — jika ada jadwal aktif pakai RPC campuran Sudah+BELUM (menyesuaikan jadwal, campur beda status)
+    let data = null, error = null, totalItems = 0, totalPages = 1, startIdx = 0;
+    let _isCampuranMode = false;
+    if(useCampuran){
+        _isCampuranMode = true;
+        try{
+            const _s = getGuruSession(); const _gid = _s ? parseInt(_s.id) : null; const _isAdmin = _s ? !!_s.isAdmin : true;
+            const startIdxTmp = (currentMonPage - 1) * ITEMS_PER_PAGE;
+            // hitung total via RPC count — kosong => null, p_only_active_now=true untuk Live (BELUM hanya saat jadwal sedang berlangsung)
+            const { data: cntVal, error: cntErr } = await db.rpc('get_live_campuran_count', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_guru_id: _gid, p_is_admin: _isAdmin, p_only_active_now: true });
+            totalItems = cntVal || 0;
+            totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+            if(currentMonPage > totalPages) currentMonPage = totalPages;
+            startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
+            const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _isAdmin, p_only_active_now: true });
+            if(rpcErr) throw rpcErr;
+            // filter status di JS (campur, beda status) — AKTIF = MENGERJAKAN/PELANGGARAN+BELUM, SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0
+            let filtered = (rpcData||[]).map(r=>({ id:r.siswa_id, nama:r.nama, kelas:r.kelas_nama, mapel:r.mapel, status:r.status, pelanggaran:r.pelanggaran, skor_pg:r.skor_pg, created_at:r.created_at, is_belum:r.is_belum }));
+            if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI'));
+            else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
+            else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
+            data = filtered;
+            error = null;
+        }catch(e){ console.warn('[monitoring campuran] fallback',e); _isCampuranMode=false; }
+    }
+    if(!_isCampuranMode){
+        let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
+        if (currentMonStatus === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
+        else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
+        else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
+        const { count: totalItemsCount } = await query;
+        totalItems = totalItemsCount || 0;
+        totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+        if (currentMonPage > totalPages) currentMonPage = totalPages;
+        startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
+        const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
+        data = res.data; error = res.error;
+    }
 
     if (error || !data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
@@ -423,12 +503,19 @@ async function loadMonitoring() {
 
     const highlight = (text, q) => q ? text.replace(new RegExp(q, 'gi'), match => `<mark style="background-color: yellow; padding: 0;">${match}</mark>`) : text;
 
+    // row-level blur: deteksi status berubah vs sebelumnya
+    const _newMap = new Map();
     sortedData.forEach((s, i) => {
+        const isBelum = s.is_belum === true || String(s.status)==='BELUM MENGERJAKAN';
         const isSelesai = String(s.status).startsWith('SELESAI');
         const isPlg = parseInt(s.pelanggaran) > 0;
+        const prev = _prevMonDataMap.get(String(s.id));
+        const statusChanged = prev && prev.status !== s.status || prev && prev.pelanggaran !== s.pelanggaran;
 
         let statusBadge = "";
-        if (String(s.status).startsWith('PELANGGARAN')) {
+        if (isBelum) {
+            statusBadge = `<span class="badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">⏳ BELUM MENGERJAKAN</span>`;
+        } else if (String(s.status).startsWith('PELANGGARAN')) {
             statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;animation:pulse 1.5s infinite;">🚨 ${s.status}</span>`;
         } else if (isSelesai) {
             statusBadge = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.2);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">✅ ${s.status}</span>`;
@@ -451,24 +538,34 @@ async function loadMonitoring() {
                </button>`
             : '';
 
+        // blur hanya status berubah
+        const rowBlurClass = statusChanged ? ' row-updating' : '';
+        const displayKelas = (s.kelas||'').includes('::') ? s.kelas.split('::')[1] : s.kelas;
+        // BELUM tidak bisa dihapus (belum ada row), hide checkbox & hapus
+        const showCheck = !isBelum;
+        const showHapus = !isBelum && _monIsAdmin;
         tbody.innerHTML += `
-            <tr style="${!isSelesai ? 'background:rgba(250,204,21,0.06);' : ''}">
-                <td data-label="" style="text-align:center;"><input type="checkbox" class="cb-monitoring" value="${s.id}"></td>
+            <tr data-id="${s.id}" class="${rowBlurClass.trim()}" style="${!isSelesai && !isBelum ? 'background:rgba(250,204,21,0.06);' : ''}">
+                <td data-label="" style="text-align:center;">${showCheck ? `<input type="checkbox" class="cb-monitoring" value="${s.id}">` : ''}</td>
                 <td data-label="No" style="text-align:center;">${startIdx + i + 1}</td>
                 <td data-label="Nama Siswa" style="font-weight:600;">
                     <span class="mon-no-mobile" style="display:none; width:26px; height:26px; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.28); border-radius:7px; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#93c5fd; flex-shrink:0;">${startIdx + i + 1}</span>
                     <span class="mon-nama-text">${displayNama}</span>
                 </td>
                 <td data-label="Kelas / Mapel" style="text-align:center;">
-                    <span class="badge" style="display:inline-block;margin-bottom:3px;">${s.kelas.includes('::') ? s.kelas.split('::')[1] : s.kelas}</span><br>
+                    <span class="badge" style="display:inline-block;margin-bottom:3px;">${displayKelas}</span><br>
                     <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${s.mapel}</span>
                 </td>
-                <td data-label="Status" style="text-align:center;">${statusBadge}</td>
-                <td data-label="Pelanggaran" style="text-align:center;">${plgBadge}</td>
+                <td data-label="Status" data-col="status" style="text-align:center;">${statusBadge}</td>
+                <td data-label="Pelanggaran" style="text-align:center;">${isBelum ? '<span style="color:#94a3b8;">-</span>' : plgBadge}</td>
                 <td data-label="Waktu Mulai" style="text-align:center; font-size:12px; color:var(--text-muted);">${waktu}</td>
-                <td data-label="Aksi" style="text-align:center;">${hapusBtn}</td>
+                <td data-label="Aksi" style="text-align:center;">${showHapus ? hapusBtn : ''}</td>
             </tr>`;
+        _newMap.set(String(s.id), { status: s.status, pelanggaran: s.pelanggaran });
     });
+    _prevMonDataMap = _newMap;
+    // hilangkan blur setelah animasi
+    setTimeout(()=>{ document.querySelectorAll('.row-updating').forEach(el=> el.classList.remove('row-updating')); }, 700);
 
     const _elAktif2=document.getElementById('mon-aktif'); if(_elAktif2) _elAktif2.innerText = String(cntAktif);
     const _elSelesai2=document.getElementById('mon-selesai'); if(_elSelesai2) _elSelesai2.innerText = String(cntSelesai);

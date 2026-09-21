@@ -62,8 +62,9 @@ async function loadDashboardJadwalAktif() {
         const tSelesai = new Date(j.waktu_selesai);
 
         const escMapel = (j.mapel || '').replace(/"/g, '&quot;');
+        const escKelasRaw = (j.kelas || '').replace(/"/g, '&quot;');
         html += `
-            <div data-mapel="${escMapel}" onclick="filterMonitoringByMapel(this.dataset.mapel)" title="Klik untuk lihat di Live Monitoring → ${j.mapel}"
+            <div data-mapel="${escMapel}" data-kelas="${escKelasRaw}" onclick="filterMonitoringByMapel(this.dataset.mapel, this.dataset.kelas)" title="Klik untuk lihat di Live Monitoring → ${j.mapel} (${j.kelas || 'Semua'})"
                  style="background:rgba(16, 185, 129, 0.03); border:1px solid rgba(16, 185, 129, 0.15); border-radius:12px; padding:15px; margin-bottom:12px; transition:all 0.3s; border-left:4px solid #10b981; backdrop-filter:blur(6px); cursor:pointer;"
                  onmouseover="this.style.background='rgba(16,185,129,0.08)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(16,185,129,0.15)'"
                  onmouseout="this.style.background='rgba(16,185,129,0.03)';this.style.transform='none';this.style.boxShadow='none'">
@@ -84,41 +85,66 @@ async function loadDashboardJadwalAktif() {
     container.innerHTML = html;
 }
 
-function filterMonitoringByMapel(mapel) {
+function filterMonitoringByMapel(mapel, kelasRaw) {
     if (!mapel) return;
     const clean = mapel.trim();
     window._pendingMonMapel = clean;
     // simpan juga di session untuk survive reload/lazy-load
     try { sessionStorage.setItem('_pendingMonMapel', clean); } catch(_) {}
+    // kelas: ambil kelas pertama dari jadwal (handle :: dan ,)
+    let pendingKelas = null;
+    if(kelasRaw){
+        let k = kelasRaw.trim();
+        if(k.includes('::')) k = k.split('::')[1];
+        const first = k.split(',')[0]?.trim();
+        if(first) pendingKelas = first;
+    }
+    if(pendingKelas){
+        window._pendingMonKelas = pendingKelas;
+        try{ sessionStorage.setItem('_pendingMonKelas', pendingKelas); }catch(_){}
+    }
     const btn = document.querySelector('.nav-btn[onclick*="monitoring"]');
     bukaHalaman('monitoring', btn);
-    // fallback polling — jika admin-core handler terlewat, paksa set setelah populate
+    // fallback polling — jika admin-core handler terlewat, paksa set setelah populate (mapel + kelas)
     let tries = 0;
     const poll = setInterval(() => {
         tries++;
         const sel = document.getElementById('filter-mapel-monitoring');
+        const selKelas = document.getElementById('filter-kelas-monitoring');
         const isActive = document.getElementById('monitoring')?.classList.contains('active');
         const pending = window._pendingMonMapel || (()=>{ try{return sessionStorage.getItem('_pendingMonMapel')}catch(_){return null}})();
-        if (!pending) { clearInterval(poll); try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}; return; }
-        if (!isActive || !sel) { if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}}; return; }
-        // tunggu populate selesai: opsi >1 atau sudah ada pending di opsi
+        const pendingK = window._pendingMonKelas || (()=>{ try{return sessionStorage.getItem('_pendingMonKelas')}catch(_){return null}})();
+        if (!pending && !pendingK) { clearInterval(poll); try{sessionStorage.removeItem('_pendingMonMapel'); sessionStorage.removeItem('_pendingMonKelas')}catch(_){}; return; }
+        if (!isActive || !sel) { if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; window._pendingMonKelas=null; try{sessionStorage.removeItem('_pendingMonMapel'); sessionStorage.removeItem('_pendingMonKelas')}catch(_){}}; return; }
         const hasRealOptions = sel.options.length > 1;
-        if (!hasRealOptions && tries < 6) return; // beri waktu DB 1.5 detik
-        let exists = [...sel.options].some(o => o.value === pending);
-        if (!exists) {
-            const opt = document.createElement('option');
-            opt.value = pending; opt.textContent = pending;
-            sel.appendChild(opt);
+        if (!hasRealOptions && tries < 6) return;
+        if(pending){
+            let exists = [...sel.options].some(o => o.value === pending);
+            if (!exists) { const opt = document.createElement('option'); opt.value = pending; opt.textContent = pending; sel.appendChild(opt); }
+            sel.value = pending;
+            if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-mapel-monitoring');
         }
-        sel.value = pending;
-        if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-mapel-monitoring');
-        if (sel.value === pending) {
-            window._pendingMonMapel = null;
-            try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}
+        if(pendingK && selKelas){
+            let existsK = [...selKelas.options].some(o => o.value === pendingK);
+            if (!existsK) {
+                // jika kelas belum ada (belum load), tunggu
+                if(tries < 6) return;
+                const optK = document.createElement('option');
+                optK.value = pendingK; optK.textContent = pendingK;
+                selKelas.appendChild(optK);
+            }
+            selKelas.value = pendingK;
+            if (typeof syncCustomSelect === 'function') syncCustomSelect('filter-kelas-monitoring');
+        }
+        const mapelOk = !pending || sel.value === pending;
+        const kelasOk = !pendingK || !selKelas || selKelas.value === pendingK;
+        if (mapelOk && kelasOk) {
+            window._pendingMonMapel = null; window._pendingMonKelas = null;
+            try{sessionStorage.removeItem('_pendingMonMapel'); sessionStorage.removeItem('_pendingMonKelas')}catch(_){}
             if (typeof loadMonitoring === 'function') loadMonitoring();
             clearInterval(poll);
         }
-        if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; try{sessionStorage.removeItem('_pendingMonMapel')}catch(_){}}
+        if (tries > 30) { clearInterval(poll); window._pendingMonMapel=null; window._pendingMonKelas=null; try{sessionStorage.removeItem('_pendingMonMapel'); sessionStorage.removeItem('_pendingMonKelas')}catch(_){}}
     }, 300);
 }
 
