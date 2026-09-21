@@ -6436,6 +6436,10 @@ ${JSON.stringify(payloadJawaban)}`;
 
             const successHandler = () => {
                 window._submitting = false;
+                // FIX: hentikan polling realtime yang sudah dihapus + interval 15s agar tidak false positive Sesi direset di halaman Jawaban Terkirim
+                try{ if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); window._ujianDeleteInterval=null; }catch(e){}
+                try{ stopUjianDeleteWatch(); stopAdminKickWatch(); }catch(e){}
+                window.idRowUjian = null;
                 const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
                 localStorage.removeItem("sesi_aktif_" + idUser);
                 localStorage.removeItem("asas_" + idUser);
