@@ -232,6 +232,60 @@ tbody tr { transition: background-color 0.2s; }
   font-weight: 600;
   color: #e2e8f0;
 }
+/* Monitoring & Laporan — anti shrink saat refresh (overlay + min-height) */
+.monitoring-table-wrap,
+.laporan-table-wrap{
+  position: relative;
+  min-height: 360px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.01);
+  overflow: hidden;
+  display: block;
+}
+.monitoring-table-wrap .table-loading-overlay,
+.laporan-table-wrap .table-loading-overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.monitoring-table-wrap .table-loading-overlay.show,
+.laporan-table-wrap .table-loading-overlay.show{ opacity:1; pointer-events:auto; }
+.table-loading-card{
+  background: rgba(15,23,42,0.96);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+.monitoring-table-wrap table,
+.laporan-table-wrap table{ margin:0; border-collapse: separate !important; }
+/* inner overflow div tetap scroll tapi tidak bikin border ganda */
+.monitoring-table-wrap > div[style*="overflow-x"],
+.laporan-table-wrap > div[style*="overflow-x"]{
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding-bottom: 0 !important;
+}
+@media (max-width: 768px){
+  .monitoring-table-wrap, .laporan-table-wrap{ min-height: 300px; }
+}
 /* Skeleton untuk jadwal & bank soal — tinggi sama kayak card asli biar tidak lompat kecil→besar */
 .skeleton-card{
   background: rgba(30,45,68,0.6);

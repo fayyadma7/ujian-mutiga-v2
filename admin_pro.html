@@ -1042,37 +1042,40 @@
                             <div style="font-size:0.8rem; color:#f87171; font-weight:600; margin-top:4px;">⚠️ Ada Pelanggaran</div>
                         </div>
                     </div>
-                    <div style="width: 100%; overflow-x: auto; padding-bottom: 10px;">
-                        <table>
-                        <thead>
-                            <tr>
-                                <th style="width:40px; text-align:center;"><input type="checkbox"
-                                        id="select-all-monitoring" onchange="toggleSelectAll('monitoring')"></th>
-                                <th style="text-align:center;">No</th>
-                                <th style="cursor:pointer; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('nama')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Nama Siswa <span id="sort-indicator-mon-nama" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:150px;" onclick="toggleSortMonitoring('kelas')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Kelas / Mapel <span id="sort-indicator-mon-kelas" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('status')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Status <span id="sort-indicator-mon-status" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; min-width:100px; white-space:nowrap; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('pelanggaran')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Pelanggaran <span id="sort-indicator-mon-pelanggaran" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('waktu')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Waktu Mulai <span id="sort-indicator-mon-waktu" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="text-align:center;">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabel-monitoring">
-                            <tr>
-                                <td colspan="8" style="text-align:center; padding:20px;">Memuat data monitoring...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="monitoring-table-wrap" id="monitoring-table-wrap">
+                        <div style="width: 100%; overflow-x: auto; padding-bottom: 10px;">
+                            <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:40px; text-align:center;"><input type="checkbox"
+                                            id="select-all-monitoring" onchange="toggleSelectAll('monitoring')"></th>
+                                    <th style="text-align:center;">No</th>
+                                    <th style="cursor:pointer; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('nama')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Nama Siswa <span id="sort-indicator-mon-nama" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:150px;" onclick="toggleSortMonitoring('kelas')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Kelas / Mapel <span id="sort-indicator-mon-kelas" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('status')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Status <span id="sort-indicator-mon-status" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; min-width:100px; white-space:nowrap; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('pelanggaran')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Pelanggaran <span id="sort-indicator-mon-pelanggaran" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortMonitoring('waktu')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Waktu Mulai <span id="sort-indicator-mon-waktu" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="text-align:center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-monitoring">
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding:20px;">Memuat data monitoring...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                        <div class="table-loading-overlay" id="monitoring-loading-overlay" aria-hidden="true"><div class="table-loading-card"><i class="fas fa-spinner fa-spin"></i> Memuat...</div></div>
                     </div>
                     <!-- Pagination Controls Monitoring -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
@@ -1146,37 +1149,40 @@
                         </div>
                     </div>
 
-                    <div style="width: 100%; overflow-x: auto; padding-bottom: 10px;">
-                        <table>
-                        <thead>
-                            <tr>
-                                <th style="width:40px; text-align:center;"><input type="checkbox"
-                                        id="select-all-laporan" onchange="toggleSelectAll('laporan')"></th>
-                                <th style="text-align:center;">No</th>
-                                <th style="cursor:pointer; text-align:left; user-select:none; transition:background 0.2s;" onclick="toggleSortLaporan('nama')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Nama Siswa <span id="sort-indicator-lap-nama" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:120px;" onclick="toggleSortLaporan('kelas')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Kls/Mapel <span id="sort-indicator-lap-kelas" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:80px;" onclick="toggleSortLaporan('skor')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Skor PG <span id="sort-indicator-lap-skor" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:160px;" onclick="toggleSortLaporan('durasi')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Durasi & Pelanggaran <span id="sort-indicator-lap-durasi" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortLaporan('status')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                    Status <span id="sort-indicator-lap-status" style="font-size:11px; margin-left:4px;"></span>
-                                </th>
-                                <th style="text-align:center;">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabel-data-nilai">
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px;">Memuat data...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="laporan-table-wrap" id="laporan-table-wrap">
+                        <div style="width: 100%; overflow-x: auto; padding-bottom: 10px;">
+                            <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:40px; text-align:center;"><input type="checkbox"
+                                            id="select-all-laporan" onchange="toggleSelectAll('laporan')"></th>
+                                    <th style="text-align:center;">No</th>
+                                    <th style="cursor:pointer; text-align:left; user-select:none; transition:background 0.2s;" onclick="toggleSortLaporan('nama')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Nama Siswa <span id="sort-indicator-lap-nama" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:120px;" onclick="toggleSortLaporan('kelas')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Kls/Mapel <span id="sort-indicator-lap-kelas" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:80px;" onclick="toggleSortLaporan('skor')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Skor PG <span id="sort-indicator-lap-skor" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s; min-width:160px;" onclick="toggleSortLaporan('durasi')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Durasi & Pelanggaran <span id="sort-indicator-lap-durasi" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="cursor:pointer; text-align:center; user-select:none; transition:background 0.2s;" onclick="toggleSortLaporan('status')" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                        Status <span id="sort-indicator-lap-status" style="font-size:11px; margin-left:4px;"></span>
+                                    </th>
+                                    <th style="text-align:center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-data-nilai">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 20px;">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                        <div class="table-loading-overlay" id="laporan-loading-overlay" aria-hidden="true"><div class="table-loading-card"><i class="fas fa-spinner fa-spin"></i> Memuat...</div></div>
                     </div>
 
                     <!-- Pagination Controls Laporan -->

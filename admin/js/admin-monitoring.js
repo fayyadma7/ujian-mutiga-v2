@@ -320,19 +320,28 @@ function selectMonMapel(val){
     if(dd) dd.style.display='none';
 }
 
+function _setMonLoading(on){
+    const ov=document.getElementById('monitoring-loading-overlay');
+    if(ov){ ov.classList.toggle('show', !!on); ov.setAttribute('aria-hidden', on?'false':'true'); }
+}
 async function loadMonitoring() {
     if(isLoadingMonitoring) return;
     isLoadingMonitoring = true;
+    const _monOverlayOn = (()=>{ _setMonLoading(true); return true; })();
     try{
     const tbody = document.getElementById('tabel-monitoring');
-    if(!tbody){ isLoadingMonitoring=false; return; }
+    if(!tbody){ _setMonLoading(false); isLoadingMonitoring=false; return; }
     const filterKelas = document.getElementById('filter-kelas-monitoring')?.value || '';
     const filterMapel = document.getElementById('filter-mapel-monitoring')?.value || '';
     const filterTglAwal = document.getElementById('filter-tgl-awal-monitoring')?.value || '';
     const filterTglAkhir = document.getElementById('filter-tgl-akhir-monitoring')?.value || '';
     const searchName = (document.getElementById('search-nama-monitoring')?.value || '').toLowerCase();
     const banner = document.getElementById('mon-status-banner');
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:16px;"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    // jangan kosongkan tbody di sini — overlay yang menutupi, tinggi tabel tetap terjaga
+    const _hadRows = tbody.querySelectorAll('tr').length>1 || (tbody.textContent && !tbody.textContent.includes('Memuat'));
+    if(!_hadRows){
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    }
 
     const { data: jadwalAktif } = await db.from('jadwal_ujian').select('id').eq('is_aktif', true);
     const adaUjianAktif = jadwalAktif && jadwalAktif.length > 0;
@@ -388,7 +397,7 @@ async function loadMonitoring() {
     const { data, error } = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1).limit(ITEMS_PER_PAGE);
 
     if (error || !data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
         const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
         if (!adaUjianAktif && totalItems === 0 && cntAktif === 0 && cntSelesai === 0) {
             banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.';
@@ -396,7 +405,7 @@ async function loadMonitoring() {
             banner.style.display = 'none';
         }
         if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(totalItems); }catch(e){}
-        isLoadingMonitoring=false;
+        _setMonLoading(false); isLoadingMonitoring=false;
         return;
     }
 
@@ -478,7 +487,7 @@ async function loadMonitoring() {
             if(String(s.status||'').startsWith('SELESAI')) seenIdsGlobal.delete(s.id); else seenIdsGlobal.add(s.id);
         });
     }catch(e){}
-    }catch(e){ console.warn('[monitoring] load error',e); }finally{ isLoadingMonitoring=false; }
+    }catch(e){ console.warn('[monitoring] load error',e); }finally{ _setMonLoading(false); isLoadingMonitoring=false; }
 }
 
 // --- SORTING ---

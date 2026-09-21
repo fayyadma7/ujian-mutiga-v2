@@ -9,6 +9,10 @@
 
 let _lapMapelCache = [];
 
+function _setLapLoading(on){
+    const ov=document.getElementById('laporan-loading-overlay');
+    if(ov){ ov.classList.toggle('show', !!on); ov.setAttribute('aria-hidden', on?'false':'true'); }
+}
 // --- LAPORAN UTAMA ---
 async function loadNilaiSiswa() {
     const tbody = document.getElementById('tabel-data-nilai');
@@ -24,7 +28,11 @@ async function loadNilaiSiswa() {
     const filterTglAwalLap = document.getElementById('filter-tgl-awal-laporan')?.value || '';
     const filterTglAkhirLap = document.getElementById('filter-tgl-akhir-laporan')?.value || '';
 
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</td></tr>';
+    _setLapLoading(true);
+    const _hadLapRows = tbody && (tbody.querySelectorAll('tr').length>1 || (tbody.textContent && !tbody.textContent.includes('Memuat') && !tbody.textContent.includes('mengambil')));
+    if(tbody && !_hadLapRows){
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    }
 
     // Guru: ambil daftar mapel miliknya untuk filter (HARUS dari bank_soal yang terdaftar)
     let allowedMapels = null;
@@ -158,12 +166,14 @@ async function loadNilaiSiswa() {
     let currentPage = currentLapPage || 1;
     const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
 
-    const { data: allData, count: totalCount, error } = await query
-        .order('created_at', { ascending: false })
-        .range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
-
+    let allData, totalCount, error;
+    try{
+        const res = await query.order('created_at', { ascending: false }).range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
+        allData=res.data; totalCount=res.count; error=res.error;
+    }catch(e){ error=e; }
     if (error) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Gagal mengambil data!</td></tr>';
+        _setLapLoading(false);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171;"><i class="fas fa-exclamation-triangle"></i> Gagal mengambil data!</td></tr>';
         return;
     }
 
@@ -183,7 +193,8 @@ async function loadNilaiSiswa() {
 
     tbody.innerHTML = '';
     if (!allData || allData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">Data tidak ditemukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">Data tidak ditemukan.</td></tr>';
+        _setLapLoading(false);
         return;
     }
 
@@ -229,6 +240,7 @@ async function loadNilaiSiswa() {
             </tr>
         `;
     });
+    _setLapLoading(false);
 }
 
 // --- SORTING ---
