@@ -4607,51 +4607,13 @@
         }
         let _ujianDeleteChannel=null;
         let _adminKickChannel=null;
-        function stopUjianDeleteWatch(){ try{ if(_ujianDeleteChannel){ db.removeChannel(_ujianDeleteChannel); _ujianDeleteChannel=null; } }catch(e){} }
-        function stopAdminKickWatch(){ try{ if(_adminKickChannel){ db.removeChannel(_adminKickChannel); _adminKickChannel=null; } }catch(e){} }
-        function startUjianDeleteWatch(){
-            if(!window.idRowUjian) return;
-            stopUjianDeleteWatch();
-            try{
-                _ujianDeleteChannel = db.channel('ujian-delete-'+window.idRowUjian)
-                    .on('postgres_changes', {event:'DELETE', schema:'public', table:'jawaban_ujian'}, payload=>{
-                        const delId = payload.old && payload.old.id;
-                        if(delId && String(delId)===String(window.idRowUjian)){
-                            const n=document.getElementById('nama')?.value||"";
-                            const k=document.getElementById('kelas')?.value||"";
-                            const idUser=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
-                            // bersihkan cache khusus ujian ini saja, tanpa ubah fitur lain
-                            if(idUser) clearUjianCacheForIdUser(idUser);
-                            try{ localStorage.removeItem("waktu_"+idUser); }catch(e){}
-                            window.idRowUjian=null;
-                            stopUjianDeleteWatch(); stopAdminKickWatch();
-                            if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
-                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Pelanggaran & waktu akan direset. Silakan login ulang untuk memulai baru.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
-                        }
-                    }).subscribe();
-            }catch(e){ console.warn('delete watch fail',e); }
-        }
-        function startAdminKickWatch(){
-            if(!window.idRowUjian) return;
-            stopAdminKickWatch();
-            try{
-                _adminKickChannel = db.channel('admin-kick')
-                    .on('broadcast', {event:'kick'}, payload=>{
-                        const ids = payload.payload?.ids || [];
-                        if(ids.map(String).includes(String(window.idRowUjian))){
-                            const n=document.getElementById('nama')?.value||"";
-                            const k=document.getElementById('kelas')?.value||"";
-                            const idUser=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
-                            if(idUser) clearUjianCacheForIdUser(idUser);
-                            try{ localStorage.removeItem("waktu_"+idUser); }catch(e){}
-                            window.idRowUjian=null;
-                            stopUjianDeleteWatch(); stopAdminKickWatch();
-                            if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
-                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Silakan login ulang untuk memulai baru.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
-                        }
-                    }).subscribe();
-            }catch(e){ console.warn('kick watch fail',e); }
-        }
+        function stopUjianDeleteWatch(){ try{ if(_ujianDeleteChannel){ db.removeChannel(_ujianDeleteChannel); _ujianDeleteChannel=null; } }catch(e){} _ujianDeleteChannel=null; }
+        function stopAdminKickWatch(){ try{ if(_adminKickChannel){ db.removeChannel(_adminKickChannel); _adminKickChannel=null; } }catch(e){} _adminKickChannel=null; }
+        // Realtime siswa dihapus (hemat quota Free 200 + anti false positive Sesi direset)
+        // Pelanggaran/mulai/selesai cukup REST 1.5s doFlush; kick via Hapus = row hilang → 15s polling + 1.5s tokenCheck detect
+        // Live Monitoring admin tetap realtime (admin/js/admin-monitoring.js:56) — siswa 0 realtime
+        function startUjianDeleteWatch(){ return; }
+        function startAdminKickWatch(){ return; }
         async function checkRowDeletedAndClear(){
             if(!window.idRowUjian) return false;
             try{

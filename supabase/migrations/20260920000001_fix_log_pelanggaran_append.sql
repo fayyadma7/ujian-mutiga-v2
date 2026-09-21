@@ -101,7 +101,7 @@ BEGIN
         skor_pg         = v_skor_pg,
         jawaban_pg      = v_jawaban_pg_str,
         jawaban_essay   = array_to_string(v_essay_list, '|||'),
-        pelanggaran     = GREATEST(COALESCE(pelanggaran,0), p_pelanggaran),
+        pelanggaran     = GREATEST(COALESCE(NULLIF(pelanggaran,'')::integer,0), p_pelanggaran)::text,
         -- APPEND log, bukan timpa. Jika p_log lebih panjang & mengandung entry baru, tempel yang belum ada
         log_pelanggaran = CASE
             WHEN p_log_pelanggaran IS NULL OR length(trim(p_log_pelanggaran))=0 THEN log_pelanggaran
@@ -129,29 +129,9 @@ GRANT EXECUTE ON FUNCTION koreksi_dan_submit(bigint, text, text, text, jsonb, in
 GRANT EXECUTE ON FUNCTION koreksi_dan_submit(bigint, text, text, text, jsonb, integer, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION koreksi_dan_submit(bigint, text, text, text, jsonb, integer, text, text, text) TO service_role;
 
--- overload integer delegasi
-CREATE OR REPLACE FUNCTION koreksi_dan_submit(
-    p_id_row          integer,
-    p_nama            text,
-    p_kelas           text,
-    p_mapel           text,
-    p_jawaban         jsonb,
-    p_pelanggaran     integer DEFAULT 0,
-    p_durasi          text DEFAULT '-',
-    p_status          text DEFAULT 'SELESAI',
-    p_log_pelanggaran text DEFAULT NULL
-)
-RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-BEGIN
-    RETURN koreksi_dan_submit(p_id_row::bigint, p_nama, p_kelas, p_mapel, p_jawaban, p_pelanggaran, p_durasi, p_status, p_log_pelanggaran);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text, text) TO anon;
-GRANT EXECUTE ON FUNCTION koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text, text) TO service_role;
+-- FIX: hapus overload integer agar tidak ambigu PGRST203 (2026-09-21 hotfix)
+-- PostgREST tidak bisa pilih bigint vs integer saat JS kirim JSON number
+DROP FUNCTION IF EXISTS koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text, text);
+DROP FUNCTION IF EXISTS koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text);
 
 NOTIFY pgrst, 'reload schema';
