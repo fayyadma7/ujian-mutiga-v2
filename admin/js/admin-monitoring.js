@@ -508,6 +508,13 @@ async function loadMonitoring(opts) {
             // hitung total via RPC count — kosong => null
             const { data: cntVal, error: cntErr } = await db.rpc('get_live_campuran_count', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             totalItems = cntVal || 0;
+            // Hitung BELUM di sini, dari total RPC SEBELUM filter status — biar klik card AKTIF/SELESAI/PELANGGARAN
+            // tidak ikut meng-0-kan card BELUM (total RPC = sudah+belum untuk filter kelas/mapel ini)
+            if(filterKelas || filterMapel){
+                cntBelum = Math.max(0, totalItems - (cntAktif + cntSelesai));
+                const elB2early = document.getElementById('mon-belum');
+                if(elB2early) elB2early.innerText = String(cntBelum);
+            }
             totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
             if(currentMonPage > totalPages) currentMonPage = totalPages;
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
@@ -519,13 +526,12 @@ async function loadMonitoring(opts) {
             else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
             else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
             else if(currentMonStatus === 'BELUM') filtered = filtered.filter(s=> s.is_belum);
-            // FIX: kalau RPC campuran kosong tapi histori ada (cntAktif+cntSelesai >0), jangan tampil kosong — fallback ke histori penuh
-            // ini kejadian saat buka langsung tanpa filter tapi ada jadwal aktif kecil yang belum ada data
-            if(filtered.length === 0 && (cntAktif + cntSelesai) > 0){
-                // jika filter spesifik (kelas/mapel) sengaja kosong karena tidak ada data untuk jadwal itu, 
-                // dan totalItems RPC juga 0, anggap campuran tidak ada data → fallback ke histori (biar tidak kosong)
-                // kecuali memang filter sengaja (akan ditangani fallback)
-                console.warn('[monitoring] campuran kosong padahal histori ada ('+cntSelesai+' selesai), fallback ke histori');
+            // Fallback ke histori HANYA saat RPC-nya sendiri kosong & status ALL.
+            // Jangan fallback saat filter card (AKTIF/SELESAI/PELANGGARAN/BELUM) sengaja menghasilkan 0 —
+            // itu hasil valid (mis. AKTIF=0 padahal BELUM=34), bukan error.
+            const rpcEmpty = !(rpcData && rpcData.length);
+            if(rpcEmpty && currentMonStatus === 'ALL' && (cntAktif + cntSelesai) > 0){
+                console.warn('[monitoring] RPC campuran kosong padahal histori ada ('+cntSelesai+' selesai), fallback ke histori');
                 _isCampuranMode = false;
                 // jangan return, biarkan fallback di bawah jalan
                 data = null;
@@ -571,25 +577,8 @@ async function loadMonitoring(opts) {
         }
     }
 
-    // update BELUM setelah totalItems dari RPC diketahui (biar tidak hang di awal)
-    if(hasJadwalForFilter || adaUjianAktif){
-        // kalau pakai campuran, totalItems sudah dari RPC (belum+sudah), jadi belum = total - sudah
-        if(_isCampuranMode || totalItems>0){
-            // untuk filter spesifik, totalItems adalah untuk filter itu, jadi akurat
-            // untuk ALL tanpa filter, totalItems dari RPC (jika ada) adalah semua active, pakai itu
-            const sudahTotal = cntAktif + cntSelesai;
-            // jika totalItems dari campuran (sudah+belum), belum = total - sudah
-            // jika tidak campuran (fallback), belum tetap 0
-            if(_isCampuranMode){
-                cntBelum = Math.max(0, totalItems - sudahTotal);
-            } else if(hasJadwalForFilter){
-                // fallback tapi ada jadwal, totalItems dari jawaban saja, belum tetap dari RPC total sebelumnya? pakai 0
-                // biarkan 0, akan terisi di next load dengan campuran
-            }
-            const elB2 = document.getElementById('mon-belum');
-            if(elB2) elB2.innerText = String(cntBelum);
-        }
-    }
+    // cntBelum sudah dihitung dari total RPC sebelum filter status (di atas) — jangan hitung ulang di sini
+    // biar klik card AKTIF/SELESAI/PELANGGARAN tidak mengubah angka card BELUM
     if (error || !data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
         const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
