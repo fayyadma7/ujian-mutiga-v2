@@ -5251,25 +5251,7 @@
                 window.idRowUjian = existing.id;
                 try{ startUjianDeleteWatch(); }catch(e){}
                 try{ startAdminKickWatch(); }catch(e){}
-                // cek periodik tiap 15 detik: jika row dihapus admin saat sedang mengerjakan, bersihkan cache
-                try{
-                    if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
-                    window._ujianDeleteInterval = setInterval(async ()=>{
-                        if(!window.idRowUjian) return;
-                        const gone = await checkRowDeletedAndClear();
-                        if(gone){
-                            const n=document.getElementById('nama')?.value||"";
-                            const k=document.getElementById('kelas')?.value||"";
-                            const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||idUserLocal;
-                            clearUjianCacheForIdUser(idU);
-                            try{ localStorage.removeItem("waktu_"+idU); }catch(e){}
-                            window.idRowUjian=null;
-                            stopUjianDeleteWatch(); stopAdminKickWatch();
-                            clearInterval(window._ujianDeleteInterval);
-                            Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Waktu & pelanggaran akan direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
-                        }
-                    }, 15000);
-                }catch(e){}
+                // polling 15 detik dihapus (hemat Egress/PostgREST) — delay kick, siswa cek saat klik Kirim (index.html:6519)
                     localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                 // Generate & simpan device token untuk sesi ini
                 const existingToken = generateDeviceToken();
@@ -5377,24 +5359,7 @@
                     window.idRowUjian = inserted.id;
                     try{ startUjianDeleteWatch(); }catch(e){}
                     try{ startAdminKickWatch(); }catch(e){}
-                    try{
-                        if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
-                        window._ujianDeleteInterval = setInterval(async ()=>{
-                            if(!window.idRowUjian) return;
-                            const gone = await checkRowDeletedAndClear();
-                            if(gone){
-                                const n=document.getElementById('nama')?.value||"";
-                                const k=document.getElementById('kelas')?.value||"";
-                                const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||idUserLocal;
-                                clearUjianCacheForIdUser(idU);
-                                try{ localStorage.removeItem("waktu_"+idU); }catch(e){}
-                                window.idRowUjian=null;
-                                stopUjianDeleteWatch(); stopAdminKickWatch();
-                                clearInterval(window._ujianDeleteInterval);
-                                Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru saat sedang mengerjakan.<br>Waktu & pelanggaran akan direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
-                            }
-                        }, 15000);
-                    }catch(e){}
+                    // polling 15 detik dihapus — delay kick, cek saat Kirim saja
                     aktifSignalSent = true;
                     localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                     if (inserted.created_at) localStorage.setItem(keyWaktu, new Date(inserted.created_at).toISOString());
@@ -6500,6 +6465,23 @@ ${JSON.stringify(payloadJawaban)}`;
                     btnSelesai.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Menyinkronkan jawaban...`;
                     await tungguQueueKosong();
                     btnSelesai.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Mengirim Jawaban...`;
+                }
+
+                // 0.5 CEK SESI MASIH ADA (delay kick — hemat Realtime & Egress, cek cuma pas Kirim)
+                if(window.idRowUjian){
+                    const gone = await checkRowDeletedAndClear();
+                    if(gone){
+                        const idUCek = (n.replace(/\s/g,'')+"_"+m.replace(/\s/g,''))||null;
+                        if(idUCek){ clearUjianCacheForIdUser(idUCek); try{ localStorage.removeItem("waktu_"+idUCek); }catch(e){} }
+                        window.idRowUjian=null;
+                        try{ stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }catch(e){}
+                        Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Silakan reload untuk mulai ulang — waktu & pelanggaran direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                        btnSelesai.disabled=false;
+                        btnSelesai.innerHTML=`<i class="fas fa-paper-plane"></i><span>Selesai &amp; Kirim Jawaban</span>`;
+                        document.getElementById('overlaySubmit').style.display='none';
+                        window._submitting=false;
+                        return;
+                    }
                 }
 
                 // 1. SUSUN PAYLOAD JAWABAN UNTUK DIKIRIM KE SERVER

@@ -360,35 +360,11 @@ async function lihatPelanggaran(rowId, namaSiswa) {
     });
 }
 
-// ==================== REALTIME GURU ====================
+// ==================== REALTIME GURU — DIMATIKAN (hemat Concurrent) ====================
+// polling 15s sudah ada (mulaiPollingGuru), jadi realtime tidak perlu — biar <200
 let realtimeChannel = null;
-
-function mulaiRealtimeGuru() {
-    if (realtimeChannel) return;
-    try {
-        realtimeChannel = db.channel('guru-live-status')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'guru' },
-                () => {
-                    const tb = document.getElementById('guruTableBody');
-                    if (tb && tb.offsetParent !== null) {
-                        if (typeof loadGuruList === 'function') loadGuruList();
-                    }
-                }
-            )
-            .subscribe();
-    } catch (e) {
-        console.warn('⚠️ Realtime guru gagal, melanjutkan tanpa realtime:', e);
-        realtimeChannel = null;
-    }
-}
-
-function hentikanRealtimeGuru() {
-    if (realtimeChannel) {
-        db.removeChannel(realtimeChannel);
-        realtimeChannel = null;
-    }
-}
+function mulaiRealtimeGuru() { return; }
+function hentikanRealtimeGuru() { if (realtimeChannel) { try{ db.removeChannel(realtimeChannel);}catch(e){} realtimeChannel = null; } }
 
 // ==================== GURU STATUS ONLINE & HEARTBEAT ====================
 async function setGuruStatusOnline(guruId) {
@@ -489,71 +465,12 @@ let _safetyCheckIntervalId = setInterval(() => {
     }
 }, 30000);
 
-// ==================== REALTIME CHANNELS (JADWAL & SOAL) ====================
+// ==================== REALTIME CHANNELS (JADWAL & SOAL) — DIMATIKAN (hemat Concurrent) ====================
+// Jadwal & Soal sudah ada polling (scheduleNextAutoDeactivate 30s, loadJadwal manual), jadi realtime tidak perlu
 let _jadwalRealtimeChannel = null;
-
-function startJadwalRealtime() {
-    if (_jadwalRealtimeChannel) { db.removeChannel(_jadwalRealtimeChannel); }
-    _jadwalRealtimeChannel = db.channel('jadwal-realtime-watch')
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'jadwal_ujian' },
-            payload => {
-                const overlay = document.getElementById('landingOverlay');
-                if (overlay && typeof updateLandingTotalJadwal === 'function') updateLandingTotalJadwal();
-                const prev = payload.old || {};
-                const next = payload.new || {};
-                const ev = payload.eventType;
-                if (ev === 'UPDATE') {
-                    if (prev.is_aktif === true && next.is_aktif === false) {
-                        if (!_deactivatingIds.has(next.id)) {
-                            showToast(`⏰ "${next.mapel}" dinonaktifkan otomatis`, 'info');
-                        }
-                        if (document.getElementById('jadwal') && document.getElementById('jadwal').classList.contains('active')) {
-                            if (typeof loadJadwal === 'function') loadJadwal();
-                        }
-                        if (typeof updateDashboardStats === 'function') updateDashboardStats();
-                        if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
-                        scheduleNextAutoDeactivate();
-                    } else if (prev.is_aktif === false && next.is_aktif === true) {
-                        scheduleNextAutoDeactivate();
-                        if (typeof updateDashboardStats === 'function') updateDashboardStats();
-                        if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
-                        if (document.getElementById('jadwal') && document.getElementById('jadwal').classList.contains('active')) {
-                            if (typeof loadJadwal === 'function') loadJadwal();
-                        }
-                    }
-                } else if (ev === 'INSERT' || ev === 'DELETE') {
-                    scheduleNextAutoDeactivate();
-                    if (typeof updateDashboardStats === 'function') updateDashboardStats();
-                    if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
-                    if (document.getElementById('jadwal') && document.getElementById('jadwal').classList.contains('active')) {
-                        if (typeof loadJadwal === 'function') loadJadwal();
-                    }
-                }
-            }
-        )
-        .subscribe(() => {});
-}
-
+function startJadwalRealtime() { return; }
 let _soalRealtimeChannel = null;
-
-function startSoalRealtime() {
-    if (_soalRealtimeChannel) { db.removeChannel(_soalRealtimeChannel); }
-    _soalRealtimeChannel = db.channel('soal-realtime-watch')
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'bank_soal' },
-            () => {
-                const overlay = document.getElementById('landingOverlay');
-                if (overlay && typeof updateLandingTotalSoal === 'function') updateLandingTotalSoal();
-                if (typeof updateDashboardStats === 'function') updateDashboardStats();
-                if (document.getElementById('bank-soal') && document.getElementById('bank-soal').classList.contains('active')) {
-                    if (typeof populatePreviewMapel === 'function') populatePreviewMapel();
-                    if (typeof loadPreviewSoal === 'function') loadPreviewSoal();
-                }
-            }
-        )
-        .subscribe(() => {});
-}
+function startSoalRealtime() { return; }
 
 // ==================== CLOCK ====================
 function updateJam() {
