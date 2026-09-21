@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-    <link rel="stylesheet" href="admin/css/admin-base.css?v=9">
+    <link rel="stylesheet" href="admin/css/admin-base.css?v=10">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=4">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
     <link rel="stylesheet" href="admin/css/admin-mobile.css?v=29">
@@ -358,22 +358,22 @@
             </div>
         </div>
         <ul class="nav-links">
-            <li><a class="nav-btn active" onclick="bukaHalaman('dashboard', this)"><i class="fas fa-home"></i>
+            <li><a class="nav-btn active" data-tip="Dashboard" onclick="bukaHalaman('dashboard', this)"><i class="fas fa-home"></i>
                     <span>Dashboard</span></a></li>
-            <li><a class="nav-btn" onclick="bukaHalaman('bank-soal', this)"><i class="fas fa-file-alt"></i>
+            <li><a class="nav-btn" data-tip="Bank Soal" onclick="bukaHalaman('bank-soal', this)"><i class="fas fa-file-alt"></i>
                     <span>Bank Soal</span></a></li>
-            <li><a class="nav-btn" onclick="bukaHalaman('jadwal', this)"><i class="fas fa-calendar-alt"></i>
+            <li><a class="nav-btn" data-tip="Penjadwalan" onclick="bukaHalaman('jadwal', this)"><i class="fas fa-calendar-alt"></i>
                     <span>Penjadwalan</span></a></li>
-            <li><a class="nav-btn" onclick="bukaHalaman('monitoring', this)"><i class="fas fa-satellite-dish"></i>
+            <li><a class="nav-btn" data-tip="Live Monitoring" onclick="bukaHalaman('monitoring', this)"><i class="fas fa-satellite-dish"></i>
                     <span>Live Monitoring</span></a></li>
-            <li><a class="nav-btn" onclick="bukaHalaman('laporan', this)"><i class="fas fa-chart-bar"></i>
+            <li><a class="nav-btn" data-tip="Laporan Nilai" onclick="bukaHalaman('laporan', this)"><i class="fas fa-chart-bar"></i>
                     <span>Laporan Nilai</span></a></li>
-            <li><a class="nav-btn" onclick="bukaHalaman('analisis-soal-page', this)"><i class="fas fa-chart-pie"></i>
+            <li><a class="nav-btn" data-tip="Analisis Soal" onclick="bukaHalaman('analisis-soal-page', this)"><i class="fas fa-chart-pie"></i>
                     <span>Analisis Soal</span></a></li>
-            <li id="nav-data-kelas"><a class="nav-btn" onclick="bukaHalaman('data-kelas', this)"><i class="fas fa-users"></i>
+            <li id="nav-data-kelas"><a class="nav-btn" data-tip="Data Kelas & Siswa" onclick="bukaHalaman('data-kelas', this)"><i class="fas fa-users"></i>
                     <span>Data Kelas & Siswa</span></a></li>
             <li id="nav-akun-guru" style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px;">
-                <a class="nav-btn" onclick="bukaHalaman('akun-guru', this)"><i class="fas fa-chalkboard-teacher"></i>
+                <a class="nav-btn" data-tip="Akun Guru" onclick="bukaHalaman('akun-guru', this)"><i class="fas fa-chalkboard-teacher"></i>
                     <span>Akun Guru</span></a></li>
         </ul>
     </nav>

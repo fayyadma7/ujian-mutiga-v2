@@ -1416,6 +1416,14 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
     if(window.innerWidth<=768){ const sb=document.querySelector('.sidebar'); sb.classList.contains('open')?closeMobileSidebar():openMobileSidebar(); }
     else { document.querySelector('.sidebar').classList.toggle('collapsed'); }
 });
+// Default: sidebar collapsed (ikon saja) saat buka di desktop — hemat tempat, nama halaman muncul via tooltip saat hover
+(function(){
+    try{
+        if(window.innerWidth > 768){
+            document.querySelector('.sidebar')?.classList.add('collapsed');
+        }
+    }catch(_){}
+})();
 window.addEventListener('resize', ()=>{ if(window.innerWidth>768) closeMobileSidebar(); });
 // Bottom nav (Opsi A — 5 frequent)
 function bottomNavGo(page){

@@ -151,6 +151,90 @@ body {
     font-size: 1.2rem;
 }
 
+/* ================================================================
+   5b. TOOLTIP NAMA HALAMAN — saat sidebar collapsed (desktop)
+   Hover ikon menu → muncul label, tema navy-glass + aksen biru
+   ================================================================ */
+@media (min-width: 769px) {
+    /* Biar tooltip tidak kepotong container scroll */
+    .sidebar.collapsed .nav-links { overflow: visible; }
+    .sidebar.collapsed .nav-links li { position: relative; }
+    .sidebar.collapsed .nav-links a { overflow: visible; }
+    .sidebar.collapsed .sidebar-brand { overflow: visible; }
+
+    .sidebar.collapsed .nav-links li > a::after {
+        content: attr(data-tip);
+        position: absolute;
+        left: calc(100% + 18px);
+        top: 50%;
+        transform: translateY(-50%) translateX(-8px);
+        background: linear-gradient(135deg, rgba(17,28,52,0.98), rgba(10,17,34,0.98));
+        border: 1px solid rgba(59,130,246,0.28);
+        border-left: 3px solid #3b82f6;
+        color: #e2e8f0;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        padding: 9px 14px;
+        border-radius: 10px;
+        white-space: nowrap;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03) inset;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+        z-index: 1200;
+    }
+    .sidebar.collapsed .nav-links li:hover > a::after {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(0);
+        transition-delay: 0.15s;
+    }
+    /* Menu aktif: tooltip ikut aksen biru muda */
+    .sidebar.collapsed .nav-links li:hover > a.active::after {
+        border-color: rgba(59,130,246,0.5);
+        border-left-color: #60a5fa;
+        color: #93c5fd;
+    }
+    /* Tooltip logo brand */
+    .sidebar.collapsed .sidebar-brand::after {
+        content: 'Admin CBT — SMK Muhammadiyah 3 Purbalingga';
+        position: absolute;
+        left: calc(100% + 14px);
+        top: 50%;
+        transform: translateY(-50%) translateX(-8px);
+        background: linear-gradient(135deg, rgba(17,28,52,0.98), rgba(10,17,34,0.98));
+        border: 1px solid rgba(245,158,11,0.3);
+        border-left: 3px solid #f59e0b;
+        color: #f1f5f9;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        padding: 9px 14px;
+        border-radius: 10px;
+        white-space: nowrap;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+        z-index: 1200;
+    }
+    .sidebar.collapsed .sidebar-brand:hover::after {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(0);
+        transition-delay: 0.15s;
+    }
+}
+
 /* Brand section */
 .sidebar-brand {
     padding: 22px 24px;
