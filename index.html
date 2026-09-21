@@ -5161,6 +5161,14 @@
                         // Tandai bahwa sinyal AKTIF sudah dikirim
                         aktifSignalSent = true;
                     }).catch(e => console.log("Silent error status update:", e));
+                } else if (window.idRowUjian && aktifSignalSent) {
+                    // FIX reload tanpa klik Saya Mengerti: status masih PELANGGARAN di DB — pulihkan ke MENGERJAKAN saat resume
+                    safeDbCall(() =>
+                        db.from('jawaban_ujian').update({
+                            status: 'MENGERJAKAN',
+                            pelanggaran: p_count
+                        }).eq('id', window.idRowUjian)
+                    ).then(()=> console.log('[Monitor] Status dipulihkan ke MENGERJAKAN setelah reload')).catch(e=> console.log("Silent resume status:", e));
                 }
 
                 // Write Queue akan menangani sinkronisasi ke Supabase secara sequential
@@ -5268,6 +5276,8 @@
                 localStorage.setItem("device_token_" + idUserLocal, existingToken);
                 safeDbCall(() => db.from('jawaban_ujian').update({ device_token: existingToken }).eq('id', existing.id));
                 aktifSignalSent = true;
+                // FIX reload tanpa Saya Mengerti: status DB masih PELANGGARAN — langsung pulihkan ke MENGERJAKAN agar Live Monitoring tidak stuck
+                try{ if(String(existing.status||'').startsWith('PELANGGARAN')) safeDbCall(()=> db.from('jawaban_ujian').update({ status:'MENGERJAKAN', pelanggaran: p_count }).eq('id', existing.id)); }catch(_){}
                 // Restore pelanggaran dari DB agar konsisten antar device
                 const dbPlgExisting = parseInt(existing.pelanggaran) || 0;
                 if (dbPlgExisting > p_count) {
@@ -5343,6 +5353,8 @@
                                 if (dup.created_at) localStorage.setItem(keyWaktu, new Date(dup.created_at).toISOString());
                                 const dupPlg = parseInt(dup.pelanggaran)||0;
                                 if (dupPlg > p_count) { p_count=dupPlg; localStorage.setItem("pelanggaran_"+idUserLocal, p_count); }
+                                // FIX dup resume tanpa Saya Mengerti: pulihkan status ke MENGERJAKAN agar monitoring tidak stuck PELANGGARAN
+                                try{ safeDbCall(()=> db.from('jawaban_ujian').update({ status:'MENGERJAKAN', pelanggaran: p_count }).eq('id', dup.id)); }catch(_){}
                             } else {
                                 throw insErr;
                             }
