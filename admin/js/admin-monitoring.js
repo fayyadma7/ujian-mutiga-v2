@@ -325,10 +325,17 @@ function _setMonLoading(on){
     const ov=document.getElementById('monitoring-loading-overlay');
     if(ov){ ov.classList.toggle('show', !!on); ov.setAttribute('aria-hidden', on?'false':'true'); }
 }
+let _pendingMonReload = false;
 async function loadMonitoring() {
-    if(isLoadingMonitoring) return;
+    if(isLoadingMonitoring){
+        _pendingMonReload = true;
+        return;
+    }
     isLoadingMonitoring = true;
-    const _monOverlayOn = (()=>{ _setMonLoading(true); return true; })();
+    // FIX: hanya tampilkan overlay full jika belum ada rows (load pertama) — untuk filter/sort pakai row-level blur saja
+    const _tbodyEarly = document.getElementById('tabel-monitoring');
+    const _hadRowsEarly = _tbodyEarly && (_tbodyEarly.querySelectorAll('tr').length>1 || (_tbodyEarly.textContent && !_tbodyEarly.textContent.includes('Memuat') && !_tbodyEarly.textContent.includes('Belum ada data')));
+    if(!_hadRowsEarly) _setMonLoading(true);
     try{
     const tbody = document.getElementById('tabel-monitoring');
     if(!tbody){ _setMonLoading(false); isLoadingMonitoring=false; return; }
@@ -483,9 +490,10 @@ async function loadMonitoring() {
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
             const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             if(rpcErr) throw rpcErr;
-            // filter status di JS (campur, beda status) — AKTIF = MENGERJAKAN/PELANGGARAN+BELUM, SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0
+            // filter status di JS — AKTIF = sedang mengerjakan (bukan SELESAI dan bukan BELUM), SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0
+            // BELUM hanya tampil di ALL, biar count AKTIF (1) sinkron dengan tabel (tidak campur BELUM)
             let filtered = (rpcData||[]).map(r=>({ id:r.siswa_id, nama:r.nama, kelas:r.kelas_nama, mapel:r.mapel, status:r.status, pelanggaran:r.pelanggaran, skor_pg:r.skor_pg, created_at:r.created_at, is_belum:r.is_belum }));
-            if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI'));
+            if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI') && !s.is_belum);
             else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
             else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
             // FIX: kalau RPC campuran kosong tapi histori ada (cntAktif+cntSelesai >0), jangan tampil kosong — fallback ke histori penuh
@@ -638,7 +646,14 @@ async function loadMonitoring() {
             if(String(s.status||'').startsWith('SELESAI')) seenIdsGlobal.delete(s.id); else seenIdsGlobal.add(s.id);
         });
     }catch(e){}
-    }catch(e){ console.warn('[monitoring] load error',e); }finally{ _setMonLoading(false); isLoadingMonitoring=false; }
+    }catch(e){ console.warn('[monitoring] load error',e); }finally{
+        _setMonLoading(false); isLoadingMonitoring=false;
+        if(_pendingMonReload){
+            _pendingMonReload=false;
+            // delay sedikit biar UI sempat update, lalu reload dengan filter terbaru (AKTIF/SELESAI)
+            setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80);
+        }
+    }
 }
 
 // --- SORTING ---
