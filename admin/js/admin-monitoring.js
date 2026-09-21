@@ -430,8 +430,8 @@ async function loadMonitoring() {
         useCampuran = false;
     }
 
-    // 1) Hitung kartu ringkasan — SELALU pakai base filter saja (tanpa status), agar klik card tidak bikin 0 semua
-    let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0;
+    // 1) Hitung kartu ringkasan — 3 dari jawaban_ujian, BELUM awal 0 (akan diisi setelah RPC tabel biar tidak nge-hang)
+    let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0, cntBelum = 0;
     try {
         const [selesaiRes, aktifRes, plgRes] = await Promise.all([
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%'),
@@ -452,21 +452,23 @@ async function loadMonitoring() {
     const elAktif = document.getElementById('mon-aktif');
     const elSelesai = document.getElementById('mon-selesai');
     const elPlg = document.getElementById('mon-pelanggaran');
+    const elBelum = document.getElementById('mon-belum');
     if (elAktif) elAktif.innerText = String(cntAktif);
     if (elSelesai) elSelesai.innerText = String(cntSelesai);
     if (elPlg) elPlg.innerText = String(cntPelanggaran);
-    // jika langsung buka Live tanpa filter dan tidak ada jadwal now, jangan paksa filter AKTIF (0) — reset ke ALL biar 1434 SELESAI tetap kelihatan
+    if (elBelum) elBelum.innerText = String(cntBelum);
+    // jika langsung buka Live tanpa filter dan tidak ada jadwal now, jangan paksa filter AKTIF/BELUM (0) — reset ke ALL biar 1434 SELESAI tetap kelihatan
     // juga jika ada 1 AKTIF tapi user tidak klik card, tetap tampil ALL biar tidak kosong
-    if(!filterKelas && !filterMapel && currentMonStatus === 'AKTIF'){
-        // jika AKTIF cuma 1 tapi total 1435, user pasti mau lihat semua, bukan cuma 1
+    if(!filterKelas && !filterMapel && (currentMonStatus === 'AKTIF' || currentMonStatus === 'BELUM')){
+        // jika AKTIF/BELUM cuma 1 tapi total 1435, user pasti mau lihat semua, bukan cuma 1
         if(cntAktif <= 1 && (cntSelesai + cntAktif) > 10){
             currentMonStatus = 'ALL';
-            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) c.style.borderWidth='2px'; }); }catch(e){}
+            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; }); }catch(e){}
         }
-        // jika tidak ada jadwal now dan AKTIF 0, juga reset
-        if(!adaUjianAktif && cntAktif === 0 && cntSelesai > 0){
+        // jika tidak ada jadwal now dan AKTIF/BELUM 0, juga reset
+        if(!adaUjianAktif && cntAktif === 0 && cntBelum === 0 && cntSelesai > 0){
             currentMonStatus = 'ALL';
-            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran').forEach(c=>{ if(c) c.style.borderWidth='2px'; }); }catch(e){}
+            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; }); }catch(e){}
         }
     }
 
@@ -490,12 +492,12 @@ async function loadMonitoring() {
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
             const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             if(rpcErr) throw rpcErr;
-            // filter status di JS — AKTIF = sedang mengerjakan (bukan SELESAI dan bukan BELUM), SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0
-            // BELUM hanya tampil di ALL, biar count AKTIF (1) sinkron dengan tabel (tidak campur BELUM)
+            // filter status di JS — AKTIF = sedang mengerjakan (bukan SELESAI dan bukan BELUM), SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0, BELUM = is_belum
             let filtered = (rpcData||[]).map(r=>({ id:r.siswa_id, nama:r.nama, kelas:r.kelas_nama, mapel:r.mapel, status:r.status, pelanggaran:r.pelanggaran, skor_pg:r.skor_pg, created_at:r.created_at, is_belum:r.is_belum }));
             if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI') && !s.is_belum);
             else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
             else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
+            else if(currentMonStatus === 'BELUM') filtered = filtered.filter(s=> s.is_belum);
             // FIX: kalau RPC campuran kosong tapi histori ada (cntAktif+cntSelesai >0), jangan tampil kosong — fallback ke histori penuh
             // ini kejadian saat buka langsung tanpa filter tapi ada jadwal aktif kecil yang belum ada data
             if(filtered.length === 0 && (cntAktif + cntSelesai) > 0){
@@ -517,6 +519,16 @@ async function loadMonitoring() {
         _isCampuranMode = false;
     }
     if(!_isCampuranMode){
+        // FIX: BELUM tidak ada di jawaban_ujian → kalau filter BELUM tapi tidak ada jadwal (tidak campuran), pasti kosong
+        if(currentMonStatus === 'BELUM'){
+            data = []; totalItems = 0; error = null;
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada siswa — tidak ada jadwal aktif untuk filter ini, atau semua sudah mengerjakan.</td></tr>';
+            const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
+            banner.style.display = 'none';
+            if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
+            _setMonLoading(false); isLoadingMonitoring=false;
+            return;
+        }
         // FIX: single query dengan range+count (seperti admin-laporan.js) — hindari double-await reuse builder yang bikin kosong
         startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
         let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
@@ -538,6 +550,25 @@ async function loadMonitoring() {
         }
     }
 
+    // update BELUM setelah totalItems dari RPC diketahui (biar tidak hang di awal)
+    if(hasJadwalForFilter || adaUjianAktif){
+        // kalau pakai campuran, totalItems sudah dari RPC (belum+sudah), jadi belum = total - sudah
+        if(_isCampuranMode || totalItems>0){
+            // untuk filter spesifik, totalItems adalah untuk filter itu, jadi akurat
+            // untuk ALL tanpa filter, totalItems dari RPC (jika ada) adalah semua active, pakai itu
+            const sudahTotal = cntAktif + cntSelesai;
+            // jika totalItems dari campuran (sudah+belum), belum = total - sudah
+            // jika tidak campuran (fallback), belum tetap 0
+            if(_isCampuranMode){
+                cntBelum = Math.max(0, totalItems - sudahTotal);
+            } else if(hasJadwalForFilter){
+                // fallback tapi ada jadwal, totalItems dari jawaban saja, belum tetap dari RPC total sebelumnya? pakai 0
+                // biarkan 0, akan terisi di next load dengan campuran
+            }
+            const elB2 = document.getElementById('mon-belum');
+            if(elB2) elB2.innerText = String(cntBelum);
+        }
+    }
     if (error || !data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada data sesuai filter.</td></tr>';
         const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
@@ -777,9 +808,9 @@ function clearFilterMonitoring() {
         syncCustomSelect('filter-kelas-monitoring');
     }
     currentMonStatus = 'ALL';
-    const cards = { 'AKTIF': document.getElementById('mon-card-aktif'), 'SELESAI': document.getElementById('mon-card-selesai'), 'PELANGGARAN': document.getElementById('mon-card-pelanggaran') };
+    const cards = { 'AKTIF': document.getElementById('mon-card-aktif'), 'SELESAI': document.getElementById('mon-card-selesai'), 'PELANGGARAN': document.getElementById('mon-card-pelanggaran'), 'BELUM': document.getElementById('mon-card-belum') };
     Object.entries(cards).forEach(([status, card]) => {
-        if (card) { card.style.borderWidth = '2px'; card.style.background = status === 'AKTIF' ? 'rgba(16,185,129,0.04)' : status === 'SELESAI' ? 'rgba(59,130,246,0.04)' : 'rgba(239,68,68,0.04)'; }
+        if (card) { card.style.borderWidth = '2px'; card.style.background = status === 'AKTIF' ? 'rgba(16,185,129,0.04)' : status === 'SELESAI' ? 'rgba(59,130,246,0.04)' : status === 'BELUM' ? 'rgba(100,116,139,0.04)' : 'rgba(239,68,68,0.04)'; }
     });
     currentMonPage = 1;
     loadMonitoring();

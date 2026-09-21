@@ -1257,21 +1257,36 @@ let currentLapPage = 1;
 const ITEMS_PER_PAGE = 50;
 
 function setMonStatus(status) {
+    // toggle: klik card yang aktif lagi → reset ke ALL
+    if(currentMonStatus === status){
+        status = 'ALL';
+    }
     currentMonStatus = status;
     const cards = {
         'AKTIF': document.getElementById('mon-card-aktif'),
         'SELESAI': document.getElementById('mon-card-selesai'),
-        'PELANGGARAN': document.getElementById('mon-card-pelanggaran')
+        'PELANGGARAN': document.getElementById('mon-card-pelanggaran'),
+        'BELUM': document.getElementById('mon-card-belum')
     };
-    Object.values(cards).forEach(card => {
+    const bgActive = {
+        'AKTIF': 'rgba(16, 185, 129, 0.1)',
+        'SELESAI': 'rgba(59, 130, 246, 0.1)',
+        'PELANGGARAN': 'rgba(239, 68, 68, 0.1)',
+        'BELUM': 'rgba(100,116,139,0.1)'
+    };
+    const bgIdle = {
+        'AKTIF': 'rgba(16, 185, 129, 0.04)',
+        'SELESAI': 'rgba(59, 130, 246, 0.04)',
+        'PELANGGARAN': 'rgba(239, 68, 68, 0.04)',
+        'BELUM': 'rgba(100,116,139,0.04)'
+    };
+    Object.entries(cards).forEach(([key, card]) => {
         if (card) {
-            card.style.borderWidth = '2px';
-            card.style.background = card === cards[status] ?
-                (status === 'AKTIF' ? 'rgba(16, 185, 129, 0.1)' : status === 'SELESAI' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)')
-                : (status === 'AKTIF' ? 'rgba(16, 185, 129, 0.04)' : status === 'SELESAI' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(239, 68, 68, 0.04)');
+            const isActive = key === status && status !== 'ALL';
+            card.style.borderWidth = isActive ? '3px' : '2px';
+            card.style.background = isActive ? bgActive[key] : bgIdle[key];
         }
     });
-    if (cards[status]) cards[status].style.borderWidth = '3px';
     currentMonPage = 1;
     if (typeof loadMonitoring === 'function') loadMonitoring();
 }

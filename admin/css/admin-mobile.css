@@ -147,22 +147,34 @@
   #monitoring .panel-header > div > div:nth-child(2) button[onclick*="bulkActionMonitoring"]{
     background:rgba(239,68,68,0.08) !important; border:1px solid rgba(239,68,68,0.18) !important; color:#fca5a5 !important;
   }
-  /* MONITORING cards — horizontal & kecil */
-  #monitoring div[style*="grid-template-columns:repeat(3,1fr)"]{
-    grid-template-columns:repeat(3,1fr) !important; gap:8px !important; margin-bottom:16px !important;
+  /* MONITORING cards — 4 cols desktop -> 2x2 di mobile, paksa 2 atas 2 bawah */
+  #monitoring div[style*="grid-template-columns"]{
+    display:grid !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:10px !important; margin-bottom:18px !important;
   }
-  #monitoring #mon-card-aktif, #monitoring #mon-card-selesai, #monitoring #mon-card-pelanggaran{
-    padding:10px 8px !important; border-radius:12px !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; min-height:72px !important;
+  /* extra paksa untuk repeat(4,1fr) agar pasti jadi 2 kolom di HP */
+  #monitoring > div > div[style*="repeat(4,1fr)"],
+  #monitoring div[style*="repeat(4,1fr)"]{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+  #monitoring div[style*="grid-template-columns:repeat(3,1fr)"]{
+    grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important; margin-bottom:16px !important;
+  }
+  #monitoring #mon-card-aktif, #monitoring #mon-card-selesai, #monitoring #mon-card-pelanggaran, #monitoring #mon-card-belum{
+    width:100% !important; max-width:100% !important; min-width:0 !important; box-sizing:border-box !important; overflow:hidden !important;
+    padding:12px 8px 10px 8px !important; border-radius:12px !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; min-height:78px !important; gap:4px !important;
   }
   #monitoring #mon-card-aktif div:first-child,
   #monitoring #mon-card-selesai div:first-child,
-  #monitoring #mon-card-pelanggaran div:first-child{
-    font-size:1.35rem !important; line-height:1 !important;
+  #monitoring #mon-card-pelanggaran div:first-child,
+  #monitoring #mon-card-belum div:first-child{
+    font-size:1.45rem !important; line-height:1 !important; font-weight:800 !important;
   }
   #monitoring #mon-card-aktif div:last-child,
   #monitoring #mon-card-selesai div:last-child,
-  #monitoring #mon-card-pelanggaran div:last-child{
-    font-size:0.62rem !important; margin-top:4px !important; text-align:center !important; line-height:1.2 !important; letter-spacing:0.2px !important;
+  #monitoring #mon-card-pelanggaran div:last-child,
+  #monitoring #mon-card-belum div:last-child{
+    font-size:0.65rem !important; margin-top:2px !important; text-align:center !important; line-height:1.25 !important; letter-spacing:0.15px !important; white-space:normal !important; word-break:break-word !important; max-width:100% !important;
   }
   /* LAPORAN NILAI — Filter & Tombol dirapikan total (mobile) */
   #laporan .panel-header{ padding:14px !important; background:rgba(255,255,255,0.015) !important; border:1px solid rgba(255,255,255,0.06) !important; border-radius:14px !important; }
@@ -693,9 +705,10 @@
   .bottom-nav button i{ font-size:16px; }
   .card-panel{ padding:14px; border-radius:16px; }
   .panel-title{ font-size:.85rem; }
-  /* Monitoring 3 cards stack 1 col — KECUALI monitoring yang tetap horizontal 3 */
-  div[style*="grid-template-columns:repeat(3,1fr)"]:not(#monitoring div[style*="grid-template-columns:repeat(3,1fr)"]){ grid-template-columns:1fr !important; }
+  /* Monitoring 3 cards stack 1 col — KECUALI monitoring yang tetap horizontal 3/4 */
+  div[style*="grid-template-columns:repeat(3,1fr)"]:not(#monitoring div[style*="grid-template-columns:repeat(3,1fr)"]):not(#monitoring div[style*="grid-template-columns:repeat(4,1fr)"]){ grid-template-columns:1fr !important; }
   #monitoring div[style*="grid-template-columns:repeat(3,1fr)"]{ grid-template-columns:repeat(3,1fr) !important; gap:8px !important; }
+  #monitoring div[style*="grid-template-columns:repeat(4,1fr)"]{ grid-template-columns:repeat(4,1fr) !important; gap:8px !important; }
   /* Login modal lebih compact */
   .login-modal-glass{ padding:28px 20px 20px; border-radius:20px; }
   /* Data kelas grid 320px 1fr sudah handled di atas */

@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="admin/css/admin-base.css?v=9">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=4">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=2">
-    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=28">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=29">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=5">
     <style>
         .pwd-toggle-glass{
@@ -1019,7 +1019,7 @@
                         <i class="fas fa-check-circle"></i> Semua siswa sudah selesai — Live monitoring dihentikan otomatis.
                     </div>
 
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;">
+                    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px;">
                         <div id="mon-card-aktif" onclick="setMonStatus('AKTIF')"
                             style="cursor:pointer; background:rgba(16, 185, 129, 0.04); border:2px solid rgba(16, 185, 129, 0.25); border-radius:10px; padding:16px; text-align:center; transition:0.3s; backdrop-filter: blur(5px);"
                             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(16, 185, 129, 0.15)';"
@@ -1040,6 +1040,13 @@
                             onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
                             <div style="font-size:2rem; font-weight:700; color:#f87171;" id="mon-pelanggaran">-</div>
                             <div style="font-size:0.8rem; color:#f87171; font-weight:600; margin-top:4px;">⚠️ Ada Pelanggaran</div>
+                        </div>
+                        <div id="mon-card-belum" onclick="setMonStatus('BELUM')"
+                            style="cursor:pointer; background:rgba(100,116,139,0.04); border:2px solid rgba(100,116,139,0.25); border-radius:10px; padding:16px; text-align:center; transition:0.3s; backdrop-filter: blur(5px);"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(100,116,139,0.15)';"
+                            onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                            <div style="font-size:2rem; font-weight:700; color:#94a3b8;" id="mon-belum">-</div>
+                            <div style="font-size:0.8rem; color:#94a3b8; font-weight:600; margin-top:4px;">⏳ Belum Mengerjakan</div>
                         </div>
                     </div>
                     <div class="monitoring-table-wrap" id="monitoring-table-wrap">
