@@ -395,7 +395,8 @@ async function hapusDataNilai(id, nama) {
     const { error } = await adminDb.delete('jawaban_ujian', id);
     if (error) showToast("Gagal menghapus: " + error.message, 'error');
     else {
-        // realtime admin-kick dihapus — delay kick, siswa cek saat Kirim
+        // catat ke reset-log → satu-satunya pemicu reset resmi di HP siswa
+        try { if (typeof catatResetSiswa === 'function') catatResetSiswa(savedData ? [savedData] : []); } catch (e) {}
         const undoDelete = async () => {
             if (savedData) {
                 const { error: insertError } = await adminDb.insert('jawaban_ujian', [savedData]);
@@ -419,7 +420,8 @@ async function bulkActionNilai(action) {
     const { data: backupData } = await db.from('jawaban_ujian').select('*').in('id', ids);
     const { error: lBatchErr } = await adminDb.batchDelete('jawaban_ujian', ids);
     if (lBatchErr) { showToast("Gagal menghapus: " + lBatchErr.message, 'error'); return; }
-    // realtime admin-kick dihapus — delay kick
+    // catat ke reset-log → satu-satunya pemicu reset resmi di HP siswa
+    try { if (typeof catatResetSiswa === 'function') catatResetSiswa(backupData); } catch (e) {}
     const undoFunc = async () => {
         if (backupData && backupData.length > 0) { await chunkedInsert('jawaban_ujian', backupData); loadNilaiSiswa(); showToast(`${ids.length} data nilai berhasil di-restore`, 'success'); }
     };

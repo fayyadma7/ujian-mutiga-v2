@@ -360,6 +360,21 @@ async function lihatPelanggaran(rowId, namaSiswa) {
     });
 }
 
+// ==================== RESET-LOG ADMIN (sumber kebenaran "Sesi direset") ====================
+// Aturan keras: HP siswa HANYA reset + notif kalau ada baris di sesi_direset_log.
+// Panggil fungsi ini SETELAH tiap hapus jawaban_ujian sukses (best-effort, silent).
+async function catatResetSiswa(rows) {
+    try {
+        if (!rows || !rows.length) return;
+        const s = (typeof getGuruSession === 'function') ? getGuruSession() : null;
+        let gid = (s && s.id != null) ? parseInt(s.id) : null;
+        if (gid !== null && isNaN(gid)) gid = null;
+        const logs = rows.filter(r => r && r.nama).map(r => ({ nama: r.nama, kelas: r.kelas || '', mapel: r.mapel || '', jawaban_id: r.id, deleted_by: gid }));
+        if (!logs.length) return;
+        if (typeof adminDb !== 'undefined' && adminDb.insert) await adminDb.insert('sesi_direset_log', logs, { silent: true });
+    } catch (e) { try { console.warn('[reset-log] gagal catat (abaikan):', e); } catch (_) {} }
+}
+
 // ==================== REALTIME GURU — DIMATIKAN (hemat Concurrent) ====================
 // polling 15s sudah ada (mulaiPollingGuru), jadi realtime tidak perlu — biar <200
 let realtimeChannel = null;

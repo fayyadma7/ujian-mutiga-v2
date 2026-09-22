@@ -4677,14 +4677,52 @@
         // Live Monitoring admin tetap realtime (admin/js/admin-monitoring.js:56) — siswa 0 realtime
         function startUjianDeleteWatch(){ return; }
         function startAdminKickWatch(){ return; }
-        async function checkRowDeletedAndClear(){
-            if(!window.idRowUjian) return false;
+        // — RESET HANYA ATAS PERINTAH ADMIN (aturan keras) —
+        // Wipe sesi + notif "Sesi direset" HANYA kalau ada catatan di sesi_direset_log
+        // (ditulis admin saat hapus via Live Monitoring / Laporan Nilai).
+        // Sinyal jelek / query gagal / row tak ketemu TANPA catatan = 'unknown' → JANGAN wipe, JANGAN notif.
+        async function sesiMulaiGate(namaNospace){
+            // Batas bawah waktu: log yang lebih tua dari mulai sesi lokal diabaikan.
+            // Cari di semua varian key waktu milik siswa ini (aman untuk HP dipakai bareng).
             try{
-                const { data, error } = await db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle();
-                if(error && error.code==='PGRST116') return true;
-                if(!data) return true;
-                return false;
-            }catch(e){ return false; }
+                let earliest = null;
+                for(let i=0;i<localStorage.length;i++){
+                    const k = localStorage.key(i);
+                    if(!k) continue;
+                    if(!(k.indexOf('waktu_mulai_')===0 || k.indexOf('waktu_')===0)) continue;
+                    if(namaNospace && k.indexOf(namaNospace) < 0) continue;
+                    const t = Date.parse(localStorage.getItem(k) || '');
+                    if(!isNaN(t) && (earliest===null || t < earliest)) earliest = t;
+                }
+                if(earliest===null) return null;
+                return new Date(earliest - 120000).toISOString(); // slack 2 mnt (jam HP vs server)
+            }catch(e){ return null; }
+        }
+        async function checkResetByAdmin(){
+            // return 'deleted' (admin hapus, terkonfirmasi) | 'exists' (baris ada) | 'unknown' (ragu/sinyal)
+            if(!window.idRowUjian) return 'unknown';
+            const kerja = (async () => {
+                let nama = '', kelas = '', mapel = '';
+                try{
+                    nama = (document.getElementById('nama')||{}).value || '';
+                    kelas = (document.getElementById('kelas')||{}).value || '';
+                    mapel = (document.getElementById('mapel')||{}).value || '';
+                }catch(e){}
+                try{
+                    const { data } = await db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle();
+                    if(data) return 'exists';
+                    // Baris tak ketemu → JANGAN simpulkan dihapus. Tanya ke log resmi admin.
+                    if(!nama) return 'unknown';
+                    const gate = await sesiMulaiGate(String(nama).replace(/\s/g,''));
+                    let q = db.from('sesi_direset_log').select('id,created_at').eq('nama', nama).eq('kelas', kelas).eq('mapel', mapel).order('created_at', { ascending: false }).limit(1);
+                    if(gate) q = q.gte('created_at', gate);
+                    const { data: lg, error: lgErr } = await q.maybeSingle();
+                    if(!lgErr && lg) return 'deleted';
+                    return 'unknown';
+                }catch(e){ return 'unknown'; }
+            })();
+            try{ return await Promise.race([kerja, new Promise(res => setTimeout(()=>res('unknown'), 15000))]); }
+            catch(e){ return 'unknown'; }
         }
 
         function formatNamaLengkap(input) {
@@ -5364,10 +5402,11 @@
                         try{ localStorage.removeItem("urutan_" + idUserLocal); }catch(e){}
                         try{ localStorage.removeItem("durasi_" + idUserLocal); }catch(e){}
                         try{ localStorage.removeItem("ragu_" + idUserLocal); }catch(e){}
-                        // Juga cek row lama via window.idRowUjian jika ada, untuk jaga-jaga realtime
+                        // Cek row lama via window.idRowUjian jika ada — null-kan HANYA jika admin terkonfirmasi
+                        // menghapus (checkResetByAdmin). Sinyal jelek ('unknown') = jangan sentuh apa-apa.
                         if(window.idRowUjian){
-                            const gone = await checkRowDeletedAndClear();
-                            if(gone){ window.idRowUjian=null; stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }
+                            const stLama = await checkResetByAdmin();
+                            if(stLama !== 'exists'){ window.idRowUjian=null; stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }
                         }
                     }
                 }catch(e){}
@@ -6010,21 +6049,22 @@
         // Restore jawaban dari backup Supabase jika localStorage kosong/sebagian hilang
         async function restoreFromSupabase() {
             if (!window.idRowUjian) return;
-            // Jika row sudah dihapus admin saat sedang mengerjakan, bersihkan cache biar pelanggaran/waktu tidak kebawa
+            // Row tak ketemu → wipe + notif HANYA jika admin terkonfirmasi menghapus (reset-log).
+            // Sinyal jelek ('unknown') = JANGAN wipe, JANGAN notif — lanjut restore normal apa adanya.
             try{
-                const chk = await dbWithTimeout(db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle());
-                if(!chk || !chk.data){
+                const stRs = await checkResetByAdmin();
+                if(stRs === 'deleted'){
                     const n=document.getElementById('nama')?.value||"";
                     const k=document.getElementById('kelas')?.value||"";
                     const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
-                    // BACKUP DULU sebelum buang (jangan diam-diam): tawarkan download jika ada jawaban
+                    // BACKUP DULU sebelum buang: tawarkan download jika ada jawaban
                     let _bkRs = { hasAnswers: false };
-                    if(idU){ _bkRs = backupUjianCacheForIdUser(idU, 'restore-row-hilang'); clearUjianCacheForIdUser(idU); }
+                    if(idU){ _bkRs = backupUjianCacheForIdUser(idU, 'restore-admin-hapus'); clearUjianCacheForIdUser(idU); }
                     window.idRowUjian=null;
                     stopUjianDeleteWatch();
                     if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
                     if(_bkRs.hasAnswers && idU){
-                        const _dlRs = await Swal.fire({ icon: 'warning', title: 'Sesi tidak ditemukan', html: 'Data sesi di server tidak ada, jawaban lokal diamankan.<br>Unduh file backup-nya dulu sebelum lanjut.', showCancelButton: true, confirmButtonText: 'Lanjut Tanpa File', cancelButtonText: '<i class="fas fa-download"></i> Download Backup', confirmButtonColor: '#64748b', allowOutsideClick: false });
+                        const _dlRs = await Swal.fire({ icon: 'warning', title: 'Sesi direset guru', html: 'Data sesi ini dihapus oleh guru.<br>Jawabanmu sudah diamankan — unduh file backup-nya dulu sebelum lanjut.', showCancelButton: true, confirmButtonText: 'Lanjut Tanpa File', cancelButtonText: '<i class="fas fa-download"></i> Download Backup', confirmButtonColor: '#64748b', allowOutsideClick: false });
                         if(_dlRs && _dlRs.dismiss === Swal.DismissReason.cancel){ try{ downloadBackupTersimpan(idU); }catch(e){} }
                     }
                     return;
@@ -6542,13 +6582,14 @@ ${JSON.stringify(payloadJawaban)}`;
                     btnSelesai.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Mengirim Jawaban...`;
                 }
 
-                // 0.5 CEK SESI MASIH ADA (delay kick — hemat Realtime & Egress, cek cuma pas Kirim)
+                // 0.5 CEK SESI MASIH ADA — reset HANYA jika admin terkonfirmasi menghapus (reset-log).
+                // Sinyal jelek ('unknown') = BUKAN reset: jangan wipe, jangan reload, tampilkan pesan sinyal.
                 if(window.idRowUjian){
-                    const gone = await checkRowDeletedAndClear();
-                    if(gone){
+                    const stKirim = await checkResetByAdmin();
+                    if(stKirim === 'deleted'){
                         const idUCek = (n.replace(/\s/g,'')+"_"+m.replace(/\s/g,''))||null;
                         // BACKUP DULU sebelum buang — jawaban di memori masih bisa diselamatkan ke file
-                        if(idUCek){ backupUjianCacheForIdUser(idUCek, 'kirim-row-hilang'); clearUjianCacheForIdUser(idUCek); try{ localStorage.removeItem("waktu_"+idUCek); }catch(e){} }
+                        if(idUCek){ backupUjianCacheForIdUser(idUCek, 'kirim-admin-hapus'); clearUjianCacheForIdUser(idUCek); try{ localStorage.removeItem("waktu_"+idUCek); }catch(e){} }
                         window.idRowUjian=null;
                         try{ stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }catch(e){}
                         Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Jawabanmu sudah diamankan — unduh dulu sebelum reload.', showCancelButton: true, confirmButtonText:'Reload', cancelButtonText:'<i class="fas fa-download"></i> Download Backup', allowOutsideClick:false}).then((res)=>{ if(res && res.dismiss === Swal.DismissReason.cancel && idUCek){ try{ downloadBackupTersimpan(idUCek); }catch(e){} setTimeout(()=> location.reload(), 800); } else location.reload(); });
@@ -6557,6 +6598,11 @@ ${JSON.stringify(payloadJawaban)}`;
                         document.getElementById('overlaySubmit').style.display='none';
                         window._submitting=false;
                         return;
+                    }
+                    if(stKirim === 'unknown'){
+                        // Sinyal bermasalah — sesi tidak terbukti hilang. JANGAN wipe/reload; biarkan lanjut kirim
+                        // (RPC di bawah akan sukses kalau sinyal pulih, atau gagal dengan pesan + Backup).
+                        try{ console.warn('[kirim] status sesi tak pasti (sinyal?), lanjut kirim'); }catch(e){}
                     }
                 }
 
