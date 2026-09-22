@@ -783,6 +783,37 @@ function renderAllKaTeXInEditFields() {
 }
 
 /**
+ * Rapikan blok yang terduplikat persis (kasus soal Matematika: rumus kesimpan 2-3x
+ * dalam <p> berurutan, mis. dari import Word — lalu abadi karena save/load melestarikan).
+ * Hanya buang blok yang (a) isi normalisasinya SAMA PERSIS dengan blok sebelumnya, dan
+ * (b) mengandung rumus (tanda \(, data-latex, katex, mjx). Teks biasa yang kebetulan
+ * sama tidak disentuh. Berupa string murni (tidak butuh DOM) agar bisa di-test.
+ */
+function rapikanDuplikatKonten(html) {
+    if (!html || typeof html !== 'string') return html || '';
+    const tandaiRumus = (s) => s.indexOf('\\(') !== -1 || s.indexOf('data-latex') !== -1
+        || s.indexOf('katex') !== -1 || s.indexOf('mjx-container') !== -1 || s.indexOf('annotation') !== -1;
+    const normal = (s) => s.replace(/&nbsp;|&#160;/gi, '').replace(/<[^>]*>/g, '').replace(/\s+/g, '');
+    // pecah jadi segmen blok <p>/<div> level-atas (teks di luar blok ikut terbawa apa adanya)
+    const re = /(<(?:p|div)\b[^>]*>[\s\S]*?<\/(?:p|div)>)/gi;
+    const parts = html.split(re);
+    const out = [];
+    let prevNorm = null;
+    parts.forEach((part) => {
+        if (!part || !part.trim()) return; // slot kosong antar blok — lewati tanpa reset pembanding
+        const m = part.match(/^<(p|div)\b[^>]*>([\s\S]*)<\/(p|div)>$/i);
+        if (!m) { out.push(part); prevNorm = null; return; }
+        const norm = normal(m[2]);
+        if (norm && prevNorm !== null && norm === prevNorm && (tandaiRumus(m[2]) || tandaiRumus(out[out.length - 1] || ''))) {
+            return; // duplikat persis dari blok sebelumnya → buang
+        }
+        out.push(part);
+        prevNorm = norm || null;
+    });
+    return out.join('');
+}
+
+/**
  * Ekstrak LaTeX dari contenteditable yang sudah di-render KaTeX/MathJax.
  * Mengembalikan innerHTML dengan \\(...\\) mentah (bukan rendered HTML).
  * Digunakan sebelum save agar data di DB tetap dalam format LaTeX mentah.
@@ -805,7 +836,8 @@ function extractLatexFromEditable(el) {
         const script = mjx.querySelector('script[type="math/tex"]');
         if (script) mjx.parentNode.replaceChild(document.createTextNode('\\(' + script.textContent + '\\)'), mjx);
     });
-    return clone.innerHTML.trim();
+    // 4) Rapikan dobel (data lama korup / tempel ganda) — save selalu menulis yang tunggal
+    return rapikanDuplikatKonten(clone.innerHTML.trim());
 }
 
 async function simpanSoalManual() {
@@ -1034,7 +1066,8 @@ async function editSatuSoal(id) {
 
     document.getElementById('edit-soal-id').value = data.id;
     document.getElementById('edit-soal-tipe').value = data.tipe_soal;
-    document.getElementById('edit-soal-pertanyaan').innerHTML = data.pertanyaan || '';
+    // rapikan dobel (data lama korup) biar tampil tunggal; save berikutnya menulis yang rapi
+    document.getElementById('edit-soal-pertanyaan').innerHTML = rapikanDuplikatKonten(data.pertanyaan || '');
     document.getElementById('edit-soal-kunci').value = data.kunci_jawaban || '';
 
     // Render rumus KaTeX di semua field edit setelah isi konten
@@ -1057,11 +1090,11 @@ async function editSatuSoal(id) {
         if (count < 2) count = 5;
         editOpsiCount = count;
         updateEditOpsiVisibility();
-        document.getElementById('edit-soal-a').innerHTML = data.opsi_a || '';
-        document.getElementById('edit-soal-b').innerHTML = data.opsi_b || '';
-        document.getElementById('edit-soal-c').innerHTML = data.opsi_c || '';
-        document.getElementById('edit-soal-d').innerHTML = data.opsi_d || '';
-        document.getElementById('edit-soal-e').innerHTML = data.opsi_e || '';
+        document.getElementById('edit-soal-a').innerHTML = rapikanDuplikatKonten(data.opsi_a || '');
+        document.getElementById('edit-soal-b').innerHTML = rapikanDuplikatKonten(data.opsi_b || '');
+        document.getElementById('edit-soal-c').innerHTML = rapikanDuplikatKonten(data.opsi_c || '');
+        document.getElementById('edit-soal-d').innerHTML = rapikanDuplikatKonten(data.opsi_d || '');
+        document.getElementById('edit-soal-e').innerHTML = rapikanDuplikatKonten(data.opsi_e || '');
     }
 
     document.getElementById('modalEditSoal').style.display = 'flex';
