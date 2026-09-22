@@ -6678,14 +6678,16 @@ ${JSON.stringify(payloadJawaban)}`;
                         ? "Server nilai sedang diperbaiki panitia. JANGAN tutup halaman ini — jawabanmu AMAN di HP ini. Klik Backup untuk simpan file, lalu klik Coba Lagi atau hubungi pengawas."
                         : (isOnline
                             ? "Gagal menyimpan jawaban setelah beberapa kali percobaan. Silakan cek koneksi server."
-                            : "Tidak ada koneksi internet. Gunakan tombol Download Backup untuk menyimpan jawaban.");
-                    // Eskalasi: sudah 3x gagal → pandu Backup + kirim file ke admin (tanpa nomor, tanpa istilah teknis)
-                    const _eskalasi = window._submitFailCount >= 3;
+                            : "Tidak ada koneksi internet. Coba lagi 2x pakai tombol Coba Lagi di bawah — jawabanmu AMAN di HP ini.");
+                    // Eskalasi: sudah 2x gagal → pandu Backup + kirim file ke admin (tanpa nomor, tanpa istilah teknis)
+                    const _eskalasi = window._submitFailCount >= 2;
                     if (_eskalasi) {
-                        msg = "Sudah 3x gagal terkirim. Lakukan ini ya: 1) Klik Backup untuk simpan file jawaban. 2) Kirim file-nya ke admin. 3) Jangan tutup halaman ini — jawabanmu AMAN di HP ini.";
+                        msg = "Sudah 2x gagal terkirim. Lakukan ini ya: 1) Klik Backup untuk simpan file jawaban. 2) Kirim file-nya ke admin. 3) Masih bisa klik Coba Lagi — jangan tutup halaman ini.";
                     }
                     window._submitting = false;
-                    tampilkanErrorJaringan((_eskalasi || isAmbigu) ? msg : (msg + " " + errMsg));
+                    // Pesan Inggris mentah tidak ditampilkan ke siswa (tetap ada di console untuk diagnosa)
+                    const _tampilInggris = (!_eskalasi && !isAmbigu && isOnline);
+                    tampilkanErrorJaringan(_tampilInggris ? (msg + " " + errMsg) : msg);
                     document.getElementById('overlaySubmit').style.display = 'none';
                     btnSelesai.disabled = false;
                     btnSelesai.innerHTML = `<i class="fas fa-paper-plane"></i><span>Selesai &amp; Kirim Jawaban</span>`;

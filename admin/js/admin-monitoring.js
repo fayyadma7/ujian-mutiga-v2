@@ -6,7 +6,8 @@
 //            updateCounts, toggleSortMonitoring, sortMonitoringData,
 //            updateSortIndicators, populateFilterKelas,
 //            toggleDatePicker, onDateChange, applyDateFilter, clearDateFilter,
-//            bulkActionMonitoring, hapusDataNilai, handleUploadDarurat
+//            bulkActionMonitoring, hapusDataNilai
+//            (handleUploadDarurat pindah ke admin-laporan.js — tombolnya di halaman Laporan)
 // ============================================================
 
 var violationTracker = typeof violationTracker !== 'undefined' ? violationTracker : new Map();
@@ -951,63 +952,5 @@ function clearDateFilterLaporan() {
 }
 
 // ===== OFFLINE UPLOAD HANDLER =====
-async function handleUploadDarurat(event) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    let successCount = 0, failCount = 0, failDetails = [];
-
-    if(typeof showGlobalLoader==='function') showGlobalLoader('Mengoreksi jawaban...', {immediate:true});
-    else { const _gl=document.getElementById('global-loader'); const _glT=document.getElementById('global-loader-text'); if(_glT) _glT.textContent='Mengoreksi jawaban...'; if(_gl){ _gl.style.display='flex'; _gl.classList.add('show'); } }
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
-            let text = await file.text();
-            text = text.replace(/\\n/g, '\n');
-
-            const namaMatch = text.match(/Nama:\s*(.+)/);
-            const kelasMatch = text.match(/Kelas:\s*(.+)/);
-            const mapelMatch = text.match(/Mapel:\s*(.+)/);
-            if (!namaMatch || !kelasMatch || !mapelMatch) throw new Error("Format header tidak sesuai.");
-            const n = namaMatch[1].trim(), k = kelasMatch[1].trim(), m = mapelMatch[1].trim();
-
-            const jsonSplit = text.split('=== JANGAN UBAH TEKS DI BAWAH INI ===');
-            if (jsonSplit.length < 2) throw new Error("Payload JSON tidak ditemukan.");
-            const payloadJawaban = JSON.parse(jsonSplit[1].trim());
-
-            let { data: cekSesi } = await db.from('jawaban_ujian').select('id').eq('nama', n).eq('kelas', k).eq('mapel', m).maybeSingle();
-            let idRow = null;
-            if (cekSesi) idRow = cekSesi.id;
-            else {
-                const { data: inserted, error: errIns } = await adminDb.insert('jawaban_ujian', [{ nama: n, kelas: k, mapel: m, status: 'AKTIF (OFFLINE)', skor_pg: null, jawaban_essay: '', pelanggaran: 0, durasi: '-', created_at: new Date().toISOString() }], {silent:true});
-                if (errIns) throw errIns;
-                if (inserted && inserted.length > 0) idRow = inserted[0].id;
-            }
-
-            const { error } = await adminDb.rpc('koreksi_dan_submit', {
-                p_id_row: idRow, p_nama: n, p_kelas: k, p_mapel: m,
-                p_jawaban: payloadJawaban, p_pelanggaran: 0, p_durasi: 'Upload Manual',
-                p_status: "SELESAI - " + new Date().toLocaleTimeString('id-ID')
-            }, {silent:true});
-            if (error) throw new Error(`RPC koreksi_dan_submit gagal: ${error.message || JSON.stringify(error)}`);
-            successCount++;
-        } catch (err) {
-            failDetails.push({ file: file.name, error: err.message || JSON.stringify(err) });
-            failCount++;
-        }
-    }
-
-    event.target.value = '';
-
-    if(typeof hideGlobalLoader==='function') hideGlobalLoader(); else { const _gl=document.getElementById('global-loader'); if(_gl){ _gl.classList.remove('show'); setTimeout(()=>{ if(!_gl.classList.contains('show')) _gl.style.display='none'; },220); } }
-
-    let htmlResult = `Berhasil diproses: <b>${successCount}</b> file<br>Gagal diproses: <b>${failCount}</b> file`;
-    if (failDetails.length > 0) {
-        htmlResult += '<hr style="margin:10px 0;">';
-        failDetails.forEach(fd => { htmlResult += `<div style="text-align:left;font-size:12px;margin:5px 0;padding:5px;background:rgba(239,68,68,0.1);border-radius:4px;"><strong>${fd.file}</strong><br>${fd.error}</div>`; });
-    }
-
-    Swal.fire({ title: 'Upload Selesai!', html: htmlResult, icon: successCount > 0 ? 'success' : 'warning', confirmButtonColor: '#3b82f6', background:'rgba(15,23,42,0.98)', color:'#f1f5f9' });
-    if (successCount > 0 && typeof loadNilaiSiswa === 'function') loadNilaiSiswa();
-}
+// NOTE: handleUploadDarurat PINDAH ke admin-laporan.js (tombolnya ada di halaman Laporan Nilai).
+// Ditaruh di sini dulu tidak jalan kalau modul monitoring belum dibuka (lazy-load).
