@@ -176,6 +176,30 @@
   #monitoring #mon-card-belum div:last-child{
     font-size:0.65rem !important; margin-top:2px !important; text-align:center !important; line-height:1.25 !important; letter-spacing:0.15px !important; white-space:normal !important; word-break:break-word !important; max-width:100% !important;
   }
+  /* MONITORING sortbar — chip urut cardlist, gaya samakan filter (mobile only) */
+  #monitoring .mon-sortbar{
+    display:flex !important; gap:8px !important; align-items:center !important;
+    overflow-x:auto !important; padding:2px 2px 10px 2px !important; margin-bottom:2px !important;
+    scrollbar-width:none !important;
+  }
+  #monitoring .mon-sortbar::-webkit-scrollbar{ display:none !important; }
+  #monitoring .mon-sortbar-label{
+    font-size:11px !important; font-weight:600 !important; color:#94a3b8 !important;
+    white-space:nowrap !important; flex-shrink:0 !important;
+  }
+  #monitoring .mon-sortbar-label i{ margin-right:4px !important; }
+  #monitoring .mon-sortbar button[data-sortcol]{
+    flex:0 0 auto !important; height:34px !important; padding:0 12px !important;
+    font-family:'Inter',sans-serif !important; font-size:11px !important; font-weight:600 !important;
+    color:#cbd5e1 !important; background:rgba(255,255,255,0.04) !important;
+    border:1px solid rgba(255,255,255,0.08) !important; border-radius:8px !important;
+    cursor:pointer !important; white-space:nowrap !important;
+  }
+  #monitoring .mon-sortbar button[data-sortcol]:active{ transform:scale(0.96) !important; }
+  #monitoring .mon-sortbar button[data-sortcol].active{
+    color:#93c5fd !important; background:rgba(59,130,246,0.14) !important;
+    border-color:rgba(59,130,246,0.35) !important;
+  }
   /* LAPORAN NILAI — Filter & Tombol dirapikan total (mobile) */
   #laporan .panel-header{ padding:14px !important; background:rgba(255,255,255,0.015) !important; border:1px solid rgba(255,255,255,0.06) !important; border-radius:14px !important; }
   #laporan .panel-header > div{ gap:12px !important; }

@@ -740,10 +740,24 @@ function updateSortIndicators(table) {
     }
 }
 
+// Sinkron chip sortbar mobile dengan sortState (dipanggil tiap render)
+function syncMonSortChips() {
+    try {
+        const st = (typeof sortState !== 'undefined' && sortState.monitoring) ? sortState.monitoring : { column: null, direction: 'asc' };
+        document.querySelectorAll('#mon-sortbar [data-sortcol]').forEach(ch => {
+            const col = ch.dataset.sortcol;
+            const base = ch.dataset.label || col;
+            const active = st.column === col;
+            ch.classList.toggle('active', active);
+            ch.textContent = base + (active ? (st.direction === 'asc' ? ' ↑' : ' ↓') : '');
+        });
+    } catch (e) {}
+}
+
 function sortMonitoringData(data) {
     const col = sortState.monitoring.column;
     const dir = sortState.monitoring.direction;
-    if (!col) return data;
+    if (!col) { syncMonSortChips(); return data; }
 
     const sorted = [...data].sort((a, b) => {
         let valA, valB;
@@ -793,6 +807,7 @@ function sortMonitoringData(data) {
         }
     });
     updateSortIndicators('monitoring');
+    syncMonSortChips();
     return sorted;
 }
 

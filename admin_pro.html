@@ -1049,6 +1049,15 @@
                             <div style="font-size:0.8rem; color:#94a3b8; font-weight:600; margin-top:4px;">⏳ Belum Mengerjakan</div>
                         </div>
                     </div>
+                    <!-- Sortbar khusus mobile (thead disembunyikan di HP) — urutkan cardlist -->
+                    <div id="mon-sortbar" class="mon-sortbar" aria-label="Urutkan daftar monitoring">
+                        <span class="mon-sortbar-label"><i class="fas fa-sort"></i> Urut:</span>
+                        <button type="button" data-sortcol="nama" data-label="Nama" onclick="toggleSortMonitoring('nama')">Nama</button>
+                        <button type="button" data-sortcol="kelas" data-label="Kelas" onclick="toggleSortMonitoring('kelas')">Kelas</button>
+                        <button type="button" data-sortcol="status" data-label="Status" onclick="toggleSortMonitoring('status')">Status</button>
+                        <button type="button" data-sortcol="pelanggaran" data-label="Plg" onclick="toggleSortMonitoring('pelanggaran')">Plg</button>
+                        <button type="button" data-sortcol="waktu" data-label="Waktu" onclick="toggleSortMonitoring('waktu')">Waktu</button>
+                    </div>
                     <div class="monitoring-table-wrap" id="monitoring-table-wrap">
                         <div style="width: 100%; overflow-x: auto; padding-bottom: 10px;">
                             <table>

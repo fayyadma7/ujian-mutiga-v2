@@ -235,6 +235,12 @@ body {
     }
 }
 
+/* ================================================================
+   5c. SORTBAR MONITORING — khusus mobile (hidden di desktop)
+   thead disembunyikan di HP, jadi sorting pindah ke chip bar ini
+   ================================================================ */
+.mon-sortbar { display: none; }
+
 /* Brand section */
 .sidebar-brand {
     padding: 22px 24px;
