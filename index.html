@@ -4709,13 +4709,16 @@
                     mapel = (document.getElementById('mapel')||{}).value || '';
                 }catch(e){}
                 try{
-                    const { data } = await db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle();
+                    const { data, error: rowErr } = await db.from('jawaban_ujian').select('id').eq('id', window.idRowUjian).maybeSingle();
                     if(data) return 'exists';
-                    // Baris tak ketemu → JANGAN simpulkan dihapus. Tanya ke log resmi admin.
+                    // Query-nya sendiri error (sinyal/RLS/server) → TIDAK BOLEH lanjut simpulkan apa-apa.
+                    if(rowErr) return 'unknown';
+                    // Baris tak ketemu (query sukses) → JANGAN simpulkan dihapus. Tanya ke log resmi admin.
                     if(!nama) return 'unknown';
                     const gate = await sesiMulaiGate(String(nama).replace(/\s/g,''));
-                    let q = db.from('sesi_direset_log').select('id,created_at').eq('nama', nama).eq('kelas', kelas).eq('mapel', mapel).order('created_at', { ascending: false }).limit(1);
-                    if(gate) q = q.gte('created_at', gate);
+                    // Tanpa bukti waktu mulai sesi, log lama bisa cocok palsu → tolak (unknown).
+                    if(!gate) return 'unknown';
+                    const q = db.from('sesi_direset_log').select('id,created_at').eq('nama', nama).eq('kelas', kelas).eq('mapel', mapel).gte('created_at', gate).order('created_at', { ascending: false }).limit(1);
                     const { data: lg, error: lgErr } = await q.maybeSingle();
                     if(!lgErr && lg) return 'deleted';
                     return 'unknown';
