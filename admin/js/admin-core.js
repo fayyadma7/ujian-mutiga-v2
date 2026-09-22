@@ -589,14 +589,14 @@ function bukaHalaman(idHalaman, elemenTombol) {
 
     // --- LAZY LOAD MODULE SCRIPTS ---
     const moduleMap = {
-        'dashboard': 'admin-dashboard.js',
+        'dashboard': 'admin-dashboard.js?v=4',
         'bank-soal': 'admin-soal.js?v=8',
         'jadwal': 'admin-jadwal.js?v=8',
-        'monitoring': 'admin-monitoring.js',
-        'laporan': 'admin-laporan.js',
-        'analisis-soal-page': 'admin-analisis.js',
-        'data-kelas': 'admin-siswa.js',
-        'akun-guru': 'admin-guru.js'
+        'monitoring': 'admin-monitoring.js?v=4',
+        'laporan': 'admin-laporan.js?v=4',
+        'analisis-soal-page': 'admin-analisis.js?v=4',
+        'data-kelas': 'admin-siswa.js?v=4',
+        'akun-guru': 'admin-guru.js?v=4'
     };
     const scriptName = moduleMap[idHalaman];
     const _baseKey = scriptName ? scriptName.split('?')[0].replace('.js','') : '';
@@ -1197,10 +1197,8 @@ let currentLapPage = 1;
 const ITEMS_PER_PAGE = 50;
 
 function setMonStatus(status) {
-    // toggle: klik card yang aktif lagi → reset ke ALL
-    if(currentMonStatus === status){
-        status = 'ALL';
-    }
+    // tanpa toggle: klik card SELALU filter itu (klik 2x tetap filter, tidak mental ke ALL).
+    // Untuk lihat semua lagi pakai tombol Clear Filter.
     currentMonStatus = status;
     const cards = {
         'AKTIF': document.getElementById('mon-card-aktif'),

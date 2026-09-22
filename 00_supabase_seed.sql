@@ -185,111 +185,50 @@ $$;
 -- H. FUNGSI KOREKSI: koreksi_dan_submit
 -- Dipanggil oleh siswa (index.html) & admin (offline upload)
 -- SECURITY DEFINER — agar bisa UPDATE jawaban_ujian & SELECT bank_soal
--- Hapus dulu overload bigint kalau ada
+-- PENTING: HANYA versi bigint 9-param (selaras hotfix 20260921). Jangan bikin varian integer —
+-- kembaran integer bikin PostgREST PGRST203 "Could not choose the best candidate" (tombol Kirim gagal massal).
 -- ============================================================
-DROP FUNCTION IF EXISTS koreksi_dan_submit(p_id_row bigint, p_nama text, p_kelas text, p_mapel text, p_jawaban jsonb, p_pelanggaran integer, p_durasi text, p_status text);
+DROP FUNCTION IF EXISTS koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text, text);
+DROP FUNCTION IF EXISTS koreksi_dan_submit(integer, text, text, text, jsonb, integer, text, text);
+DROP FUNCTION IF EXISTS koreksi_dan_submit(bigint, text, text, text, jsonb, integer, text, text);
 
 CREATE OR REPLACE FUNCTION koreksi_dan_submit(
-    p_id_row     integer,
-    p_nama       text,
-    p_kelas      text,
-    p_mapel      text,
-    p_jawaban    jsonb,
-    p_pelanggaran integer DEFAULT 0,
-    p_durasi     text DEFAULT '-',
-    p_status     text DEFAULT 'SELESAI'
+    p_id_row          bigint,
+    p_nama            text,
+    p_kelas           text,
+    p_mapel           text,
+    p_jawaban         jsonb,
+    p_pelanggaran     integer DEFAULT 0,
+    p_durasi          text DEFAULT '-'::text,
+    p_status          text DEFAULT 'SELESAI'::text,
+    p_log_pelanggaran text DEFAULT NULL::text
 )
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
-AS $$
+SET search_path TO 'public', 'extensions'
+AS $function$
 DECLARE
-    v_item          jsonb;
-    v_id_soal       integer;
-    v_tipe          text;
-    v_jawaban_siswa text;
-    v_kunci         text;
-    v_total_pg      integer := 0;
-    v_benar_pg      integer := 0;
-    v_skor_pg       integer := 0;
-    v_hasil         jsonb[] := '{}';
-    v_essay_list    text[] := '{}';
-    v_jawaban_pg_str text := '';
+    v_total_pg       integer := 0;
+    v_benar_pg       integer := 0;
+    v_skor_pg        integer := 0;
+    v_essay_list     text[] := '{}';
+    v_jawaban_pg_str text;
+    v_existing_log   text;
 BEGIN
-    -- Validasi
-    IF p_id_row IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'p_id_row tidak boleh null');
-    END IF;
-    IF p_jawaban IS NULL OR jsonb_array_length(p_jawaban) = 0 THEN
-        RETURN jsonb_build_object('success', false, 'error', 'p_jawaban kosong');
-    END IF;
-
-    -- Loop setiap item jawaban
-    FOR v_item IN SELECT * FROM jsonb_array_elements(p_jawaban)
-    LOOP
-        v_id_soal := (v_item->>'id')::integer;
-        v_tipe    := upper(trim(v_item->>'tipe'));
-        v_jawaban_siswa := trim(v_item->>'jawaban');
-
-        IF v_tipe = 'PG' THEN
-            v_total_pg := v_total_pg + 1;
-
-            -- Ambil kunci jawaban dari bank_soal
-            SELECT kunci_jawaban INTO v_kunci
-            FROM bank_soal
-            WHERE id = v_id_soal AND mapel = p_mapel;
-
-            -- Bandingkan (case-insensitive, spasi diabaikan)
-            IF v_kunci IS NOT NULL AND upper(trim(v_jawaban_siswa)) = upper(trim(v_kunci)) THEN
-                v_benar_pg := v_benar_pg + 1;
-            END IF;
-
-            -- Simpan detail jawaban
-            v_hasil := array_append(v_hasil, jsonb_build_object(
-                'id', v_id_soal,
-                'jawaban', v_jawaban_siswa,
-                'kunci', v_kunci
-            ));
-
-        ELSIF v_tipe = 'ESSAY' THEN
-            IF v_jawaban_siswa <> '' THEN
-                v_essay_list := array_append(v_essay_list, v_jawaban_siswa);
-            END IF;
-        END IF;
-    END LOOP;
-
-    -- Hitung skor PG (persentase, dibulatkan ke integer)
-    IF v_total_pg > 0 THEN
-        v_skor_pg := round((v_benar_pg::numeric / v_total_pg::numeric) * 100);
-    END IF;
-
-    -- Serialisasi jawaban_pg ke teks (array JSON valid)
-    SELECT '[' || COALESCE(string_agg(j::text, ',' ORDER BY (j->>'id')::int), '') || ']'
-    INTO v_jawaban_pg_str
-    FROM unnest(v_hasil) AS j;
-
-    -- Update jawaban_ujian
-    UPDATE jawaban_ujian
-    SET
-        skor_pg       = v_skor_pg,
-        jawaban_pg    = v_jawaban_pg_str,
-        jawaban_essay = array_to_string(v_essay_list, '|||'),
-        pelanggaran   = p_pelanggaran,
-        durasi        = p_durasi,
-        status        = p_status
-    WHERE id = p_id_row;
-
-    IF NOT FOUND THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Row jawaban_ujian tidak ditemukan');
-    END IF;
-
-    RETURN jsonb_build_object(
-        'success', true,
-        'skor', v_skor_pg,
-        'benar', v_benar_pg,
-        'total', v_total_pg
-    );
+    IF p_id_row IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'p_id_row tidak boleh null'); END IF;
+    IF p_jawaban IS NULL OR jsonb_array_length(p_jawaban) = 0 THEN RETURN jsonb_build_object('success', false, 'error', 'p_jawaban kosong'); END IF;
+    SELECT COUNT(*) INTO v_total_pg FROM jsonb_array_elements(p_jawaban) AS j WHERE upper(trim(j->>'tipe')) = 'PG';
+    SELECT COUNT(*) INTO v_benar_pg FROM jsonb_array_elements(p_jawaban) AS j INNER JOIN bank_soal b ON b.id = (j->>'id')::integer AND b.mapel = p_mapel WHERE upper(trim(j->>'tipe')) = 'PG' AND upper(trim(b.kunci_jawaban)) = upper(trim(j->>'jawaban'));
+    SELECT array_agg(j->>'jawaban') INTO v_essay_list FROM jsonb_array_elements(p_jawaban) AS j WHERE upper(trim(j->>'tipe')) = 'ESSAY' AND trim(j->>'jawaban') <> '';
+    IF v_total_pg > 0 THEN v_skor_pg := round((v_benar_pg::numeric / v_total_pg::numeric) * 100); END IF;
+    SELECT '[' || COALESCE(string_agg(jsonb_build_object('id', (j->>'id')::int, 'jawaban', j->>'jawaban', 'kunci', b.kunci_jawaban)::text, ',' ORDER BY (j->>'id')::int), '') || ']' INTO v_jawaban_pg_str FROM jsonb_array_elements(p_jawaban) AS j LEFT JOIN bank_soal b ON b.id = (j->>'id')::integer AND b.mapel = p_mapel WHERE upper(trim(j->>'tipe')) = 'PG';
+    SELECT log_pelanggaran INTO v_existing_log FROM jawaban_ujian WHERE id = p_id_row;
+    UPDATE jawaban_ujian SET skor_pg = v_skor_pg, jawaban_pg = v_jawaban_pg_str, jawaban_essay = array_to_string(v_essay_list, '|||'), pelanggaran = GREATEST(COALESCE(NULLIF(pelanggaran,'')::integer,0), p_pelanggaran)::text, log_pelanggaran = CASE WHEN p_log_pelanggaran IS NULL OR length(trim(p_log_pelanggaran))=0 THEN log_pelanggaran WHEN v_existing_log IS NULL OR v_existing_log = '' THEN trim(p_log_pelanggaran) WHEN v_existing_log = trim(p_log_pelanggaran) THEN v_existing_log WHEN length(trim(p_log_pelanggaran)) <= length(v_existing_log) AND v_existing_log LIKE '%' || trim(p_log_pelanggaran) || '%' THEN v_existing_log WHEN length(trim(p_log_pelanggaran)) > length(v_existing_log) THEN CASE WHEN v_existing_log LIKE '%' || substring(trim(p_log_pelanggaran) from 1 for 120) || '%' THEN v_existing_log ELSE v_existing_log || chr(10) || trim(p_log_pelanggaran) END ELSE v_existing_log || chr(10) || trim(p_log_pelanggaran) END, durasi = p_durasi, status = p_status WHERE id = p_id_row;
+    IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Row jawaban_ujian tidak ditemukan'); END IF;
+    RETURN jsonb_build_object('success', true, 'skor', v_skor_pg, 'benar', v_benar_pg, 'total', v_total_pg);
 END;
-$$;
+$function$;
+GRANT EXECUTE ON FUNCTION koreksi_dan_submit(bigint, text, text, text, jsonb, integer, text, text, text) TO anon, authenticated, service_role;
 
 -- ============================================================
 -- I. INDEXES (untuk performa query besar)

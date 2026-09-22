@@ -4587,7 +4587,7 @@
                     const k=localStorage.key(i);
                     if(k && k.includes(idUser)) toRemove.push(k);
                 }
-                toRemove.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+                toRemove.forEach(k=>{ try{ if(k.indexOf('backup_')===0) return; localStorage.removeItem(k); }catch(e){} });
             }catch(e){}
             // Fallback: hapus prefix + idUser secara eksplisit
             prefixes.forEach(p=>{
@@ -4596,6 +4596,77 @@
             });
             // Juga hapus yang tanpa idUser tapi terkait ujian
             try{ localStorage.removeItem("idRowUjian"); }catch(e){}
+            // PENTING: jangan hapus backup_ (hasil backupUjianCacheForIdUser) — itu penyelamat jawaban
+            // (key backup_* di-skip di loop atas via indexOf check)
+        }
+        // — BACKUP SEBELUM WIPE (kasus Atha: reset buang 50 jawaban lokal tanpa jejak) —
+        // WAJIB dipanggil SEBELUM tiap clearUjianCacheForIdUser di jalur reset. 2 lapis:
+        //  1) mentah: salin semua key idUser -> backup_<key> (selamat walau DOM sudah mati)
+        //  2) file darurat: susun teks format upload (siap unduh walau sudah reload)
+        function backupUjianCacheForIdUser(idUser, alasan){
+            if(!idUser) return { saved: 0, hasAnswers: false };
+            const idNoSp = idUser.replace(/\s/g,'');
+            let saved = 0;
+            try{
+                const keys = [];
+                for(let i=0;i<localStorage.length;i++){
+                    const k = localStorage.key(i);
+                    if(!k) continue;
+                    if(k.indexOf('backup_') === 0) continue;
+                    if(k.includes(idUser) || (idNoSp && k.includes(idNoSp))) keys.push(k);
+                }
+                keys.forEach(k=>{ try{ localStorage.setItem('backup_'+k, localStorage.getItem(k)); saved++; }catch(e){} });
+                try{ localStorage.setItem('backup_meta_'+idUser, JSON.stringify({ waktu: new Date().toISOString(), alasan: alasan||'-', keys: saved })); }catch(e){}
+            }catch(e){}
+            let hasAnswers = false;
+            try{
+                const asas = localStorage.getItem('backup_asas_'+idUser) || localStorage.getItem('backup_asas_'+idNoSp) || localStorage.getItem('asas_'+idUser) || '';
+                if(asas){ try{ const arr = JSON.parse(asas); hasAnswers = Array.isArray(arr) && arr.some(v=> String(v||'').trim() !== ''); }catch(e){ hasAnswers = asas.trim() !== '' && asas !== '[]'; } }
+            }catch(e){}
+            try{
+                const formOk = document.getElementById('formUjian') && document.getElementById('formUjian').style.display === 'block';
+                if(typeof s_data !== 'undefined' && s_data && s_data.length && formOk){
+                    const nn = (document.getElementById('nama')||{}).value || '';
+                    const mm = (document.getElementById('mapel')||{}).value || '';
+                    const kk = (document.getElementById('kelas')||{}).value || '';
+                    const payload = []; let str = '';
+                    s_data.forEach((s, i)=>{
+                        const el = document.getElementsByName('q'+i);
+                        let nilai = '';
+                        if(el && el[0]){ if(el[0].type === 'radio'){ const sel = Array.from(el).find(r=>r.checked); nilai = sel ? sel.value : ''; } else nilai = el[0].value; }
+                        payload.push({ id: s[6], tipe: s[8], jawaban: nilai });
+                        str += 'No.'+(i+1)+' ('+s[8]+'): '+nilai+'\\n';
+                        if(String(nilai).trim() !== '') hasAnswers = true;
+                    });
+                    const content = '=== DATA JAWABAN DARURAT ===\nNama: '+nn+'\nKelas: '+kk+'\nMapel: '+mm+'\nWaktu: '+new Date().toLocaleString('id-ID')+'\n\n'+str+'\n=== JANGAN UBAH TEKS DI BAWAH INI ===\n'+JSON.stringify(payload);
+                    try{ localStorage.setItem('backup_file_'+idUser, content); saved++; }catch(e){}
+                }
+            }catch(e){}
+            return { saved: saved, hasAnswers: hasAnswers };
+        }
+        // Unduh backup hasil backupUjianCacheForIdUser (bisa dipanggil habis reload)
+        function downloadBackupTersimpan(idUser){
+            if(!idUser) return false;
+            const idNoSp = idUser.replace(/\s/g,'');
+            let content = null, fname = '';
+            try{ content = localStorage.getItem('backup_file_'+idUser) || localStorage.getItem('backup_file_'+idNoSp); }catch(e){}
+            if(content){
+                fname = 'Jawaban_'+idNoSp+'_BACKUP.txt';
+            } else {
+                try{ content = localStorage.getItem('backup_asas_'+idUser) || localStorage.getItem('backup_asas_'+idNoSp); }catch(e){}
+                if(!content) return false;
+                content = '=== BACKUP MENTAH (tanpa nomor soal — serahkan ke pengawas) ===\n' + content;
+                fname = 'BackupMentah_'+idNoSp+'.txt';
+            }
+            try{
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fname;
+                document.body.appendChild(a); a.click();
+                window.URL.revokeObjectURL(url); document.body.removeChild(a);
+                return true;
+            }catch(e){ return false; }
         }
         let _ujianDeleteChannel=null;
         let _adminKickChannel=null;
@@ -5278,6 +5349,12 @@
                     const hadOldCache = localStorage.getItem("pelanggaran_" + idUserLocal) !== null || localStorage.getItem("waktu_mulai_" + idUserLocal) !== null || localStorage.getItem("sesi_aktif_" + idUserLocal) !== null;
                     if(hadOldCache){
                         // Selalu bersihkan jika existing null tapi cache ada — admin sudah hapus row, jangan bawa pelanggaran/waktu lama ke sesi baru
+                        // BACKUP DULU sebelum buang (kasus Atha): tawarkan download hanya jika ada jawaban tersimpan
+                        const _bkFresh = backupUjianCacheForIdUser(idUserLocal, 'login-sesi-baru');
+                        if(_bkFresh.hasAnswers){
+                            const _doDl = await Swal.fire({ icon: 'warning', title: 'Sisa jawaban ditemukan', html: 'Ada jawaban tersimpan dari sesi sebelumnya di HP ini.<br>Unduh dulu sebagai pengaman sebelum mulai sesi baru?', showCancelButton: true, confirmButtonText: 'Buang & Mulai Baru', cancelButtonText: '<i class="fas fa-download"></i> Download Backup', confirmButtonColor: '#3B82F6', allowOutsideClick: false });
+                            if(_doDl && _doDl.dismiss === Swal.DismissReason.cancel){ try{ downloadBackupTersimpan(idUserLocal); }catch(e){} }
+                        }
                         clearUjianCacheForIdUser(idUserLocal);
                         try{ localStorage.removeItem("waktu_" + idUserLocal); }catch(e){}
                         try{ localStorage.removeItem("waktu_mulai_" + idUserLocal); }catch(e){}
@@ -5940,10 +6017,16 @@
                     const n=document.getElementById('nama')?.value||"";
                     const k=document.getElementById('kelas')?.value||"";
                     const idU=(n.replace(/\s/g,'')+"_"+k.replace(/\s/g,''))||null;
-                    if(idU) clearUjianCacheForIdUser(idU);
+                    // BACKUP DULU sebelum buang (jangan diam-diam): tawarkan download jika ada jawaban
+                    let _bkRs = { hasAnswers: false };
+                    if(idU){ _bkRs = backupUjianCacheForIdUser(idU, 'restore-row-hilang'); clearUjianCacheForIdUser(idU); }
                     window.idRowUjian=null;
                     stopUjianDeleteWatch();
                     if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval);
+                    if(_bkRs.hasAnswers && idU){
+                        const _dlRs = await Swal.fire({ icon: 'warning', title: 'Sesi tidak ditemukan', html: 'Data sesi di server tidak ada, jawaban lokal diamankan.<br>Unduh file backup-nya dulu sebelum lanjut.', showCancelButton: true, confirmButtonText: 'Lanjut Tanpa File', cancelButtonText: '<i class="fas fa-download"></i> Download Backup', confirmButtonColor: '#64748b', allowOutsideClick: false });
+                        if(_dlRs && _dlRs.dismiss === Swal.DismissReason.cancel){ try{ downloadBackupTersimpan(idU); }catch(e){} }
+                    }
                     return;
                 }
             }catch(e){}
@@ -6464,10 +6547,11 @@ ${JSON.stringify(payloadJawaban)}`;
                     const gone = await checkRowDeletedAndClear();
                     if(gone){
                         const idUCek = (n.replace(/\s/g,'')+"_"+m.replace(/\s/g,''))||null;
-                        if(idUCek){ clearUjianCacheForIdUser(idUCek); try{ localStorage.removeItem("waktu_"+idUCek); }catch(e){} }
+                        // BACKUP DULU sebelum buang — jawaban di memori masih bisa diselamatkan ke file
+                        if(idUCek){ backupUjianCacheForIdUser(idUCek, 'kirim-row-hilang'); clearUjianCacheForIdUser(idUCek); try{ localStorage.removeItem("waktu_"+idUCek); }catch(e){} }
                         window.idRowUjian=null;
                         try{ stopUjianDeleteWatch(); stopAdminKickWatch(); if(window._ujianDeleteInterval) clearInterval(window._ujianDeleteInterval); }catch(e){}
-                        Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Silakan reload untuk mulai ulang — waktu & pelanggaran direset.', confirmButtonText:'OK', allowOutsideClick:false}).then(()=> location.reload());
+                        Swal.fire({icon:'info', title:'Sesi direset guru', html:'Data ujian kamu dihapus oleh guru.<br>Jawabanmu sudah diamankan — unduh dulu sebelum reload.', showCancelButton: true, confirmButtonText:'Reload', cancelButtonText:'<i class="fas fa-download"></i> Download Backup', allowOutsideClick:false}).then((res)=>{ if(res && res.dismiss === Swal.DismissReason.cancel && idUCek){ try{ downloadBackupTersimpan(idUCek); }catch(e){} setTimeout(()=> location.reload(), 800); } else location.reload(); });
                         btnSelesai.disabled=false;
                         btnSelesai.innerHTML=`<i class="fas fa-paper-plane"></i><span>Selesai &amp; Kirim Jawaban</span>`;
                         document.getElementById('overlaySubmit').style.display='none';
@@ -6521,11 +6605,16 @@ ${JSON.stringify(payloadJawaban)}`;
                 } catch (err) {
                     // Cek apakah masih ada koneksi internet sebelum menampilkan error
                     const isOnline = navigator.onLine;
-                    const msg = isOnline
-                        ? "Gagal menyimpan jawaban setelah beberapa kali percobaan. Silakan cek koneksi server."
-                        : "Tidak ada koneksi internet. Gunakan tombol Download Backup untuk menyimpan jawaban.";
+                    const errMsg = String((err && err.message) || err || '');
+                    // PGRST203 = kembaran fungsi koreksi di server (bukan salah siswa, jawaban AMAN di HP ini)
+                    const isAmbigu = errMsg.includes('PGRST203') || errMsg.toLowerCase().includes('could not choose the best candidate');
+                    const msg = isAmbigu
+                        ? "Server nilai sedang diperbaiki panitia. JANGAN tutup halaman ini — jawabanmu AMAN di HP ini. Klik Backup untuk simpan file, lalu klik Coba Lagi atau hubungi pengawas."
+                        : (isOnline
+                            ? "Gagal menyimpan jawaban setelah beberapa kali percobaan. Silakan cek koneksi server."
+                            : "Tidak ada koneksi internet. Gunakan tombol Download Backup untuk menyimpan jawaban.");
                     window._submitting = false;
-                    tampilkanErrorJaringan(msg + " " + err.message);
+                    tampilkanErrorJaringan(isAmbigu ? msg : (msg + " " + errMsg));
                     document.getElementById('overlaySubmit').style.display = 'none';
                     btnSelesai.disabled = false;
                     btnSelesai.innerHTML = `<i class="fas fa-paper-plane"></i><span>Selesai &amp; Kirim Jawaban</span>`;

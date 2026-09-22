@@ -347,6 +347,10 @@ async function loadMonitoring(opts) {
         return;
     }
     isLoadingMonitoring = true;
+    // WATCHDOG: kalau load macet >20 detik (jaringan gantung), paksa reset biar klik berikutnya tidak mati total
+    const _monRunId = Date.now() + Math.random();
+    window._monRunId = _monRunId;
+    setTimeout(()=>{ if(window._monRunId === _monRunId && isLoadingMonitoring){ console.warn('[monitoring] watchdog: load macet, paksa reset'); isLoadingMonitoring = false; _pendingMonReload = false; _setMonLoading(false); if(typeof showToast === 'function') showToast('Monitoring lambat — coba Refresh lagi', 'info'); } }, 20000);
     // Untuk filter/sort/clear/search/pagination — tampilkan overlay animasi konsisten seperti laporan/jadwal
     // Untuk realtime silent — jangan tampilkan overlay full, hanya row-level blur
     _setMonLoading(true, _isSilent);
@@ -492,6 +496,9 @@ async function loadMonitoring(opts) {
             try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; }); }catch(e){}
         }
     }
+    // KUNCI status untuk load ini — klik card lain di tengah load tidak boleh merusak hasil load ini
+    // (klik baru otomatis antre reload sendiri via _pendingMonReload)
+    const _st = currentMonStatus;
 
     // 2) Query tabel — jika ada jadwal aktif pakai RPC campuran Sudah+BELUM (menyesuaikan jadwal, campur beda status)
     let data = null, error = null, totalItems = 0, totalPages = 1, startIdx = 0;
@@ -520,17 +527,18 @@ async function loadMonitoring(opts) {
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
             const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoKelas || null, p_mapel: autoMapel || null, p_search: searchName || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _monIsAdminForRpc, p_only_active_now: _onlyActiveNow });
             if(rpcErr) throw rpcErr;
-            // filter status di JS — AKTIF = sedang mengerjakan (bukan SELESAI dan bukan BELUM), SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0, BELUM = is_belum
+            // filter status di JS — pakai _st (snapshot) biar konsisten satu load
+            // AKTIF = sedang mengerjakan (bukan SELESAI dan bukan BELUM), SELESAI = SELESAI%, PELANGGARAN = pelanggaran>0, BELUM = is_belum
             let filtered = (rpcData||[]).map(r=>({ id:r.siswa_id, nama:r.nama, kelas:r.kelas_nama, mapel:r.mapel, status:r.status, pelanggaran:r.pelanggaran, skor_pg:r.skor_pg, created_at:r.created_at, is_belum:r.is_belum }));
-            if(currentMonStatus === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI') && !s.is_belum);
-            else if(currentMonStatus === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
-            else if(currentMonStatus === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
-            else if(currentMonStatus === 'BELUM') filtered = filtered.filter(s=> s.is_belum);
+            if(_st === 'AKTIF') filtered = filtered.filter(s=> !String(s.status).startsWith('SELESAI') && !s.is_belum);
+            else if(_st === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
+            else if(_st === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
+            else if(_st === 'BELUM') filtered = filtered.filter(s=> s.is_belum);
             // Fallback ke histori HANYA saat RPC-nya sendiri kosong & status ALL.
             // Jangan fallback saat filter card (AKTIF/SELESAI/PELANGGARAN/BELUM) sengaja menghasilkan 0 —
             // itu hasil valid (mis. AKTIF=0 padahal BELUM=34), bukan error.
             const rpcEmpty = !(rpcData && rpcData.length);
-            if(rpcEmpty && currentMonStatus === 'ALL' && (cntAktif + cntSelesai) > 0){
+            if(rpcEmpty && _st === 'ALL' && (cntAktif + cntSelesai) > 0){
                 console.warn('[monitoring] RPC campuran kosong padahal histori ada ('+cntSelesai+' selesai), fallback ke histori');
                 _isCampuranMode = false;
                 // jangan return, biarkan fallback di bawah jalan
@@ -547,21 +555,22 @@ async function loadMonitoring(opts) {
     }
     if(!_isCampuranMode){
         // FIX: BELUM tidak ada di jawaban_ujian → kalau filter BELUM tapi tidak ada jadwal (tidak campuran), pasti kosong
-        if(currentMonStatus === 'BELUM'){
+        if(_st === 'BELUM'){
             data = []; totalItems = 0; error = null;
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Belum ada siswa — tidak ada jadwal aktif untuk filter ini, atau semua sudah mengerjakan.</td></tr>';
             const pi=document.getElementById('mon-page-info'); if(pi) pi.innerText = 'Menampilkan 0 dari 0';
             banner.style.display = 'none';
             if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
-            _setMonLoading(false, _isSilent); isLoadingMonitoring=false;
+            _setMonLoading(false); isLoadingMonitoring=false;
+            if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
             return;
         }
         // FIX: single query dengan range+count (seperti admin-laporan.js) — hindari double-await reuse builder yang bikin kosong
         startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
         let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
-        if (currentMonStatus === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
-        else if (currentMonStatus === 'SELESAI') query = query.like('status', 'SELESAI%');
-        else if (currentMonStatus === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
+        if (_st === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
+        else if (_st === 'SELESAI') query = query.like('status', 'SELESAI%');
+        else if (_st === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
         const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
         data = res.data; error = res.error; totalItems = res.count || 0;
         totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
@@ -569,9 +578,9 @@ async function loadMonitoring(opts) {
             currentMonPage = totalPages;
             startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
             let q2 = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
-            if (currentMonStatus === 'AKTIF') q2 = q2.not('status', 'like', 'SELESAI%');
-            else if (currentMonStatus === 'SELESAI') q2 = q2.like('status', 'SELESAI%');
-            else if (currentMonStatus === 'PELANGGARAN') q2 = q2.gt('pelanggaran', 0);
+            if (_st === 'AKTIF') q2 = q2.not('status', 'like', 'SELESAI%');
+            else if (_st === 'SELESAI') q2 = q2.like('status', 'SELESAI%');
+            else if (_st === 'PELANGGARAN') q2 = q2.gt('pelanggaran', 0);
             const res2 = await q2.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
             data = res2.data; error = res2.error;
         }
@@ -604,11 +613,15 @@ async function loadMonitoring(opts) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Data tidak ditemukan sesuai filter/pencarian.</td></tr>';
     }
 
-    const highlight = (text, q) => q ? text.replace(new RegExp(q, 'gi'), match => `<mark style="background-color: yellow; padding: 0;">${match}</mark>`) : text;
+    // Diagnostik: biar klik card yang "tidak terjadi apa-apa" bisa dibuktikan dari console
+    try{ console.log('[mon] render status=' + _st + ' rows=' + (data ? data.length : 0) + ' total=' + totalItems); }catch(e){}
+    const highlight = (text, q) => { try{ return (q && text) ? String(text).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), match => `<mark style="background-color: yellow; padding: 0;">${match}</mark>`) : (text || ''); }catch(e){ return text || ''; } };
 
     // row-level blur: deteksi status berubah vs sebelumnya
     const _newMap = new Map();
+    let _monSkipRows = 0;
     sortedData.forEach((s, i) => {
+        try{
         const isBelum = s.is_belum === true || String(s.status)==='BELUM MENGERJAKAN';
         const isSelesai = String(s.status).startsWith('SELESAI');
         const isPlg = parseInt(s.pelanggaran) > 0;
@@ -631,7 +644,8 @@ async function loadMonitoring(opts) {
             ? `<button onclick="lihatPelanggaran(${s.id}, '${safeNamaPlg}')" title="Lihat Detail Pelanggaran" style="background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background 0.2s;color:#ef4444;font-weight:700;text-decoration:underline;text-underline-offset:2px;" onmouseover="this.style.background='rgba(239,68,68,0.12)'" onmouseout="this.style.background='none'"><i class="fas fa-exclamation-triangle"></i> ${s.pelanggaran}x</button>`
             : `<span style="color:#10b981;">✓ Bersih</span>`;
 
-        const waktu = s.created_at ? new Date(s.created_at).toLocaleTimeString('id-ID') : '-';
+        let waktu = '-';
+        try{ if(s.created_at){ const _dt = new Date(s.created_at); if(!isNaN(_dt.getTime())) waktu = _dt.toLocaleTimeString('id-ID'); } }catch(e){ waktu = '-'; }
         const displayNama = highlight(s.nama, searchName);
 
         const safeNama = (s.nama||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -665,7 +679,9 @@ async function loadMonitoring(opts) {
                 <td data-label="Aksi" style="text-align:center;">${showHapus ? hapusBtn : ''}</td>
             </tr>`;
         _newMap.set(String(s.id), { status: s.status, pelanggaran: s.pelanggaran });
+        }catch(rowErr){ _monSkipRows++; try{ console.warn('[monitoring] skip baris rusak id=', s && s.id, rowErr); }catch(e){} }
     });
+    if(_monSkipRows > 0){ try{ console.warn('[monitoring] total baris di-skip: ' + _monSkipRows); }catch(e){} }
     _prevMonDataMap = _newMap;
     // hilangkan blur setelah animasi
     setTimeout(()=>{ document.querySelectorAll('.row-updating').forEach(el=> el.classList.remove('row-updating')); }, 700);
