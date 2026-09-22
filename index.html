@@ -5075,12 +5075,14 @@
             window.isDevMode = false;
 
             // --- VALIDASI AWAL: CEK APAKAH SUDAH SELESAI ---
+            // dbWithTimeout WAJIB: tanpa ini, internet setengah-nyala (nyambung tapi buntu) bikin
+            // await gantung selamanya → tombol "Menghubungkan ke server..." muter terus.
             let sudahSelesai;
             try {
-                const res = await safeDbCall(() => 
-                    db.from('jawaban_ujian')
+                const res = await safeDbCall(() =>
+                    dbWithTimeout(db.from('jawaban_ujian')
                         .select('id').eq('nama', n).eq('kelas', k).eq('mapel', m)
-                        .like('status', 'SELESAI%').maybeSingle()
+                        .like('status', 'SELESAI%').maybeSingle())
                 );
                 sudahSelesai = res.data;
             } catch (e) {
@@ -5285,10 +5287,10 @@
 
             // === REGISTRASI SESI KE DATABASE (sebelum soal diambil) ===
             // Ini memastikan window.idRowUjian selalu ada sebelum exam dimulai
-            const { data: existing } = await safeDbCall(() => 
-                db.from('jawaban_ujian')
+            const { data: existing } = await safeDbCall(() =>
+                dbWithTimeout(db.from('jawaban_ujian')
                     .select('id, status, pelanggaran, created_at').eq('nama', n).eq('kelas', k).eq('mapel', m)
-                    .or('status.is.null,status.not.like.SELESAI%').maybeSingle()
+                    .or('status.is.null,status.not.like.SELESAI%').maybeSingle())
             );
 
             // Definisikan idUserLocal untuk digunakan di seluruh blok
@@ -5324,15 +5326,31 @@
                             const newToken = generateDeviceToken();
                             localStorage.setItem("sesi_aktif_" + idUserLocal, "1");
                             localStorage.setItem("device_token_" + idUserLocal, newToken);
-                            await db.from('jawaban_ujian').update({ device_token: newToken }).eq('id', existing.id);
+                            // Timeout WAJIB + gagal-tutup: token wajib tercatat dulu sebelum lanjut.
+                            // Kalau update token gagal (sinyal), JANGAN lanjut (nanti rebutan 2 HP) — tampilkan
+                            // error, buka kunci, biarkan coba lagi. Tanpa ini spinner "Mengambil Alih" gantung selamanya.
+                            try {
+                                await dbWithTimeout(db.from('jawaban_ujian').update({ device_token: newToken }).eq('id', existing.id));
+                            } catch (eToken) {
+                                Swal.close();
+                                window._mulaiLock = false;
+                                const _bTk = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                                if (_bTk) { _bTk.disabled = false; _bTk.style.pointerEvents = ''; _bTk.innerHTML = 'Ya, Mulai!'; }
+                                tampilkanErrorJaringan('Gagal mengambil alih sesi (koneksi). Sisa ujian tersimpan di HP ini — coba lagi saat sinyal ada.');
+                                return;
+                            }
                             // Restore pelanggaran dari DB agar konsisten antar device
                             const dbPlg = parseInt(existing.pelanggaran) || 0;
                             if (dbPlg > p_count) {
                                 p_count = dbPlg;
                                 localStorage.setItem("pelanggaran_" + idUserLocal, p_count);
                             }
-                            // Ambil urutan soal dari Supabase agar konsisten
-                            const { data: urutData } = await db.from('jawaban_ujian').select('urutan_soal').eq('id', existing.id).maybeSingle();
+                            // Ambil urutan soal dari Supabase agar konsisten (opsional — gagal = lanjut tanpa itu)
+                            let urutData = null;
+                            try {
+                                const _u = await dbWithTimeout(db.from('jawaban_ujian').select('urutan_soal').eq('id', existing.id).maybeSingle());
+                                urutData = _u ? _u.data : null;
+                            } catch (eUrut) { urutData = null; }
                             if (urutData && urutData.urutan_soal) {
                                 localStorage.setItem(keyUrutan, urutData.urutan_soal);
                             }
@@ -5429,7 +5447,8 @@
                 let inserted = null;
                 let insErr = null;
                 try {
-                    const res = await db.from('jawaban_ujian').insert([{
+                    // Timeout WAJIB: tanpa ini, internet setengah-nyala bikin insert gantung selamanya.
+                    const res = await dbWithTimeout(db.from('jawaban_ujian').insert([{
                         created_at: new Date().toISOString(),
                         nama: n, kelas: k, mapel: m,
                         skor_pg: null, jawaban_essay: '', jawaban_pg: '',
@@ -5437,7 +5456,7 @@
                         status: 'MENGERJAKAN',
                         device_token: newToken,
                         urutan_soal: ''
-                    }]).select('id').single();
+                    }]).select('id').single());
                     inserted = res.data; insErr = res.error;
                 } catch (e) { insErr = e; }
                 if (insErr) {
