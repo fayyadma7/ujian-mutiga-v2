@@ -2220,6 +2220,14 @@
             backdrop-filter: blur(6px);
         }
 
+        /* SweetAlert2 SELALU paling atas (default 1060 < modal app 9999).
+           Tanpa ini, popup penting (tawaran Backup, takeover, reset) yang muncul saat
+           modal app masih kebuka akan tersembunyi di belakangnya → terlihat "stuck"
+           padahal sistem sedang menunggu pilihan user (deadlock). */
+        .swal2-container {
+            z-index: 10001 !important;
+        }
+
         /* Countdown angka animasi */
         @keyframes countdownPop {
             0% {
@@ -5522,9 +5530,20 @@
                 if (attemptGet > 1) {
                     btnMulai.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="margin-right: 6px;"></i> Mengulang (${attemptGet}/${maxAttemptsGet})...`;
                 }
+                // Token anti-ganda: request basi yang telat sukses diabaikan (tanpa ini bisa start 2x).
+                const _tokGet = attemptGet;
+                // Timeout WAJIB: internet setengah-nyala bikin fetch gantung selamanya (tidak sukses,
+                // tidak gagal) → macet tanpa pesan. Gagal = masuk catch di bawah (retry 1x lalu pesan).
+                const timeoutSoal = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Waktu tunggu habis (30 detik). Periksa koneksi lalu coba lagi.')), 30000)
+                );
 
-                db.from('bank_soal_siswa').select('id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, tipe_soal').eq('mapel', m).order('id', { ascending: true })
+                Promise.race([
+                    db.from('bank_soal_siswa').select('id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, tipe_soal').eq('mapel', m).order('id', { ascending: true }),
+                    timeoutSoal
+                ])
                     .then(({ data, error }) => {
+                        if (_tokGet !== attemptGet) return; // basi, abaikan
                         if (error) throw error;
                         let formattedData = data.map((row) => [
                             row.pertanyaan || "",
@@ -5544,6 +5563,7 @@
                         }
                     })
                     .catch(err => {
+                        if (_tokGet !== attemptGet) return; // basi, abaikan
                         if (attemptGet < maxAttemptsGet) {
                             setTimeout(sendGetRequest, 1500 + Math.random() * 2000); // Jitter 1.5-3.5s
                         } else {
