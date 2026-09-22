@@ -1959,7 +1959,8 @@
         /* Floating Action Button (FAB) Mobile */
         .fab-nav-mobile {
             position: fixed;
-            bottom: 24px;
+            /* digeser ke atas menjauhi gesture-bar HP (24px terlalu mepet → senggolan = blur/fullscreen lepas) */
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
             right: 24px;
             width: 56px;
             height: 56px;
@@ -5774,6 +5775,7 @@
             const total = s_data.length;
             const newIndex = window.currentSoalIndex + arah;
             if (newIndex < 0 || newIndex >= total) return;
+            _markNavTap();
             _navLock = true;
             const soalLama = document.getElementById('soal-wrap-' + window.currentSoalIndex);
             if (soalLama) soalLama.classList.remove('soal-aktif');
@@ -5811,6 +5813,7 @@
         // ===== FUNGSI BOTTOM SHEET NAVIGASI MOBILE — anti ghost-click iPhone =====
         function bukaSheetNavigasi(ev) {
             if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
+            _markNavTap();
             const sheet = document.getElementById('bottom-sheet-nav');
             const overlay = document.getElementById('sheet-overlay');
             if (sheet){ sheet.classList.add('active'); sheet.style.pointerEvents='auto'; sheet.style.visibility='visible'; }
@@ -5825,6 +5828,7 @@
 
         function tutupSheetNavigasi(ev) {
             if(ev){ try{ev.preventDefault(); ev.stopPropagation();}catch(e){} }
+            _markNavTap();
             const sheet = document.getElementById('bottom-sheet-nav');
             const overlay = document.getElementById('sheet-overlay');
             if (sheet){ sheet.classList.remove('active'); setTimeout(()=>{ if(!sheet.classList.contains('active')){ sheet.style.pointerEvents='none'; sheet.style.visibility='hidden'; } }, 320); }
@@ -5865,6 +5869,7 @@
                 if(now - _navLast < 120) return;
             }
             _navLast = now;
+            _markNavTap();
             try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>lompatKeSoal(idx), 650); return; } if(typeof isZooming!=='undefined' && isZooming){ setTimeout(()=>lompatKeSoal(idx), 650); return; } }catch(e){}
             // tutup sheet dulu, tapi jangan blokir navigasi jika sheet overlay yang ke-tap
             tutupSheetNavigasi();
@@ -6777,10 +6782,18 @@ let aktifSignalSent = false;
             return form && form.style.display === 'block';
         }
 
+        // Zona navigasi soal (FAB, bottom-sheet, grid nomor): tidak ada teks yang bisa dicuri,
+        // jadi long-press di sini diblokir DIAM-DIAM (tanpa toast) — biar tidak dikira pelanggaran.
+        function _isNavUi(el) {
+            try { return !!(el && el.closest && el.closest('#bottom-sheet-nav, #fab-nav, #grid-nav-desktop, .btn-nav-no, .sheet-overlay')); }
+            catch (e) { return false; }
+        }
+
         // --- Blokir Klik Kanan ---
         document.addEventListener('contextmenu', event => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             event.preventDefault();
+            if (_isNavUi(event.target)) return;
             tampilkanWarningAntiCheat('Klik kanan dinonaktifkan selama ujian berlangsung.');
         });
 
@@ -6788,11 +6801,13 @@ let aktifSignalSent = false;
         document.addEventListener('copy', event => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             event.preventDefault();
+            if (_isNavUi(event.target)) return;
             tampilkanWarningAntiCheat('Menyalin teks (Copy) tidak diizinkan selama ujian.');
         });
         document.addEventListener('cut', event => {
             if (window.isDevMode || !ujianSedangBerlangsung()) return;
             event.preventDefault();
+            if (_isNavUi(event.target)) return;
             tampilkanWarningAntiCheat('Memotong teks (Cut) tidak diizinkan selama ujian.');
         });
         document.addEventListener('paste', event => {
@@ -6813,8 +6828,11 @@ let aktifSignalSent = false;
             var vvKb = window.visualViewport;
             function updKb(){
                 if(!vvKb) return;
-                // keyboard kebuka = tinggi visualViewport jauh lebih kecil dari window
-                window._kbOpen = (window.innerHeight - vvKb.height) > 120;
+                // keyboard kebuka = tinggi visualViewport jauh lebih kecil dari window.
+                // STICKY: hanya boleh true di sini, jangan auto-false — viewport berfluktuasi
+                // saat scroll/URL-bar sehingga false palsu bisa loloskan blur keyboard (kasus nav essay).
+                // Penutup keyboard terdeteksi via focusout + jeda 2 detik di bawah.
+                if((window.innerHeight - vvKb.height) > 120) window._kbOpen = true;
             }
             if(vvKb){ vvKb.addEventListener('resize', updKb); vvKb.addEventListener('scroll', updKb); }
         })();
@@ -6826,7 +6844,10 @@ let aktifSignalSent = false;
         });
         document.addEventListener('focusout', function(e) {
             if (e.target && (e.target.classList.contains('essay-textarea') || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
-                // beri jeda: keyboard tutup (klik ✓) butuh ~1-2 detik animasi, jangan langsung anggap kb tutup
+                // catat waktu lepas-fokus: blur keyboard (mis. tap tombol navigasi) dalam ~2,5 detik
+                // setelah ini tetap dianggap interaksi keyboard normal
+                window._lastEssayFocusAt = Date.now();
+                // beri jeda: keyboard tutup butuh ~1-2 detik animasi, jangan langsung anggap kb tutup
                 setTimeout(function(){ window._kbOpen = false; }, 2000);
             }
         });
@@ -6838,6 +6859,16 @@ let aktifSignalSent = false;
             var ae = document.activeElement;
             if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return true;
             return false;
+        }
+
+        // --- Tracking tap navigasi soal (FAB/sheet/nomor/prev-next) ---
+        // FAB di pojok bawah dekat gesture-bar HP: jempol yang meraihnya sering menyenggol
+        // system-gesture (blur/fullscreen lepas sesaat). Vonis pelanggaran ditunda kalau tap-nya baru saja.
+        window._lastNavTapAt = 0;
+        function _markNavTap(){ try{ window._lastNavTapAt = Date.now(); }catch(e){} }
+        function _navGraceMs(){
+            try{ return (Date.now() - (window._lastNavTapAt || 0)) < 2500 ? 2000 : 0; }
+            catch(e){ return 0; }
         }
 
         // --- Scroll otomatis saat fokus essay agar tidak tertutup keyboard HP — FIX iPhone loncat 10→5 ---
@@ -6977,15 +7008,17 @@ let aktifSignalSent = false;
             try{ if(typeof isZoomActive==='function' && isZoomActive()) return; if(isZooming) return; }catch(e){}
             try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
             if (document.hidden) {
+                // grace tap navigasi: vonis ditunda kalau baru tap nav (senggolan gesture pulih <2 detik)
+                const _visDelay = 300 + (typeof _navGraceMs === 'function' ? _navGraceMs() : 0);
                 setTimeout(() => {
                     try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
                     if (document.hidden && document.visibilityState === 'hidden') {
                         catatPelanggaran(
-                            "Keluar Tab", 
+                            "Keluar Tab",
                             "Kamu meninggalkan halaman ujian. Pelanggaran ini telah dicatat dan dilaporkan ke pengawas."
                         );
                     }
-                }, 300);
+                }, _visDelay);
             }
         });
 
@@ -6995,30 +7028,47 @@ let aktifSignalSent = false;
             try{ if(typeof isZoomActive==='function' && isZoomActive()){ setTimeout(()=>{isViolating=false},300); return; } if(isZooming) return; }catch(e){}
             // Keyboard essay (tombol ✓ Done di Gboard): blur sesaat saat keyboard tutup = normal, abaikan
             try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ setTimeout(()=>{isViolating=false},300); return; } }catch(e){}
-            // Android: animasi keyboard tutup butuh waktu, beri jeda lebih lama dan cek ulang fokus
-            const blurDelay = isIOS ? 400 : 600;
+            // Android: animasi keyboard tutup butuh waktu, beri jeda lebih lama dan cek ulang fokus.
+            // Grace tap navigasi: senggolan gesture-bar pulih <2 detik, jangan langsung vonis.
+            const blurDelay = (isIOS ? 400 : 600) + (typeof _navGraceMs === 'function' ? _navGraceMs() : 0);
             setTimeout(() => {
                 try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
                 try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
                 if(document.hasFocus && document.hasFocus()){ isViolating=false; return; }
                 catatPelanggaran(
-                    "Kehilangan Fokus", 
+                    "Kehilangan Fokus",
                     "Jendela ujian kehilangan fokus (kamu membuka aplikasi lain atau mengklik area luar browser). Pelanggaran dicatat!"
                 );
             }, blurDelay);
         });
 
         // 3. Deteksi Keluar Mode Fullscreen (Tidak berlaku di iOS)
-        document.addEventListener("fullscreenchange", () => {
+        // Grace 2 detik: sapuan sistem tak sengaja (terutama saat meraih tombol navigasi bawah)
+        // yang langsung kembali TIDAK divonis. Keluar beneran (>2 detik) tetap tercatat.
+        let _fsGraceTimer = null;
+        function onFullscreenChange() {
             if (window.isDevMode || isIOS || !ujianSedangBerlangsung()) return;
             const isUjianMulai = document.getElementById('formUjian').style.display === 'block';
-            if (isUjianMulai && !document.fullscreenElement) {
-                catatPelanggaran(
-                    "Keluar Fullscreen", 
-                    "Kamu keluar dari mode Layar Penuh (Fullscreen). Layar penuh wajib aktif selama ujian berlangsung!"
-                );
+            if (isUjianMulai && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (_fsGraceTimer) clearTimeout(_fsGraceTimer);
+                _fsGraceTimer = setTimeout(() => {
+                    _fsGraceTimer = null;
+                    try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } }catch(e){}
+                    const stillOut = !document.fullscreenElement && !document.webkitFullscreenElement;
+                    if (stillOut && ujianSedangBerlangsung() && document.getElementById('formUjian').style.display === 'block') {
+                        catatPelanggaran(
+                            "Keluar Fullscreen",
+                            "Kamu keluar dari mode Layar Penuh (Fullscreen). Layar penuh wajib aktif selama ujian berlangsung!"
+                        );
+                    } else { isViolating = false; }
+                }, 2000);
+            } else if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (_fsGraceTimer) { clearTimeout(_fsGraceTimer); _fsGraceTimer = null; }
+                isViolating = false;
             }
-        });
+        }
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
         // 4. Deteksi Split-Screen / Layar Terbagi (Resize)
         // Tidak berlaku di iOS karena browser chrome selalu mengurangi viewport
