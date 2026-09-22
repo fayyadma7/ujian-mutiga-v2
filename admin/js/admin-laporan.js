@@ -173,9 +173,10 @@ async function loadNilaiSiswa() {
                 jadwalAktifLap = { kelas: filterKelas, mapel: filterMapel };
                 useLapCampuran = true;
             } else {
-                // tetap coba walau jadwal tidak exact (mis. is_aktif false tapi baru selesai) — biar BELUM tetap bisa muncul untuk filter yang dipilih
-                jadwalAktifLap = { kelas: filterKelas, mapel: filterMapel };
-                useLapCampuran = true;
+                // TIDAK ada jadwal cocok → JANGAN paksa campuran. RPC JOIN jadwal sehingga histori asli
+                // (kelas+mapel yang tidak ada di jadwal aktif) ikut hilang → "Data tidak ditemukan" palsu.
+                // Query langsung di bawah yang tampilkan histori. BELUM memang tidak ada tanpa jadwal.
+                useLapCampuran = false;
             }
         }
     }catch(e){}
@@ -201,9 +202,16 @@ async function loadNilaiSiswa() {
             totalCount = cntVal || 0;
             const { data: rpcData, error: rpcErr } = await db.rpc('get_live_campuran', { p_kelas: autoLapKelas || null, p_mapel: autoLapMapel || null, p_search: searchNameLap || null, p_limit: ITEMS_PER_PAGE, p_offset: startIdx, p_guru_id: _gid, p_is_admin: _isAdmin });
             if(rpcErr) throw rpcErr;
+            // Jaring pengaman: RPC 0 (mis. jadwal ada tapi tak ada siswa/jawaban cocok) → fallback query
+            // langsung di bawah biar histori tidak hilang. Kalau histori juga 0, pesan kosong tetap muncul.
+            if((totalCount || 0) === 0 && (!rpcData || rpcData.length === 0)){
+                console.warn('[laporan] campuran 0, fallback ke histori langsung');
+                _isLapCampuran = false;
+            } else {
             // rpc returns campur Sudah+BELUM already, map to laporan shape
             allData = (rpcData||[]).map(r=>({ id: r.siswa_id, nama: r.nama, kelas: r.kelas_nama, mapel: r.mapel, status: r.status, pelanggaran: r.pelanggaran === '-' ? 0 : r.pelanggaran, skor_pg: r.skor_pg, durasi: r.is_belum ? '-' : '-', created_at: r.created_at, is_belum: r.is_belum }));
             error = null;
+            } // tutup else jaring pengaman di atas
         }catch(e){ _isLapCampuran=false; }
     }
     if(!_isLapCampuran){
@@ -434,8 +442,103 @@ async function exportExcel() {
     let _q = db.from('jawaban_ujian').select('*').eq('mapel', mapel);
     if (kelas) _q = _q.eq('kelas', kelas);
     _q = _q.order('kelas', { ascending: true }).order('nama', { ascending: true });
-    const { data, error } = await _q;
-    if (error || !data || data.length === 0) { showToast("Tidak ada data nilai untuk diekspor.", 'error'); return; }
+    // Fetch chunked: PostgREST default limit 1000 baris — tanpa ini ekspor mapel besar kepotong
+    // (hanya kelas pertama yang keunduh). Ambil semua halaman sampai habis.
+    let data = [];
+    let error = null;
+    try {
+        const _PAGE = 1000;
+        let _from = 0;
+        while (true) {
+            const _res = await _q.range(_from, _from + _PAGE - 1);
+            if (_res.error) { error = _res.error; break; }
+            data = data.concat(_res.data || []);
+            if (!_res.data || _res.data.length < _PAGE) break;
+            _from += _PAGE;
+            if (_from >= 20000) break;
+        }
+    } catch (e) { error = e; }
+    if (error) { showToast("Gagal mengambil data nilai.", 'error'); return; }
+
+    // Roster: biar siswa BELUM ikut terekspor. Tabel layar TIDAK diubah — hanya isi Excel.
+    // - Kelas dipilih → roster 1 kelas itu.
+    // - Semua Kelas → roster HANYA kelas yang DIJADWALKAN untuk mapel ini (jadwal aktif).
+    //   Kalau tak ada jadwal aktif (ujian lama) → fallback ke kelas yang ada di data nilai (tanpa BELUM massal).
+    const rosterList = [];
+    const _ambilSiswaKelas = async (kelasId, kelasNama) => {
+        let _from = 0;
+        while (true) {
+            const { data: sRows } = await db.from('siswa').select('nama').eq('kelas_id', kelasId).eq('is_aktif', true).order('nama', { ascending: true }).range(_from, _from + 999);
+            if (!sRows || !sRows.length) break;
+            sRows.forEach(r => { const nm = (r.nama || '').trim(); if (nm) rosterList.push({ nama: nm, kelas: kelasNama }); });
+            if (sRows.length < 1000) break;
+            _from += 1000; if (_from > 20000) break;
+        }
+    };
+    try {
+        if (kelas) {
+            const { data: kRow } = await db.from('kelas').select('id').eq('nama', kelas).eq('is_aktif', true).maybeSingle();
+            if (kRow && kRow.id != null) await _ambilSiswaKelas(kRow.id, kelas);
+        } else {
+            // Kumpulkan nama kelas dari jadwal aktif mapel ini (format jadwal bisa "id::Nama" / "A, B")
+            const _jadwalKelas = new Set();
+            try {
+                const { data: jadRows } = await db.from('jadwal_ujian').select('kelas').eq('mapel', mapel).eq('is_aktif', true);
+                (jadRows || []).forEach(j => {
+                    let k = (j.kelas || '').trim();
+                    if (!k) return;
+                    if (k.includes('::')) k = k.split('::')[1];
+                    k.split(',').forEach(s => { const nm = s.trim(); if (nm) _jadwalKelas.add(nm); });
+                });
+            } catch (_) {}
+            let targetKelas = [..._jadwalKelas];
+            if (!targetKelas.length) {
+                // tanpa jadwal aktif: batasi ke kelas yang muncul di data nilai (bukan 1 sekolahan)
+                const _dk = new Set();
+                (data || []).forEach(s => { const kn = String(s.kelas || '').trim(); if (kn) _dk.add(kn); });
+                targetKelas = [..._dk];
+            }
+            // Petakan ke master kelas (cocok persis dulu, lalu awalan "Nama " untuk varian A/B)
+            let masterKelas = [];
+            try {
+                const { data: mk } = await db.from('kelas').select('id,nama').eq('is_aktif', true);
+                masterKelas = mk || [];
+            } catch (_) { masterKelas = []; }
+            const _sudahAmbil = new Set();
+            for (const kn of targetKelas) {
+                const low = kn.toLowerCase();
+                let cocok = masterKelas.filter(mk => String(mk.nama || '').trim().toLowerCase() === low);
+                if (!cocok.length) cocok = masterKelas.filter(mk => String(mk.nama || '').trim().toLowerCase().startsWith(low + ' '));
+                for (const mk of cocok) {
+                    if (_sudahAmbil.has(mk.id)) continue;
+                    _sudahAmbil.add(mk.id);
+                    await _ambilSiswaKelas(mk.id, mk.nama);
+                }
+            }
+        }
+    } catch (_) {}
+    // dedupe roster (nama+kelas, tak-peka-huruf), urut kelas lalu nama
+    const _seenR = new Set();
+    const rosterUnik = rosterList.filter(e => {
+        const k = e.nama.toLowerCase() + '|' + e.kelas.toLowerCase();
+        if (_seenR.has(k)) return false;
+        _seenR.add(k); return true;
+    }).sort((a, b) => (a.kelas.localeCompare(b.kelas, 'id') || a.nama.localeCompare(b.nama, 'id')));
+    // Gabung: roster dulu (cocok nama+kelas), lalu sisa jawaban di luar roster biar tidak ada data hilang
+    const byNK = new Map();
+    (data || []).forEach(s => {
+        const k = String(s.nama || '').trim().toLowerCase() + '|' + String(s.kelas || '').trim().toLowerCase();
+        if (k !== '|' && !byNK.has(k)) byNK.set(k, s);
+    });
+    const rowsExport = [];
+    const pushedObjs = new Set();
+    rosterUnik.forEach(e => {
+        const k = e.nama.toLowerCase() + '|' + e.kelas.toLowerCase();
+        if (byNK.has(k)) { rowsExport.push(byNK.get(k)); pushedObjs.add(byNK.get(k)); }
+        else rowsExport.push({ __belum: true, nama: e.nama, kelas: e.kelas, mapel: mapel });
+    });
+    (data || []).forEach(s => { if (!pushedObjs.has(s)) rowsExport.push(s); });
+    if (rowsExport.length === 0) { showToast("Tidak ada data nilai untuk diekspor.", 'error'); return; }
 
     // Ambil nomor soal essay untuk mapping jawaban legacy "|||" tanpa nomor
     let essayNos = [];
@@ -445,7 +548,12 @@ async function exportExcel() {
     } catch(_) {}
 
     const strukturData = [["No", "Nama Siswa", "Kelas", "Mata Pelajaran", "Skor PG", "Jawaban Essay", "Durasi Pengerjaan", "Jumlah Pelanggaran", "Detail Pelanggaran", "Status Akhir", "Waktu Selesai"]];
-    data.forEach((s, index) => {
+    rowsExport.forEach((s, index) => {
+        // Baris BELUM: skor PG = keterangan, sisanya strip
+        if (s.__belum) {
+            strukturData.push([index + 1, s.nama, s.kelas, s.mapel, 'Belum Mengerjakan', '-', '-', 0, '-', 'BELUM MENGERJAKAN', '-']);
+            return;
+        }
         let essayCell = '-';
         if (s.jawaban_essay && String(s.jawaban_essay).trim() !== '') {
             let raw = String(s.jawaban_essay).replace(/\r\n/g, '\n').trim();
@@ -477,7 +585,7 @@ async function exportExcel() {
     const worksheet = XLSX.utils.aoa_to_sheet(strukturData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Nilai");
-    worksheet['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 55 }, { wch: 20 }, { wch: 18 }, { wch: 60 }, { wch: 30 }, { wch: 25 }];
+    worksheet['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 55 }, { wch: 20 }, { wch: 18 }, { wch: 60 }, { wch: 30 }, { wch: 25 }];
     // Wrap text untuk kolom Jawaban Essay (F) agar \n tampil sebagai baris baru
     const range = XLSX.utils.decode_range(worksheet['!ref']);
     for (let r = 1; r <= range.e.r; r++) {
