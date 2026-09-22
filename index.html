@@ -5390,6 +5390,15 @@
                 try{
                     const hadOldCache = localStorage.getItem("pelanggaran_" + idUserLocal) !== null || localStorage.getItem("waktu_mulai_" + idUserLocal) !== null || localStorage.getItem("sesi_aktif_" + idUserLocal) !== null;
                     if(hadOldCache){
+                        // LUBANG-A: kalau offline, JANGAN sentuh sisa cache — langsung gagalkan dengan pesan jaringan.
+                        // Sisa utuh 100%, tidak ada backup/tawaran/wipe yang perlu.
+                        if(!navigator.onLine){
+                            window._mulaiLock=false;
+                            const _bOff = document.querySelector("#modalPeringatan .btn-modal-confirm");
+                            if(_bOff){ _bOff.disabled=false; _bOff.style.pointerEvents=''; _bOff.innerHTML='Ya, Mulai!'; }
+                            tampilkanErrorJaringan('Tidak ada koneksi internet. Sisa ujian tersimpan di HP ini — coba lagi saat sinyal ada.');
+                            return;
+                        }
                         // Selalu bersihkan jika existing null tapi cache ada — admin sudah hapus row, jangan bawa pelanggaran/waktu lama ke sesi baru
                         // BACKUP DULU sebelum buang (kasus Atha): tawarkan download hanya jika ada jawaban tersimpan
                         const _bkFresh = backupUjianCacheForIdUser(idUserLocal, 'login-sesi-baru');
@@ -6655,20 +6664,28 @@ ${JSON.stringify(payloadJawaban)}`;
                         console.error("DEBUG SUBMIT ERROR:", result); // Added for debugging
                         throw new Error(result?.data?.error || result?.error?.message || result?.error?.details || 'Gagal menyimpan jawaban');
                     }
+                    window._submitFailCount = 0;
                     successHandler();
                 } catch (err) {
+                    // Hitung kegagalan kirim (di memori saja → nol lagi saat reload/sukses)
+                    window._submitFailCount = (window._submitFailCount || 0) + 1;
                     // Cek apakah masih ada koneksi internet sebelum menampilkan error
                     const isOnline = navigator.onLine;
                     const errMsg = String((err && err.message) || err || '');
                     // PGRST203 = kembaran fungsi koreksi di server (bukan salah siswa, jawaban AMAN di HP ini)
                     const isAmbigu = errMsg.includes('PGRST203') || errMsg.toLowerCase().includes('could not choose the best candidate');
-                    const msg = isAmbigu
+                    let msg = isAmbigu
                         ? "Server nilai sedang diperbaiki panitia. JANGAN tutup halaman ini — jawabanmu AMAN di HP ini. Klik Backup untuk simpan file, lalu klik Coba Lagi atau hubungi pengawas."
                         : (isOnline
                             ? "Gagal menyimpan jawaban setelah beberapa kali percobaan. Silakan cek koneksi server."
                             : "Tidak ada koneksi internet. Gunakan tombol Download Backup untuk menyimpan jawaban.");
+                    // Eskalasi: sudah 3x gagal → pandu Backup + kirim file ke admin (tanpa nomor, tanpa istilah teknis)
+                    const _eskalasi = window._submitFailCount >= 3;
+                    if (_eskalasi) {
+                        msg = "Sudah 3x gagal terkirim. Lakukan ini ya: 1) Klik Backup untuk simpan file jawaban. 2) Kirim file-nya ke admin. 3) Jangan tutup halaman ini — jawabanmu AMAN di HP ini.";
+                    }
                     window._submitting = false;
-                    tampilkanErrorJaringan(isAmbigu ? msg : (msg + " " + errMsg));
+                    tampilkanErrorJaringan((_eskalasi || isAmbigu) ? msg : (msg + " " + errMsg));
                     document.getElementById('overlaySubmit').style.display = 'none';
                     btnSelesai.disabled = false;
                     btnSelesai.innerHTML = `<i class="fas fa-paper-plane"></i><span>Selesai &amp; Kirim Jawaban</span>`;
