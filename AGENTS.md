@@ -45,3 +45,4 @@ Proxy AI multi-provider. Body request: `{ provider?, promptText, temperature? }`
 7. **Loading MathJax berbeda** — sisi siswa: script inline di `index.html`. Sisi admin: lazy via `loadMathJax()` di `admin-soal.js`. KaTeX di-load eager di `admin_pro.html`.
 8. **`chunkedInsert`** di `admin-core.js` membagi insert ke dalam potongan 50 via `adminDb.insert()`. Pertahankan pola ini untuk operasi massal.
 9. **ID project Supabase**: `Project_Web_Ujian_PRO`, remote: `bkecjfrwqocguyvjymkn`.
+10. **Cache-bust JS/CSS admin** — `admin-core.js?v=N` di `admin_pro.html` + `?v=N` di `moduleMap` (`admin-core.js`). Naikkan tiap deploy yang menyentuh file tsb, kalau tidak browser jalanin kode lama (filter basi, bug lama balik). Kolom `pelanggaran` bertipe TEXT — filter/sort harus `neq '0'` (bukan `gt`), sinkron dengan `parseInt` di render.

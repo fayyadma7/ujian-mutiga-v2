@@ -453,12 +453,14 @@ async function loadMonitoring(opts) {
     }
 
     // 1) Hitung kartu ringkasan — 3 dari jawaban_ujian, BELUM awal 0 (akan diisi setelah RPC tabel biar tidak nge-hang)
+    // CATATAN: kolom pelanggaran bertipe TEXT — JANGAN pakai .gt('pelanggaran', 0) karena perbandingan
+    // teks membuat '10'/'22' lolos dari filter (bukan angka). Pakai neq '0' + neq '' (sinkron dgn parseInt di render).
     let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0, cntBelum = 0;
     try {
         const [selesaiRes, aktifRes, plgRes] = await Promise.all([
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%'),
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).not('status', 'like', 'SELESAI%'),
-            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).gt('pelanggaran', 0)
+            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).neq('pelanggaran', '0').neq('pelanggaran', '')
         ]);
         cntSelesai = selesaiRes.count || 0;
         cntAktif = aktifRes.count || 0;
@@ -571,7 +573,7 @@ async function loadMonitoring(opts) {
         let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
         if (_st === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
         else if (_st === 'SELESAI') query = query.like('status', 'SELESAI%');
-        else if (_st === 'PELANGGARAN') query = query.gt('pelanggaran', 0);
+        else if (_st === 'PELANGGARAN') query = query.neq('pelanggaran', '0').neq('pelanggaran', '');
         const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
         data = res.data; error = res.error; totalItems = res.count || 0;
         totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
@@ -581,7 +583,7 @@ async function loadMonitoring(opts) {
             let q2 = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
             if (_st === 'AKTIF') q2 = q2.not('status', 'like', 'SELESAI%');
             else if (_st === 'SELESAI') q2 = q2.like('status', 'SELESAI%');
-            else if (_st === 'PELANGGARAN') q2 = q2.gt('pelanggaran', 0);
+            else if (_st === 'PELANGGARAN') q2 = q2.neq('pelanggaran', '0').neq('pelanggaran', '');
             const res2 = await q2.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
             data = res2.data; error = res2.error;
         }
