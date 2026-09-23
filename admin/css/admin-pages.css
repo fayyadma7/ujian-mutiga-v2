@@ -207,3 +207,46 @@
 #jadwal-kelas-select option { padding: 6px 10px; }
 #jadwal-kelas-select option:checked { background: rgba(59,130,246,0.25) !important; color: #93c5fd; }
 #tabel-kelas tbody tr:hover, #tabel-siswa tbody tr:hover { background: rgba(59,130,246,0.04); }
+
+/* ================================================================
+   PARITAS PREVIEW vs SISWA — isi konten soal di #preview-container
+   di-cermin dari renderSoal() siswa (index.html: .soal-text dkk):
+   font self-hosted yang sama, plaintext-bidi, gambar, tabel, sub/sup, rtl.
+   Chrome admin (tombol/checkbox/badge/kunci) TIDAK diubah — hanya isi soal.
+   Catatan: urutan/nomor soal tetap urutan bank (HP siswa mengacak),
+   dan warna tema tetap tema admin. Yang disamakan: glyph, rumus, layout isi.
+   ================================================================ */
+#preview-container .soal-text,
+#preview-container .option-label-inner {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', 'Noto Naskh Arabic', 'Amiri', sans-serif;
+    unicode-bidi: plaintext;
+    line-height: 1.7;
+}
+#preview-container .soal-text p,
+#preview-container .option-label-inner p { margin: 0 0 8px 0; }
+#preview-container .soal-text img,
+#preview-container .option-label-inner img {
+    display: block;
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 12px 0;
+    object-fit: contain;
+}
+#preview-container .soal-text sub, #preview-container .soal-text sup,
+#preview-container .option-label-inner sub, #preview-container .option-label-inner sup {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', 'Noto Naskh Arabic', sans-serif;
+}
+#preview-container .soal-text span[dir="rtl"],
+#preview-container .option-label-inner span[dir="rtl"] {
+    unicode-bidi: isolate;
+    display: inline;
+    font-family: "Amiri", "Noto Naskh Arabic", "Scheherazade", "Traditional Arabic", serif;
+    font-size: 1.1em;
+    line-height: 1.8;
+}
+#preview-container .table-responsive-wrapper { width: 100%; overflow-x: auto; padding-bottom: 10px; }
+#preview-container .table-responsive-wrapper table { border-collapse: collapse; width: 100%; }
+#preview-container .table-responsive-wrapper th,
+#preview-container .table-responsive-wrapper td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }

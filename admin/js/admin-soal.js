@@ -26,12 +26,13 @@ function loadMathJax() {
             displayMath: [['$$', '$$']],
             processEscapes: true
         },
-        chtml: { scale: 1 },
+        // svg seperti renderSoal() siswa (index.html) — hasil piksel-identik, tanpa unduh font web MathJax
+        svg: { fontCache: 'global' },
         startup: { pageReady: () => {} }
     };
     const script = document.createElement('script');
     script.id = 'MathJax-script-dynamic';
-    script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
     script.async = true;
     document.head.appendChild(script);
 }
@@ -227,7 +228,7 @@ async function loadPreviewSoal() {
                         </button>
                     </div>
                 </div>
-                <div class="teks-pertanyaan" style="margin-bottom: 12px; line-height:1.5; font-size:15px;">${s.pertanyaan}</div>
+                <div class="teks-pertanyaan soal-text" dir="auto" style="margin-bottom: 12px; line-height:1.7; font-size:15px;">${s.pertanyaan}</div>
         `;
 
         if (s.tipe_soal !== 'ESSAY') {
@@ -248,8 +249,8 @@ async function loadPreviewSoal() {
                 if (!isEmpty) {
                     html += `
                         <li style="display:flex; align-items:flex-start; padding:10px 0; ${s.kunci_jawaban === o.toUpperCase() ? 'font-weight:bold; color:var(--success);' : ''}">
-                            <strong style="margin-right:8px; flex-shrink:0;">${o.toUpperCase()}.</strong> 
-                            <div style="flex-grow:1; overflow-x:auto; overflow-y:hidden; line-height:1.5; margin-top:-2px;">${val}</div>
+                            <strong style="margin-right:8px; flex-shrink:0;">${o.toUpperCase()}.</strong>
+                            <div class="option-label-inner" dir="auto" style="flex-grow:1; overflow-x:auto; overflow-y:hidden; line-height:1.7; margin-top:-2px;">${val}</div>
                         </li>`;
                 }
             });
@@ -266,10 +267,18 @@ async function loadPreviewSoal() {
 
     container.innerHTML = html;
     if (container) container.scrollTop = currentScrollTop;
-    // KaTeX render untuk $$...$$ (prioritas) lalu MathJax fallback
-    if (typeof AIGenerator !== 'undefined' && AIGenerator._renderMathInContainer) {
-        AIGenerator._renderMathInContainer(container);
-    }
+    // PARITAS SISWA: JANGAN render KaTeX di sini (siswa 100% MathJax; KaTeX duluan bikin
+    // tampilan beda + konversi ^N yang tidak terjadi di HP siswa). MathJax di bawah cukup.
+    // Bungkus tabel seperti renderSoal() siswa (index.html) agar scroll/rapi-nya sama.
+    try {
+        container.querySelectorAll('.soal-text table, .option-label-inner table').forEach(tbl => {
+            if (!tbl.parentElement || tbl.parentElement.classList.contains('table-responsive-wrapper')) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive-wrapper';
+            tbl.parentNode.insertBefore(wrapper, tbl);
+            wrapper.appendChild(tbl);
+        });
+    } catch (e) { console.warn('preview table wrap gagal', e); }
     if (window.MathJax) {
         MathJax.typesetClear([container]);
         MathJax.typesetPromise([container]).catch(err => console.error(err));
