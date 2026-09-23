@@ -785,8 +785,24 @@ function sortMonitoringData(data) {
                 };
                 const rA = rankStatus(a), rB = rankStatus(b);
                 if (rA !== rB) return dir === 'asc' ? rA - rB : rB - rA;
-                const tA = new Date(a.created_at || '').getTime() || 0;
-                const tB = new Date(b.created_at || '').getTime() || 0;
+                // Sesama SELESAI: urut JAM SELESAI (dari "SELESAI - 10.40.41"), bukan created_at
+                // (created_at = waktu MULAI — yang mulai pagi tapi baru selesai tidak akan ke atas).
+                // Asumsi ujian tidak lewat tengah malam.
+                const jamSelesai = (s) => {
+                    const m = String(s.status || '').match(/SELESAI\s*-\s*(\d{1,2})[.:](\d{2})(?:[.:](\d{2}))?/i);
+                    const b = s.created_at ? new Date(s.created_at) : null;
+                    const base = (b && !isNaN(b.getTime())) ? b : new Date();
+                    if (m) {
+                        const d = new Date(base);
+                        d.setHours(parseInt(m[1], 10) || 0, parseInt(m[2], 10) || 0, parseInt(m[3] || '0', 10) || 0, 0);
+                        return d.getTime();
+                    }
+                    const t = base.getTime();
+                    return isNaN(t) ? 0 : t;
+                };
+                let tA, tB;
+                if (rA === 3) { tA = jamSelesai(a); tB = jamSelesai(b); }
+                else { tA = new Date(a.created_at || '').getTime() || 0; tB = new Date(b.created_at || '').getTime() || 0; }
                 if (tA !== tB) return dir === 'asc' ? tA - tB : tB - tA;
                 return dir === 'asc'
                     ? String(a.nama || '').localeCompare(String(b.nama || ''))
