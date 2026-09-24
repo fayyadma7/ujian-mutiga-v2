@@ -21,14 +21,54 @@ var isLoadingMonitoring = typeof isLoadingMonitoring !== 'undefined' ? isLoading
 var violationCooldownMs = typeof violationCooldownMs !== 'undefined' ? violationCooldownMs : 60000;
 var violationLastToastAt = typeof violationLastToastAt !== 'undefined' ? violationLastToastAt : new Map();
 var _monMapelCache = typeof _monMapelCache !== 'undefined' ? _monMapelCache : [];
+// REALTIME MATI TOTAL — polling 5 detik (bukan realtime)
+var ENABLE_REALTIME = typeof ENABLE_REALTIME !== 'undefined' ? ENABLE_REALTIME : false;
+var _monPoll = typeof _monPoll !== 'undefined' ? _monPoll : null;
+var MON_POLL_MS = typeof MON_POLL_MS !== 'undefined' ? MON_POLL_MS : 5000;
 function scheduleReconnect(){
+  // realtime dimatikan — jangan reconnect
+  if(!ENABLE_REALTIME) return;
   if(intentionalClose) return;
   if(reconnectTimer) clearTimeout(reconnectTimer);
   const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
   console.warn(`[monitoring] reconnect ${reconnectAttempts} in ${delay}ms`);
   reconnectTimer = setTimeout(()=> startRealtimeMonitoring(), delay);
 }
+function mulaiPollingMonitoring(){
+  hentikanPollingMonitoring();
+  const isActive = document.getElementById('monitoring')?.classList.contains('active');
+  if(!isActive) return;
+  _monPoll = setInterval(()=>{
+    const stillActive = document.getElementById('monitoring')?.classList.contains('active');
+    if(stillActive && !document.hidden && typeof loadMonitoring==='function'){
+      loadMonitoring({silent:true});
+    }
+  }, MON_POLL_MS);
+  console.log('[monitoring] polling 5s AKTIF (realtime OFF)');
+}
+function hentikanPollingMonitoring(){
+  if(_monPoll){ clearInterval(_monPoll); _monPoll=null; console.log('[monitoring] polling dihentikan'); }
+  if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
+}
 async function startRealtimeMonitoring() {
+    // === REALTIME DIMATIKAN TOTAL — pakai polling 5 detik (hemat Concurrent) ===
+    // apapun yang coba subscribe, langsung bersihkan & ganti polling
+    if(!ENABLE_REALTIME){
+        // bersihkan channel lama / stale jika ada (sisa cache browser)
+        isSubscribing = false;
+        intentionalClose = true;
+        if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
+        if(monitoringChannel){ try{ await db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel=null; }
+        try{
+            const stale = db.getChannels ? db.getChannels().filter(c=> c.topic === 'realtime:monitoring-live-v2') : [];
+            for(const ch of stale){ try{ await db.removeChannel(ch);}catch(e){} }
+        }catch(e){}
+        // db dari supabase-js bisa masih keep-alive websocket even tanpa channel — tidak perlu channel
+        intentionalClose = false;
+        mulaiPollingMonitoring();
+        console.log('[monitoring] REALTIME OFF → polling 5 detik');
+        return;
+    }
     if(isSubscribing) return;
     // guard: jika sudah joined/joining jangan buat channel baru
     if(monitoringChannel && ['joined','joining','subscribed'].includes(monitoringChannel.state)){
@@ -141,9 +181,12 @@ async function startRealtimeMonitoring() {
 async function stopMonitoring() {
     intentionalClose = true;
     isSubscribing = false;
+    hentikanPollingMonitoring();
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
     if(window._monDebounce){ clearTimeout(window._monDebounce); window._monDebounce=null; }
     if (monitoringChannel) { try{ await db.removeChannel(monitoringChannel);}catch(e){} monitoringChannel = null; }
+    // bersihkan stale juga
+    try{ const stale = db.getChannels ? db.getChannels().filter(c=> c.topic === 'realtime:monitoring-live-v2') : []; for(const ch of stale){ try{ await db.removeChannel(ch);}catch(e){} } }catch(e){}
     reconnectAttempts = 0;
     // reset intentionalClose setelah channel benar-benar tertutup
     setTimeout(()=> intentionalClose=false, 600);

@@ -607,7 +607,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
         'dashboard': 'admin-dashboard.js?v=4',
         'bank-soal': 'admin-soal.js?v=8',
         'jadwal': 'admin-jadwal.js?v=8',
-        'monitoring': 'admin-monitoring.js?v=4',
+        'monitoring': 'admin-monitoring.js?v=5',
         'laporan': 'admin-laporan.js?v=4',
         'analisis-soal-page': 'admin-analisis.js?v=4',
         'data-kelas': 'admin-siswa.js?v=4',
@@ -682,7 +682,7 @@ function initPage(idHalaman) {
         if (typeof initCustomSelect === 'function') {
             initCustomSelect('filter-kelas-monitoring');
         }
-        if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
+        if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring(); // sekarang = polling 5s (realtime OFF)
         if (typeof populateFilterKelas === 'function') {
             // dukung pending dari sessionStorage (jika set sebelum lazy-load) — mapel & kelas
             if (!window._pendingMonMapel) { try{ window._pendingMonMapel = sessionStorage.getItem('_pendingMonMapel'); }catch(_){} }
@@ -1404,7 +1404,8 @@ if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
 if (typeof loadRecentActivity === 'function') loadRecentActivity();
 initLandingSlideshow();
 fetchLandingStats();
-if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
+// REALTIME MATI TOTAL — monitoring pakai polling 5s (aktifkan saat buka halaman monitoring saja)
+ // if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
 startJadwalRealtime();
 startSoalRealtime();
 
