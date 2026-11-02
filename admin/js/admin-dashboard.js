@@ -200,7 +200,7 @@ if (!_dashSedangPoll) {
         if (document.getElementById('dashboard')?.classList.contains('active') && typeof updateDashboardStats === 'function' && !document.hidden) {
             updateDashboardStats();
         }
-    }, 12000);
+    }, 30000);
     window._dashSedangPoll = _dashSedangPoll;
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.getElementById('dashboard')?.classList.contains('active') && typeof updateDashboardStats === 'function') updateDashboardStats();

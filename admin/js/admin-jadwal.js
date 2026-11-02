@@ -18,15 +18,32 @@ async function populateJadwalMapelDropdown() {
     if (!select) return;
     const previousValue = (select.value || '').trim();
     const _jmSesi = getGuruSession();
-    const _jmIsAdmin = _jmSesi && _jmSesi.isAdmin === true;
+    const _jmIsAdmin = _jmSesi && (_jmSesi.isAdmin === true || _jmSesi.role === 'admin' || _jmSesi.role === 'superadmin');
     const _jmGuruId = _jmSesi ? _jmSesi.id : null;
 
-    let query = db.from('bank_soal').select('mapel');
-    if (!_jmIsAdmin && _jmGuruId) query = query.eq('created_by', _jmGuruId);
-    const { data, error } = await query;
-    if (error || !data) return;
+    let allRows = [];
+    if (typeof fetchAllBankSoal === 'function') {
+        const { data, error } = await fetchAllBankSoal('mapel', (q) => {
+            if (!_jmIsAdmin && _jmGuruId) return q.eq('created_by', _jmGuruId);
+            return q;
+        });
+        if (!error && data) allRows = data;
+    } else {
+        const PAGE = 1000;
+        let from = 0;
+        while (true) {
+            let query = db.from('bank_soal').select('mapel').order('id', { ascending: true }).range(from, from + PAGE - 1);
+            if (!_jmIsAdmin && _jmGuruId) query = query.eq('created_by', _jmGuruId);
+            const { data, error } = await query;
+            if (error || !data || data.length === 0) break;
+            allRows = allRows.concat(data);
+            if (data.length < PAGE || from > 20000) break;
+            from += PAGE;
+        }
+    }
+
     const mapelSet = new Set();
-    data.forEach(d => { if (d.mapel) mapelSet.add(d.mapel.trim()); });
+    allRows.forEach(d => { if (d.mapel) mapelSet.add(d.mapel.trim()); });
     _jadwalMapelCache = [...mapelSet].sort((a,b)=>a.localeCompare(b,'id'));
     select.innerHTML = '<option value="">— Pilih Mapel dari Bank Soal —</option>';
     _jadwalMapelCache.forEach(m => {
@@ -413,7 +430,7 @@ function _showJadwalLoading(show){
 async function loadJadwal() {
     const tbody = document.getElementById('tabel-jadwal');
     const _jSesi = getGuruSession();
-    const _jIsAdmin = _jSesi && _jSesi.isAdmin === true;
+    const _jIsAdmin = _jSesi && (_jSesi.isAdmin === true || _jSesi.role === 'admin' || _jSesi.role === 'superadmin');
     const _jGuruId = _jSesi ? _jSesi.id : null;
 
     if (document.getElementById('jadwal-kelas-list')) populateJadwalKelasOptions();

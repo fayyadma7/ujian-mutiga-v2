@@ -9,9 +9,10 @@
 // - Global event listeners (visibilitychange, beforeunload)
 // ============================================================
 
-// --- SUPABASE INIT ---
-const supabaseUrl = 'https://bkecjfrwqocguyvjymkn.supabase.co';
-const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+// --- SUPABASE INIT (via js/supabase-config.js; fallback = profil harian) ---
+var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
+const supabaseUrl = _activeProfile.url || 'https://bkecjfrwqocguyvjymkn.supabase.co';
+const supabaseKey = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
 const db = supabase.createClient(supabaseUrl, supabaseKey);
 
 // --- LAZY LOAD SCRIPT HELPER ---
@@ -382,16 +383,12 @@ function mulaiRealtimeGuru() { return; }
 function hentikanRealtimeGuru() { if (realtimeChannel) { try{ db.removeChannel(realtimeChannel);}catch(e){} realtimeChannel = null; } }
 
 // ==================== GURU STATUS ONLINE & HEARTBEAT ====================
+// Satu-satunya jalur tulis status: via admin-proxy (service_role).
+// Dulu dobel (adminDb.update + fetch RPC langsung) tiap 30s = 2x log;
+// sekarang 1x tiap 60s.
 async function setGuruStatusOnline(guruId) {
     try {
         await adminDb.update('guru', guruId, { status: 'online', last_seen: new Date().toISOString() }, {silent:true});
-        try {
-            await fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-                body: JSON.stringify({ p_guru_id: guruId, p_status: 'online' })
-            });
-        } catch (_) {}
     } catch (e) {
         console.warn('⏳ setGuruStatusOnline error:', e);
     }
@@ -401,7 +398,7 @@ let heartbeatInterval = null;
 
 function mulaiHeartbeat(guruId) {
     if (heartbeatInterval) clearInterval(heartbeatInterval);
-    heartbeatInterval = setInterval(() => { setGuruStatusOnline(guruId); }, 30000);
+    heartbeatInterval = setInterval(() => { setGuruStatusOnline(guruId); }, 60000);
 }
 
 // ==================== AUTO-DEACTIVATE JADWAL (GLOBAL) ====================
@@ -604,14 +601,14 @@ function bukaHalaman(idHalaman, elemenTombol) {
 
     // --- LAZY LOAD MODULE SCRIPTS ---
     const moduleMap = {
-        'dashboard': 'admin-dashboard.js?v=4',
-        'bank-soal': 'admin-soal.js?v=8',
-        'jadwal': 'admin-jadwal.js?v=8',
-        'monitoring': 'admin-monitoring.js?v=5',
+        'dashboard': 'admin-dashboard.js?v=5',
+        'bank-soal': 'admin-soal.js?v=9',
+        'jadwal': 'admin-jadwal.js?v=9',
+        'monitoring': 'admin-monitoring.js?v=6',
         'laporan': 'admin-laporan.js?v=4',
         'analisis-soal-page': 'admin-analisis.js?v=4',
         'data-kelas': 'admin-siswa.js?v=4',
-        'akun-guru': 'admin-guru.js?v=4'
+        'akun-guru': 'admin-guru.js?v=5'
     };
     const scriptName = moduleMap[idHalaman];
     const _baseKey = scriptName ? scriptName.split('?')[0].replace('.js','') : '';
@@ -682,7 +679,7 @@ function initPage(idHalaman) {
         if (typeof initCustomSelect === 'function') {
             initCustomSelect('filter-kelas-monitoring');
         }
-        if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring(); // sekarang = polling 5s (realtime OFF)
+        if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring(); // sekarang = polling 15s (realtime OFF)
         if (typeof populateFilterKelas === 'function') {
             // dukung pending dari sessionStorage (jika set sebelum lazy-load) — mapel & kelas
             if (!window._pendingMonMapel) { try{ window._pendingMonMapel = sessionStorage.getItem('_pendingMonMapel'); }catch(_){} }
@@ -767,6 +764,7 @@ function enterDashboard(btn) {
         setTimeout(() => { try { overlay.remove(); } catch (_) {} }, 900);
     }
 
+    matikanSemuaPasswordInputs();
     const dashboardBtn = document.querySelector('.nav-btn[onclick*="dashboard"]');
     if (dashboardBtn) bukaHalaman('dashboard', dashboardBtn);
 
@@ -914,25 +912,35 @@ function _resetPwdAdmin(inputId, scopeSel){
         }
     }
 }
+function matikanSemuaPasswordInputs() {
+    document.querySelectorAll('input[type="password"]').forEach(inp => {
+        inp.disabled = true;
+        inp.value = '';
+    });
+}
 function bukaLoginModal() {
-    document.getElementById('adminLoginUsername').value = '';
-    const pwL=document.getElementById('adminLoginPassword'); if(pwL) pwL.value='';
+    const u = document.getElementById('adminLoginUsername'); if (u) { u.disabled = false; u.value = ''; }
+    const pwL = document.getElementById('adminLoginPassword');
+    if (pwL) { pwL.disabled = false; pwL.value = ''; }
     _resetPwdAdmin('adminLoginPassword','#loginModalOverlay');
     document.getElementById('loginModalError').textContent = '';
     document.getElementById('btnLoginSubmit').disabled = false;
     document.getElementById('btnLoginSubmit').innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Masuk Dashboard';
     document.getElementById('loginModalOverlay').classList.add('show');
-    setTimeout(() => document.getElementById('adminLoginUsername').focus(), 300);
+    setTimeout(() => { if (u) u.focus(); }, 300);
 }
 
 function tutupLoginModal() {
     document.getElementById('loginModalOverlay').classList.remove('show');
+    const u = document.getElementById('adminLoginUsername'); if (u) u.value = '';
+    const pwL = document.getElementById('adminLoginPassword');
+    if (pwL) { pwL.value = ''; pwL.disabled = true; }
     _resetPwdAdmin('adminLoginPassword','#loginModalOverlay');
 }
 
 async function adminLogin() {
-    const username = document.getElementById('adminLoginUsername').value.trim();
-    const password = document.getElementById('adminLoginPassword').value;
+    const username = (document.getElementById('adminLoginUsername')?.value || '').trim();
+    const password = document.getElementById('adminLoginPassword')?.value || '';
     const errEl = document.getElementById('loginModalError');
     if (!username || !password) { errEl.textContent = 'Masukkan username dan password'; return; }
     errEl.textContent = '';
@@ -974,7 +982,7 @@ async function adminLogin() {
 function bukaModalDaftarGuru() {
     document.getElementById('daftarNama').value = '';
     document.getElementById('daftarUsername').value = '';
-    const pwD=document.getElementById('daftarPassword'); if(pwD) pwD.value='';
+    const pwD=document.getElementById('daftarPassword'); if(pwD) { pwD.disabled = false; pwD.value=''; }
     _resetPwdAdmin('daftarPassword','#modalDaftarGuru');
     document.getElementById('daftarStatus').textContent = '';
     document.getElementById('modalDaftarGuru').style.display = 'flex';
@@ -982,6 +990,7 @@ function bukaModalDaftarGuru() {
 
 function tutupModalDaftarGuru() {
     document.getElementById('modalDaftarGuru').style.display = 'none';
+    const pwD=document.getElementById('daftarPassword'); if(pwD) { pwD.value=''; pwD.disabled = true; }
     _resetPwdAdmin('daftarPassword','#modalDaftarGuru');
 }
 
@@ -1033,11 +1042,17 @@ function switchProfilTab(tab){
         if(btnPass){ btnPass.style.background='rgba(255,255,255,0.06)'; btnPass.style.color='rgba(255,255,255,0.6)'; btnPass.style.border='1px solid rgba(255,255,255,0.1)'; }
         if(paneProfil) paneProfil.style.display='block';
         if(panePass) panePass.style.display='none';
+        ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id => {
+            const el = document.getElementById(id); if (el) { el.disabled = true; el.value = ''; }
+        });
     } else {
         if(btnPass){ btnPass.style.background='var(--primary)'; btnPass.style.color='white'; btnPass.style.border='none'; }
         if(btnProfil){ btnProfil.style.background='rgba(255,255,255,0.06)'; btnProfil.style.color='rgba(255,255,255,0.6)'; btnProfil.style.border='1px solid rgba(255,255,255,0.1)'; }
         if(paneProfil) paneProfil.style.display='none';
         if(panePass) panePass.style.display='block';
+        ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id => {
+            const el = document.getElementById(id); if (el) { el.disabled = false; el.value = ''; }
+        });
     }
 }
 function bukaModalEditProfilSaya(){
@@ -1050,9 +1065,9 @@ function bukaModalEditProfilSaya(){
     const confEl = document.getElementById('profil-confirm-pass');
     if(namaEl) namaEl.value = s.nama || '';
     if(userEl) userEl.value = s.username || '';
-    if(oldEl) oldEl.value = '';
-    if(newEl) newEl.value = '';
-    if(confEl) confEl.value = '';
+    if(oldEl) { oldEl.disabled = true; oldEl.value = ''; }
+    if(newEl) { newEl.disabled = true; newEl.value = ''; }
+    if(confEl) { confEl.disabled = true; confEl.value = ''; }
     ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id=>_resetPwdAdmin(id,'#modalEditProfilSaya'));
     const statusEl = document.getElementById('profil-status');
     if(statusEl) statusEl.innerHTML='';
@@ -1066,7 +1081,10 @@ function bukaModalEditProfilSaya(){
 function tutupModalEditProfilSaya(){
     const modal = document.getElementById('modalEditProfilSaya');
     if(modal) modal.style.display='none';
-    ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id=>_resetPwdAdmin(id,'#modalEditProfilSaya'));
+    ['profil-old-pass','profil-new-pass','profil-confirm-pass'].forEach(id => {
+        const el = document.getElementById(id); if (el) { el.disabled = true; el.value = ''; }
+        _resetPwdAdmin(id,'#modalEditProfilSaya');
+    });
 }
 async function simpanProfilSaya(){
     const s = getGuruSession();
@@ -1192,6 +1210,7 @@ let _guruPollTimer = null;
 function mulaiPollingGuru() {
     if (_guruPollTimer) clearInterval(_guruPollTimer);
     _guruPollTimer = setInterval(() => {
+        if (document.hidden) return;
         const tb = document.getElementById('guruTableBody');
         if (tb && tb.offsetParent !== null && typeof loadGuruList === 'function') {
             loadGuruList();
@@ -1335,7 +1354,7 @@ window.addEventListener('beforeunload', () => {
     const sesi = getGuruSession();
     if (sesi && sesi.id) {
         try {
-            fetch('https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/guru_set_status', {
+            fetch(supabaseUrl + '/rest/v1/rpc/guru_set_status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
                 body: JSON.stringify({ p_guru_id: sesi.id, p_status: 'offline' }),
@@ -1404,7 +1423,7 @@ if (typeof loadDashboardJadwalAktif === 'function') loadDashboardJadwalAktif();
 if (typeof loadRecentActivity === 'function') loadRecentActivity();
 initLandingSlideshow();
 fetchLandingStats();
-// REALTIME MATI TOTAL — monitoring pakai polling 5s (aktifkan saat buka halaman monitoring saja)
+// REALTIME MATI TOTAL — monitoring pakai polling 15s (aktifkan saat buka halaman monitoring saja)
  // if (typeof startRealtimeMonitoring === 'function') startRealtimeMonitoring();
 startJadwalRealtime();
 startSoalRealtime();

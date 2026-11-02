@@ -97,8 +97,12 @@ async function populatePreviewMapel() {
 
     if (uniqueMapels.length === 0) {
         tbody.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:24px; color:#94a3b8; background:#1e2d44; border:1px dashed rgba(255,255,255,0.08); border-radius:12px;">Belum ada bank soal. Silakan upload soal via Excel atau Word.</div>';
-        const optMapel = document.getElementById('jadwal-mapel');
-        if (optMapel) optMapel.innerHTML = '<option value="">— Belum ada Mapel di Bank Soal —</option>';
+        if (typeof populateJadwalMapelDropdown === 'function') {
+            try { populateJadwalMapelDropdown(); } catch (_) {}
+        } else {
+            const optMapel = document.getElementById('jadwal-mapel');
+            if (optMapel) optMapel.innerHTML = '<option value="">— Belum ada Mapel di Bank Soal —</option>';
+        }
         return;
     }
 
@@ -134,11 +138,15 @@ async function populatePreviewMapel() {
     });
     tbody.innerHTML = html;
 
-    const optMapel = document.getElementById('jadwal-mapel');
-    if (optMapel) {
-        const currentVal = optMapel.value;
-        optMapel.innerHTML = optHtml;
-        if (uniqueMapels.includes(currentVal)) optMapel.value = currentVal;
+    if (typeof populateJadwalMapelDropdown === 'function') {
+        try { populateJadwalMapelDropdown(); } catch (_) {}
+    } else {
+        const optMapel = document.getElementById('jadwal-mapel');
+        if (optMapel) {
+            const currentVal = optMapel.value;
+            optMapel.innerHTML = optHtml;
+            if (uniqueMapels.includes(currentVal)) optMapel.value = currentVal;
+        }
     }
 }
 

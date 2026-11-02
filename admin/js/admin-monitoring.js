@@ -21,10 +21,10 @@ var isLoadingMonitoring = typeof isLoadingMonitoring !== 'undefined' ? isLoading
 var violationCooldownMs = typeof violationCooldownMs !== 'undefined' ? violationCooldownMs : 60000;
 var violationLastToastAt = typeof violationLastToastAt !== 'undefined' ? violationLastToastAt : new Map();
 var _monMapelCache = typeof _monMapelCache !== 'undefined' ? _monMapelCache : [];
-// REALTIME MATI TOTAL — polling 5 detik (bukan realtime)
+// REALTIME MATI TOTAL — polling 15 detik (bukan realtime)
 var ENABLE_REALTIME = typeof ENABLE_REALTIME !== 'undefined' ? ENABLE_REALTIME : false;
 var _monPoll = typeof _monPoll !== 'undefined' ? _monPoll : null;
-var MON_POLL_MS = typeof MON_POLL_MS !== 'undefined' ? MON_POLL_MS : 5000;
+var MON_POLL_MS = typeof MON_POLL_MS !== 'undefined' ? MON_POLL_MS : 15000;
 function scheduleReconnect(){
   // realtime dimatikan — jangan reconnect
   if(!ENABLE_REALTIME) return;
@@ -44,14 +44,14 @@ function mulaiPollingMonitoring(){
       loadMonitoring({silent:true});
     }
   }, MON_POLL_MS);
-  console.log('[monitoring] polling 5s AKTIF (realtime OFF)');
+  console.log('[monitoring] polling 15s AKTIF (realtime OFF)');
 }
 function hentikanPollingMonitoring(){
   if(_monPoll){ clearInterval(_monPoll); _monPoll=null; console.log('[monitoring] polling dihentikan'); }
   if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
 }
 async function startRealtimeMonitoring() {
-    // === REALTIME DIMATIKAN TOTAL — pakai polling 5 detik (hemat Concurrent) ===
+    // === REALTIME DIMATIKAN TOTAL — pakai polling 15 detik (hemat Concurrent + hemat Log Ingestion) ===
     // apapun yang coba subscribe, langsung bersihkan & ganti polling
     if(!ENABLE_REALTIME){
         // bersihkan channel lama / stale jika ada (sisa cache browser)
@@ -66,7 +66,7 @@ async function startRealtimeMonitoring() {
         // db dari supabase-js bisa masih keep-alive websocket even tanpa channel — tidak perlu channel
         intentionalClose = false;
         mulaiPollingMonitoring();
-        console.log('[monitoring] REALTIME OFF → polling 5 detik');
+        console.log('[monitoring] REALTIME OFF → polling 15 detik');
         return;
     }
     if(isSubscribing) return;

@@ -16,6 +16,8 @@
     <!-- SweetAlert2 untuk popup notifikasi modern -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Config DB pusat (profil harian/event + flag ACTIVE_DB) — HARUS sebelum script inline -->
+    <script src="js/supabase-config.js?v=1"></script>
 
     <script>
         window.MathJax = {
@@ -4568,8 +4570,10 @@
             window.addEventListener('orientationchange', function(){ setTimeout(function(){ window.scrollTo(0,0); updateRotateWarning(); }, 200); });
         })();
 
-        const supabaseUrl = 'https://bkecjfrwqocguyvjymkn.supabase.co';
-        const supabaseKey = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+        // URL/key dari js/supabase-config.js (flag ACTIVE_DB); fallback = profil harian.
+        var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
+        const supabaseUrl = _activeProfile.url || 'https://bkecjfrwqocguyvjymkn.supabase.co';
+        const supabaseKey = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
 
         let db;
         try {

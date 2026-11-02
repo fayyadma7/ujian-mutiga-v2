@@ -6,8 +6,11 @@
 // UPDATE 2026-09: tambah auto-fallback via RPC jika proxy lama (Unknown action)
 // ============================================================
 
-const ADMIN_PROXY_URL = 'https://bkecjfrwqocguyvjymkn.supabase.co/functions/v1/admin-proxy';
-const ADMIN_PROXY_ANON_KEY = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+// URL/key diambil dari js/supabase-config.js (wajib dimuat SEBELUM file ini).
+// Fallback hardcoded = profil harian, supaya file tetap jalan bila config belum termuat.
+var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
+const ADMIN_PROXY_URL = _activeProfile.proxyUrl || 'https://bkecjfrwqocguyvjymkn.supabase.co/functions/v1/admin-proxy';
+const ADMIN_PROXY_ANON_KEY = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
 
 // — Global loader untuk delay — hanya tampil jika >300ms biar ga kedip untuk yang cepat
 let _globalLoaderTimer = null;

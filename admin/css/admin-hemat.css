@@ -13,11 +13,12 @@
     transition: none !important;
     scroll-behavior: auto !important;
 }
-/* SweetAlert2 tetap mulus — jangan di-freeze */
-.swal2-popup, .swal2-container, .swal2-backdrop, .swal2-loader, .swal2-actions, .swal2-title, .swal2-html-container {
-    animation: initial !important;
-    transition: all 0.25s ease !important;
-}
+/* SweetAlert2: JANGAN override animation/transition pada .swal2-popup.
+   Swal v11 hanya menghapus popup setelah event `animationend`/`transitionend` pada popup.
+   Kalau animasi dimatikan (animation: initial) tapi transition dibiarkan > 0s,
+   hasCssAnimation() bernilai true → Swal menunggu event yang tak pernah muncul
+   → popup nyangkut selamanya (timer/showConfirmButton:false tidak pernah hilang).
+   Rule bintang di atas sudah mengecualikan semua class berisi "swal2", jadi biarkan CSS Swal aslinya. */
 .swal2-loader {
     animation: swal2-rotate-loading 1.5s linear infinite !important;
     border-color: #3b82f6 transparent #3b82f6 transparent !important;

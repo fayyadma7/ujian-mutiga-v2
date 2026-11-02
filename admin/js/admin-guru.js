@@ -185,8 +185,8 @@ function bukaModalEditGuru(id){
     const confEl = document.getElementById('admin-edit-password-confirm');
     if(namaEl) namaEl.value = g.nama || '';
     if(userEl) userEl.value = g.username || '';
-    if(passEl) passEl.value = '';
-    if(confEl) confEl.value = '';
+    if(passEl) { passEl.disabled = false; passEl.value = ''; }
+    if(confEl) { confEl.disabled = false; confEl.value = ''; }
     ['admin-edit-password','admin-edit-password-confirm'].forEach(id=>{ try{_resetPwdAdmin(id,'#modalEditGuruAdmin')}catch(_){}});
     const titleEl = document.getElementById('admin-edit-title');
     if(titleEl) titleEl.textContent = 'Edit Akun: '+(g.nama||'');
@@ -204,6 +204,10 @@ function tutupModalEditGuru(){
     const modal = document.getElementById('modalEditGuruAdmin');
     if(modal) modal.style.display='none';
     _adminEditGuruId = null;
+    const passEl = document.getElementById('admin-edit-password');
+    const confEl = document.getElementById('admin-edit-password-confirm');
+    if(passEl) { passEl.disabled = true; passEl.value = ''; }
+    if(confEl) { confEl.disabled = true; confEl.value = ''; }
     ['admin-edit-password','admin-edit-password-confirm'].forEach(id=>{ try{_resetPwdAdmin(id,'#modalEditGuruAdmin')}catch(_){}});
 }
 async function simpanEditGuru(){
