@@ -604,7 +604,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
         'dashboard': 'admin-dashboard.js?v=5',
         'bank-soal': 'admin-soal.js?v=9',
         'jadwal': 'admin-jadwal.js?v=9',
-        'monitoring': 'admin-monitoring.js?v=6',
+        'monitoring': 'admin-monitoring.js?v=7',
         'laporan': 'admin-laporan.js?v=4',
         'analisis-soal-page': 'admin-analisis.js?v=4',
         'data-kelas': 'admin-siswa.js?v=4',

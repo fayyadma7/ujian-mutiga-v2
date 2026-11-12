@@ -25,6 +25,32 @@ var _monMapelCache = typeof _monMapelCache !== 'undefined' ? _monMapelCache : []
 var ENABLE_REALTIME = typeof ENABLE_REALTIME !== 'undefined' ? ENABLE_REALTIME : false;
 var _monPoll = typeof _monPoll !== 'undefined' ? _monPoll : null;
 var MON_POLL_MS = typeof MON_POLL_MS !== 'undefined' ? MON_POLL_MS : 15000;
+
+// --- Alarm pelanggaran (jalur POLLING) ---
+// Dulu toast pelanggaran hanya ada di handler realtime yang sudah dimatikan (ENABLE_REALTIME=false),
+// sehingga guru tidak pernah dapat notifikasi saat siswa melanggar.
+var _acPlg = null;
+function _bunyiPelanggaran(){
+  try{
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    if(!_acPlg) _acPlg = new AC();
+    if(_acPlg.state === 'suspended'){ try{ _acPlg.resume(); }catch(e){} }
+    var o = _acPlg.createOscillator(), g = _acPlg.createGain();
+    o.type = 'square'; o.frequency.value = 880;
+    g.gain.value = 0.06;
+    o.connect(g); g.connect(_acPlg.destination);
+    o.start();
+    setTimeout(function(){ try{ o.stop(); }catch(e){} }, 180);
+  }catch(e){}
+}
+// Autoplay policy: AudioContext baru boleh bunyi setelah ada interaksi admin
+document.addEventListener('click', function(){
+  try{
+    if(!_acPlg){ var AC = window.AudioContext || window.webkitAudioContext; if(AC) _acPlg = new AC(); }
+    if(_acPlg && _acPlg.state === 'suspended'){ try{ _acPlg.resume(); }catch(e){} }
+  }catch(e){}
+}, { once: true });
 function scheduleReconnect(){
   // realtime dimatikan — jangan reconnect
   if(!ENABLE_REALTIME) return;
@@ -673,6 +699,21 @@ async function loadMonitoring(opts) {
         const isPlg = parseInt(s.pelanggaran) > 0;
         const prev = _prevMonDataMap.get(String(s.id));
         const statusChanged = prev && prev.status !== s.status || prev && prev.pelanggaran !== s.pelanggaran;
+
+        // Notifikasi PELANGGARAN BARU di jalur polling (bukan realtime yang mati).
+        // Hanya saat angka naik dari render sebelumnya → tidak spam saat load pertama.
+        try{
+            const _curPlg = parseInt(s.pelanggaran) || 0;
+            const _prevPlg = prev ? (parseInt(prev.pelanggaran) || 0) : -1;
+            if (prev && _curPlg > _prevPlg) {
+                const _lastToast = violationLastToastAt.get(String(s.id)) || 0;
+                if (Date.now() - _lastToast > violationCooldownMs) {
+                    violationLastToastAt.set(String(s.id), Date.now());
+                    if (typeof showToast === 'function') showToast(`Pelanggaran! ${s.nama} (${s.kelas}) — ${_curPlg}x`, 'plg');
+                    _bunyiPelanggaran();
+                }
+            }
+        }catch(e){}
 
         let statusBadge = "";
         if (isBelum) {

@@ -5078,6 +5078,22 @@
                 btnMulaiEarly.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="margin-right: 6px;"></i> Menghubungkan ke server...`;
             }
 
+            // ===== FIX: minta fullscreen SINKRON (masih dalam user gesture) =====
+            // Dulu requestFullscreen() dipanggil SETELAH await jitter 0-4 detik, sehingga
+            // user-activation bisa kedaluwarsa → Chrome menolak → ujian jalan tanpa fullscreen
+            // dan seluruh deteksi "Keluar Fullscreen" mati. Error tetap dibiarkan (jangan
+            // blokir siswa), tapi sekarang permintaannya jauh lebih besar peluang berhasilnya.
+            if (!isIOS) {
+                try {
+                    const _fsEl = document.documentElement;
+                    let _fsReq = null;
+                    if (_fsEl.requestFullscreen) _fsReq = _fsEl.requestFullscreen();
+                    else if (_fsEl.webkitRequestFullscreen) _fsReq = _fsEl.webkitRequestFullscreen();
+                    else if (_fsEl.msRequestFullscreen) _fsReq = _fsEl.msRequestFullscreen();
+                    if (_fsReq && _fsReq.catch) _fsReq.catch(function(){});
+                } catch (e) {}
+            }
+
             const n = document.getElementById('nama').value;
             const m = document.getElementById('mapel').value;
             const k = document.getElementById('kelas').value;
@@ -5263,30 +5279,40 @@
                 document.getElementById('identitas').style.display = 'none';
                 document.getElementById('navbar-ujian').style.display = 'flex';
                 document.getElementById('formUjian').style.display = 'block';
+                // Baseline ukuran layar untuk deteksi split-screen (lihat cekUkuranLayar)
+                try{ if (typeof _setLayarBase === 'function') setTimeout(_setLayarBase, 250); }catch(e){}
 
                 if (timerInterval) clearInterval(timerInterval);
 
                 timerInterval = setInterval(updateTimer, 1000);
 
                 // Status di-update sekali saja di awal (mengurangi beban server massal)
+                // PENTING: jangan menimpa status PELANGGARAN menjadi AKTIF/MENGERJAKAN.
+                // Dulu siswa cukup reload halaman / login ulang untuk "mencuci" status merah
+                // di Live Monitoring. Sekarang status PELANGGARAN dipertahankan.
+                const _statusLama = String((existing && existing.status) || '');
+                const _sedangPelanggaran = _statusLama.indexOf('PELANGGARAN') === 0;
                 if (window.idRowUjian && !aktifSignalSent) {
                     safeDbCall(() =>
-                        db.from('jawaban_ujian').update({
-                            status: 'AKTIF - ' + new Date().toLocaleTimeString('id-ID')
-                        }).eq('id', window.idRowUjian)
+                        db.from('jawaban_ujian').update(
+                            _sedangPelanggaran
+                                ? { pelanggaran: p_count }
+                                : { status: 'AKTIF - ' + new Date().toLocaleTimeString('id-ID') }
+                        ).eq('id', window.idRowUjian)
                     ).then(() => {
                         console.log('[Monitor] Status AKTIF pertama terkirim');
                         // Tandai bahwa sinyal AKTIF sudah dikirim
                         aktifSignalSent = true;
                     }).catch(e => console.log("Silent error status update:", e));
                 } else if (window.idRowUjian && aktifSignalSent) {
-                    // FIX reload tanpa klik Saya Mengerti: status masih PELANGGARAN di DB — pulihkan ke MENGERJAKAN saat resume
+                    // Resume dalam sesi yang sama — jangan cuci status pelanggaran
                     safeDbCall(() =>
-                        db.from('jawaban_ujian').update({
-                            status: 'MENGERJAKAN',
-                            pelanggaran: p_count
-                        }).eq('id', window.idRowUjian)
-                    ).then(()=> console.log('[Monitor] Status dipulihkan ke MENGERJAKAN setelah reload')).catch(e=> console.log("Silent resume status:", e));
+                        db.from('jawaban_ujian').update(
+                            _sedangPelanggaran
+                                ? { pelanggaran: p_count }
+                                : { status: 'MENGERJAKAN', pelanggaran: p_count }
+                        ).eq('id', window.idRowUjian)
+                    ).then(()=> console.log('[Monitor] Resume dikirim (status pelanggaran dipertahankan bila ada)')).catch(e=> console.log("Silent resume status:", e));
                 }
 
                 // Write Queue akan menangani sinkronisasi ke Supabase secara sequential
@@ -6883,42 +6909,40 @@ let aktifSignalSent = false;
         // --- Tracking keyboard & essay-focus untuk anti-cheat (abaikan blur saat keyboard essay) ---
         // Tombol centang ✓ di atas keyboard Android (Gboard Done) memicu window blur sesaat —
         // itu interaksi keyboard normal, BUKAN pindah aplikasi, jadi harus diabaikan.
+        //
+        // PENTING (perbaikan celah): grace keyboard HANYA berlaku 1,8 detik.
+        // Dulu `document.activeElement` dipakai sebagai izin permanen — akibatnya siswa cukup
+        // mengetik 1 jawaban essay, lalu bebas pindah aplikasi / split-screen sepanjang ujian
+        // tanpa pernah tercatat (blur & visibilitychange selalu di-return di awal).
+        var KB_GRACE_MS = 1800;
         window._lastEssayFocusAt = 0;
-        window._kbOpen = false;
-        (function(){
-            var vvKb = window.visualViewport;
-            function updKb(){
-                if(!vvKb) return;
-                // keyboard kebuka = tinggi visualViewport jauh lebih kecil dari window.
-                // STICKY: hanya boleh true di sini, jangan auto-false — viewport berfluktuasi
-                // saat scroll/URL-bar sehingga false palsu bisa loloskan blur keyboard (kasus nav essay).
-                // Penutup keyboard terdeteksi via focusout + jeda 2 detik di bawah.
-                if((window.innerHeight - vvKb.height) > 120) window._kbOpen = true;
-            }
-            if(vvKb){ vvKb.addEventListener('resize', updKb); vvKb.addEventListener('scroll', updKb); }
-        })();
+        // Keyboard terbuka = visualViewport jauh lebih pendek dari layout viewport.
+        // Dihitung on-demand (bukan flag sticky) supaya tidak nyangkut true sepanjang ujian.
+        function _keyboardTerbuka(){
+            try{
+                var vv = window.visualViewport;
+                if(!vv) return false;
+                return (window.innerHeight - vv.height) > 120;
+            }catch(e){ return false; }
+        }
         document.addEventListener('focusin', function(e) {
             if (e.target && (e.target.classList.contains('essay-textarea') || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
                 window._lastEssayFocusAt = Date.now();
-                window._kbOpen = true;
             }
         });
         document.addEventListener('focusout', function(e) {
             if (e.target && (e.target.classList.contains('essay-textarea') || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
-                // catat waktu lepas-fokus: blur keyboard (mis. tap tombol navigasi) dalam ~2,5 detik
-                // setelah ini tetap dianggap interaksi keyboard normal
+                // catat waktu lepas-fokus: blur keyboard (mis. tap tombol navigasi) dalam ~1,8 detik
+                // setelah ini tetap dianggap interaksi keyboard normal (animasi tutup keyboard).
                 window._lastEssayFocusAt = Date.now();
-                // beri jeda: keyboard tutup butuh ~1-2 detik animasi, jangan langsung anggap kb tutup
-                setTimeout(function(){ window._kbOpen = false; }, 2000);
             }
         });
         function _isKeyboardInteraction(){
-            // keyboard lagi kebuka ATAU baru aja fokus essay (<2.5 detik) = interaksi keyboard normal
-            if (window._kbOpen) return true;
-            if (Date.now() - (window._lastEssayFocusAt || 0) < 2500) return true;
+            // HANYA keyboard yang benar-benar masih terbuka / baru saja berinteraksi.
+            // JANGAN memakai activeElement — elemen bisa tetap "fokus" walau app lain aktif.
+            if (_keyboardTerbuka()) return true;
+            if (Date.now() - (window._lastEssayFocusAt || 0) < KB_GRACE_MS) return true;
             if (document.body.classList.contains('kb-open')) return true;
-            var ae = document.activeElement;
-            if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return true;
             return false;
         }
 
@@ -7070,7 +7094,7 @@ let aktifSignalSent = false;
             try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
             if (document.hidden) {
                 // grace tap navigasi: vonis ditunda kalau baru tap nav (senggolan gesture pulih <2 detik)
-                const _visDelay = 300 + (typeof _navGraceMs === 'function' ? _navGraceMs() : 0);
+                const _visDelay = 300 + (typeof _navGraceMs === 'function' ? Math.min(_navGraceMs(), 700) : 0);
                 setTimeout(() => {
                     try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
                     if (document.hidden && document.visibilityState === 'hidden') {
@@ -7091,7 +7115,7 @@ let aktifSignalSent = false;
             try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ setTimeout(()=>{isViolating=false},300); return; } }catch(e){}
             // Android: animasi keyboard tutup butuh waktu, beri jeda lebih lama dan cek ulang fokus.
             // Grace tap navigasi: senggolan gesture-bar pulih <2 detik, jangan langsung vonis.
-            const blurDelay = (isIOS ? 400 : 600) + (typeof _navGraceMs === 'function' ? _navGraceMs() : 0);
+            const blurDelay = (isIOS ? 400 : 600) + (typeof _navGraceMs === 'function' ? Math.min(_navGraceMs(), 800) : 0);
             setTimeout(() => {
                 try{ if(typeof isZoomActive==='function' && isZoomActive()){ isViolating=false; return; } if(isZooming) return; }catch(e){}
                 try{ if(typeof _isKeyboardInteraction==='function' && _isKeyboardInteraction()){ isViolating=false; return; } }catch(e){}
@@ -7131,32 +7155,111 @@ let aktifSignalSent = false;
         document.addEventListener("fullscreenchange", onFullscreenChange);
         document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
-        // 4. Deteksi Split-Screen / Layar Terbagi (Resize)
-        // Tidak berlaku di iOS karena browser chrome selalu mengurangi viewport
-        let resizeTimeout;
-        window.addEventListener("resize", () => {
-            if (window.isDevMode || isIOS || !ujianSedangBerlangsung()) return; // Skip di iOS, tidak reliable
+        // 4. Deteksi Split-Screen / Layar Terbagi
+        // Dulu: hanya dicek saat event `resize` DAN di-skip total untuk Android (!isAndroid),
+        // jadi HP Android (mayoritas siswa) tidak pernah diperiksa sama sekali. Sekarang:
+        //   - berlaku di Android & desktop
+        //   - dicek PERIODIK (2 detik), bukan cuma saat resize — siswa yang sudah split
+        //     sebelum ujian mulai / yang tidak memicu resize tetap ketahuan
+        //   - pembanding lebar dipakai (keyboard hanya mengubah tinggi, bukan lebar)
+        //   - baseline diambil saat ujian mulai / saat masuk fullscreen
+        window._layarBase = null;
+        window._splitWarnAt = 0;
+        function _ambilUkuranLayar(){
+            try{
+                var vv = window.visualViewport;
+                return {
+                    w: window.innerWidth || (vv && vv.width) || 0,
+                    h: window.innerHeight || (vv && vv.height) || 0,
+                    sw: (window.screen && (screen.availWidth || screen.width)) || 0,
+                    sh: (window.screen && (screen.availHeight || screen.height)) || 0,
+                    d: window.devicePixelRatio || 1
+                };
+            }catch(e){ return null; }
+        }
+        function _setLayarBase(){
+            var u = _ambilUkuranLayar();
+            if(!u || !u.w || !u.h) return;
+            var d = u.d || 1;
+            // Pakai ukuran FISIK (CSSpx × devicePixelRatio) supaya zoom halaman desktop
+            // (Ctrl +/-) tidak dianggap split-screen.
+            var pw = u.w * d, ph = u.h * d;
+            var psw = u.sw * d, psh = u.sh * d;
+            // Jangan jadikan ukuran "kecil" sebagai baseline. Contoh: ujian dimulai saat
+            // sudah split-screen, atau fullscreen diminta di dalam jendela yang sudah terbagi.
+            // Kalau viewport sudah jauh lebih kecil dari layar fisik → baseline dibatalkan,
+            // nanti cekUkuranLayar membandingkan langsung ke ukuran layar.
+            if (psw && psh){
+                if (pw / psw < 0.85 || ph / psh < 0.70){ window._layarBase = null; return; }
+            }
+            window._layarBase = {
+                pw: pw, ph: ph,
+                landscape: isDeviceLandscape(),
+                fs: !!(document.fullscreenElement || document.webkitFullscreenElement)
+            };
+        }
+        function _adaInputFokus(){
+            try{
+                var ae = document.activeElement;
+                return !!(ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT'));
+            }catch(e){ return false; }
+        }
+        function cekUkuranLayar(){
+            if (window.isDevMode || isIOS || !ujianSedangBerlangsung()) return;
+            var u = _ambilUkuranLayar();
+            if(!u || !u.w || !u.h) return;
+            // Rotasi = perubahan wajar → ambil baseline baru, jangan vonis
+            if (window._layarBase && window._layarBase.landscape !== isDeviceLandscape()) { _setLayarBase(); return; }
+            if (!window._layarBase) _setLayarBase();
+            var base = window._layarBase;
+            var d = u.d || 1;
+            var pw = u.w * d, ph = u.h * d;
+            // Baseline yang valid hanya ada kalau ujian dimulai dalam ukuran layar penuh.
+            // Kalau tidak ada, bandingkan langsung ke layar fisik.
+            var refPW = (base && base.pw) ? base.pw : u.sw * d;
+            var refPH = (base && base.ph) ? base.ph : u.sh * d;
+            if (!refPW || !refPH) return;
+            var rw = pw / refPW;
+            var rh = ph / refPH;
+            var kiriKanan = rw < 0.82;                                  // layar dibelah kiri-kanan
+            // Tinggi mengecil bisa karena keyboard (meta viewport memakai resizes-content)
+            // → jangan vonis selama keyboard/kolom isian sedang aktif. Lebar tidak pernah
+            // berubah karena keyboard, jadi aturan lebar tetap berlaku.
+            var tinggiAman = _keyboardTerbuka() || _adaInputFokus();
+            var atasBawah = !tinggiAman && rh < 0.62 && (base ? !base.landscape : !isDeviceLandscape());
+            if (!kiriKanan && !atasBawah) return;
+            // Cooldown 8 detik: cukup untuk mencatat persistensi, tapi tidak spam DB tiap 2 detik
+            var now = Date.now();
+            if (now - (window._splitWarnAt || 0) < 8000) return;
+            window._splitWarnAt = now;
+            catatPelanggaran(
+                "Layar Terbagi (Split)",
+                "Terdeteksi Layar Terbagi (Split-Screen) atau ukuran browser terlalu kecil! Harap gunakan layar penuh tanpa membagi layar."
+            );
+        }
+        setInterval(function(){ try{ cekUkuranLayar(); }catch(e){} }, 2000);
+        var resizeTimeout;
+        window.addEventListener("resize", function(){
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                const isUjianMulai = document.getElementById('formUjian').style.display === 'block';
-                if (isUjianMulai) {
-                    const screenHeight = window.screen.height;
-                    const viewportHeight = window.innerHeight;
-                    const screenWidth = window.screen.width;
-                    const viewportWidth = window.innerWidth;
-                    
-                    // Deteksi yang lebih intelligent: hanya trigger jika terjadi perubahan drastis
-                    // (skip jika hanya perubahan kecil dari browser chrome/UI)
-                    // Threshold: viewport harus <60% dari screen (bukan 72%) untuk desktop only
-                    if (!isAndroid && (viewportHeight < screenHeight * 0.60 || viewportWidth < screenWidth * 0.60)) {
-                        catatPelanggaran(
-                            "Layar Terbagi (Split)", 
-                            "Deteksi Layar Terbagi (Split-Screen) atau ukuran browser terlalu kecil! Harap gunakan layar penuh tanpa membagi layar."
-                        );
-                    }
-                }
-            }, 250);
+            resizeTimeout = setTimeout(function(){ try{ cekUkuranLayar(); }catch(e){} }, 250);
         });
+        // Baseline diambil ulang hanya saat MASUK fullscreen (keluar fullscreen jangan di-rebase,
+        // supaya pengecilan viewport tetap terdeteksi).
+        document.addEventListener("fullscreenchange", function(){
+            if (document.fullscreenElement || document.webkitFullscreenElement){
+                _setLayarBase();
+                setTimeout(function(){ try{ cekUkuranLayar(); }catch(e){} }, 500);
+            }
+        });
+        document.addEventListener("webkitfullscreenchange", function(){
+            if (document.fullscreenElement || document.webkitFullscreenElement){
+                _setLayarBase();
+                setTimeout(function(){ try{ cekUkuranLayar(); }catch(e){} }, 500);
+            }
+        });
+        window.addEventListener("orientationchange", function(){ setTimeout(_setLayarBase, 400); });
+        window.addEventListener("focus", function(){ try{ cekUkuranLayar(); }catch(e){} });
+        window.addEventListener("pageshow", function(){ try{ cekUkuranLayar(); }catch(e){} });
 
         function tutupOverlay() {
             document.getElementById('overlay').style.display = 'none';
@@ -7172,7 +7275,19 @@ let aktifSignalSent = false;
                 }
             }
             setTimeout(updateRotateWarning, 350);
-            kirimSinyalAktif(false);
+            // JANGAN kirim status 'MENGERJAKAN' di sini. Dulu begitu siswa menekan "Saya mengerti",
+            // status pelanggaran langsung ditimpa kembali ke MENGERJAKAN — padahal monitoring
+            // hanya polling 15 detik, jadi guru sering tidak pernah melihat status merahnya.
+            // Sekarang cukup sinkronkan ANGKA pelanggaran; status terakhir (PELANGGARAN) dipertahankan.
+            try{
+                if (window.idRowUjian){
+                    db.from('jawaban_ujian').update({ pelanggaran: p_count }).eq('id', window.idRowUjian)
+                        .then(function(){ console.log('[Monitor] Angka pelanggaran disinkronkan (status dipertahankan)'); })
+                        .catch(function(err){ console.warn('[Monitor] Gagal sinkron angka pelanggaran:', err); });
+                }
+            }catch(e){}
+            // Izinkan pemeriksaan ukuran berikutnya langsung memvonis lagi kalau masih split-screen
+            window._splitWarnAt = 0;
             setTimeout(() => { isViolating = false; }, 1000);
         }
 
