@@ -98,8 +98,10 @@ CREATE INDEX IF NOT EXISTS idx_bank_soal_folder_id
 -- ============================================================
 -- 4. BACKFILL: folder root per (created_by, mapel) + isi folder_id
 -- ============================================================
+-- NULL harus di-cast eksplisit: dengan DISTINCT, NULL tanpa tipe dianggap text
+-- sehingga INSERT ke parent_id (bigint) gagal dengan error 42804.
 INSERT INTO public.bank_soal_folder (nama, parent_id, created_by)
-SELECT DISTINCT trim(b.mapel), NULL, COALESCE(b.created_by, 1)
+SELECT DISTINCT trim(b.mapel), NULL::bigint, COALESCE(b.created_by, 1)
 FROM public.bank_soal b
 WHERE b.mapel IS NOT NULL
   AND trim(b.mapel) <> ''
@@ -125,5 +127,14 @@ CREATE POLICY bank_folder_select ON public.bank_soal_folder
 REVOKE INSERT, UPDATE, DELETE ON public.bank_soal_folder FROM anon, authenticated;
 GRANT SELECT ON public.bank_soal_folder TO anon, authenticated;
 GRANT ALL ON public.bank_soal_folder TO service_role;
+
+-- Id kolom membuat sequence bank_soal_folder_id_seq; service_role butuh USAGE
+-- supaya insert lewat admin-proxy tidak gagal "permission denied for sequence".
+DO $$
+BEGIN
+  IF to_regclass('public.bank_soal_folder_id_seq') IS NOT NULL THEN
+    EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE public.bank_soal_folder_id_seq TO service_role';
+  END IF;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
