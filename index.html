@@ -5286,33 +5286,31 @@
 
                 timerInterval = setInterval(updateTimer, 1000);
 
-                // Status di-update sekali saja di awal (mengurangi beban server massal)
-                // PENTING: jangan menimpa status PELANGGARAN menjadi AKTIF/MENGERJAKAN.
-                // Dulu siswa cukup reload halaman / login ulang untuk "mencuci" status merah
-                // di Live Monitoring. Sekarang status PELANGGARAN dipertahankan.
-                const _statusLama = String((existing && existing.status) || '');
-                const _sedangPelanggaran = _statusLama.indexOf('PELANGGARAN') === 0;
+                // Status di-update sekali saja di awal (mengurangi beban server massal).
+                // CATATAN PENTING: status PELANGGARAN memang dikembalikan ke MENGERJAKAN ketika
+                // siswa melanjutkan ujian. Sebelumnya status merah dibiarkan "stuck" sehingga
+                // peserta yang sudah mengerjakan lagi tetap tampil PELANGGARAN di Live Monitoring.
+                // Yang TIDAK boleh hilang adalah ANGKA pelanggaran dan log-nya: itu dijaga trigger
+                // DB (tidak bisa turun/memendek) dan tetap tampil merah di kolom pelanggaran.
                 if (window.idRowUjian && !aktifSignalSent) {
                     safeDbCall(() =>
-                        db.from('jawaban_ujian').update(
-                            _sedangPelanggaran
-                                ? { pelanggaran: p_count }
-                                : { status: 'AKTIF - ' + new Date().toLocaleTimeString('id-ID') }
-                        ).eq('id', window.idRowUjian)
+                        db.from('jawaban_ujian').update({
+                            status: 'AKTIF - ' + new Date().toLocaleTimeString('id-ID'),
+                            pelanggaran: p_count
+                        }).eq('id', window.idRowUjian)
                     ).then(() => {
                         console.log('[Monitor] Status AKTIF pertama terkirim');
                         // Tandai bahwa sinyal AKTIF sudah dikirim
                         aktifSignalSent = true;
                     }).catch(e => console.log("Silent error status update:", e));
                 } else if (window.idRowUjian && aktifSignalSent) {
-                    // Resume dalam sesi yang sama — jangan cuci status pelanggaran
+                    // Resume sesi (reload / login ulang / lanjut setelah pelanggaran)
                     safeDbCall(() =>
-                        db.from('jawaban_ujian').update(
-                            _sedangPelanggaran
-                                ? { pelanggaran: p_count }
-                                : { status: 'MENGERJAKAN', pelanggaran: p_count }
-                        ).eq('id', window.idRowUjian)
-                    ).then(()=> console.log('[Monitor] Resume dikirim (status pelanggaran dipertahankan bila ada)')).catch(e=> console.log("Silent resume status:", e));
+                        db.from('jawaban_ujian').update({
+                            status: 'MENGERJAKAN',
+                            pelanggaran: p_count
+                        }).eq('id', window.idRowUjian)
+                    ).then(()=> console.log('[Monitor] Resume dikirim: MENGERJAKAN')).catch(e=> console.log("Silent resume status:", e));
                 }
 
                 // Write Queue akan menangani sinkronisasi ke Supabase secara sequential
@@ -5418,8 +5416,9 @@
                 localStorage.setItem("device_token_" + idUserLocal, existingToken);
                 safeDbCall(() => db.from('jawaban_ujian').update({ device_token: existingToken }).eq('id', existing.id));
                 aktifSignalSent = true;
-                // FIX reload tanpa Saya Mengerti: status DB masih PELANGGARAN — langsung pulihkan ke MENGERJAKAN agar Live Monitoring tidak stuck
-                try{ if(String(existing.status||'').startsWith('PELANGGARAN')) safeDbCall(()=> db.from('jawaban_ujian').update({ status:'MENGERJAKAN', pelanggaran: p_count }).eq('id', existing.id)); }catch(_){}
+                // Status PELANGGARAN -> MENGERJAKAN ditangani sekali di startHandler (setelah
+                // angka pelanggaran direstore dari DB di bawah), supaya tidak ada request ganda
+                // dan angka pelanggaran tidak ditimpa nilai lokal yang lebih kecil.
                 // Restore pelanggaran dari DB agar konsisten antar device
                 const dbPlgExisting = parseInt(existing.pelanggaran) || 0;
                 if (dbPlgExisting > p_count) {
@@ -5512,8 +5511,8 @@
                                 if (dup.created_at) localStorage.setItem(keyWaktu, new Date(dup.created_at).toISOString());
                                 const dupPlg = parseInt(dup.pelanggaran)||0;
                                 if (dupPlg > p_count) { p_count=dupPlg; localStorage.setItem("pelanggaran_"+idUserLocal, p_count); }
-                                // FIX dup resume tanpa Saya Mengerti: pulihkan status ke MENGERJAKAN agar monitoring tidak stuck PELANGGARAN
-                                try{ safeDbCall(()=> db.from('jawaban_ujian').update({ status:'MENGERJAKAN', pelanggaran: p_count }).eq('id', dup.id)); }catch(_){}
+                                // Status PELANGGARAN -> MENGERJAKAN ditangani startHandler (satu sumber).
+                                // Angka pelanggaran sudah direstore dari DB di atas.
                             } else {
                                 throw insErr;
                             }
@@ -6297,53 +6296,56 @@
             updateProgressBar();
         }
 
-        // Kirim sinyal ke Supabase (langsung → Realtime ke admin monitoring)
-        // Dipanggil: saat pelanggaran terjadi (isViolation=true)
-        // Kirim sinyal ke Supabase
-        // Hanya mengirim status *PELANGGARAN*; status *AKTIF* sudah dikirim sekali pada startHandler.
-        // Helper: append 1 entry log ke DB tanpa timpa (via RPC, tahan ganti device)
-        async function appendLogPelanggaranDB(entry) {
-            if (!window.idRowUjian || !entry) return;
-            try {
-                // Coba RPC append (append-only di DB)
-                const { error } = await db.rpc('append_log_pelanggaran', { p_id: window.idRowUjian, p_entry: entry });
-                if (!error) return;
-                // fallback jika RPC belum ada (sebelum migrasi push) — timpa full log
-                console.warn('[Log] RPC append belum ada, fallback timpa:', error.message);
-            } catch (e) { console.warn('[Log] RPC append error', e); }
-            // fallback: kirim full log (best-effort)
+        // Log pelanggaran versi lokal (per siswa) — dipakai untuk ikut dikirim
+        // dalam request yang sama dengan status & angka pelanggaran.
+        function _logPelanggaranLokal() {
             try {
                 const n = document.getElementById('nama').value;
                 const m = document.getElementById('mapel').value;
                 const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
-                const savedLog = localStorage.getItem("log_pelanggaran_" + idUser);
-                if (savedLog) {
-                    await db.from('jawaban_ujian').update({ log_pelanggaran: savedLog, pelanggaran: p_count }).eq('id', window.idRowUjian);
-                }
-            } catch(_){}
+                return localStorage.getItem("log_pelanggaran_" + idUser) || '';
+            } catch (_) { return ''; }
         }
+
+        // Sinyal ke Live Monitoring: 1 request saja (status + angka + log).
+        // Dulu 2 request (PATCH status/angka + RPC append log). Sekarang digabung.
+        // Aman walau isi log yang dikirim lebih pendek: trigger
+        // `trg_jaga_pelanggaran_ujian` di DB menolak penurunan angka & pemendekan log.
+        //
+        // Antrian serial: mencegah tulisan lama (PELANGGARAN) menimpa tulisan baru
+        // (MENGERJAKAN) saat jaringan lambat — penyebab status "stuck PELANGGARAN".
+        let _sinyalQueue = Promise.resolve();
+        let _sinyalPending = 0;
+        const SINYAL_TIMEOUT_MS = 12000;
         function kirimSinyalAktif(isViolation = false, detailStatus = "") {
             if (!window.idRowUjian) return;
-            if (isViolation) {
-                const statusStr = 'PELANGGARAN (' + (detailStatus || 'Keluar Halaman') + ') - ' + new Date().toLocaleTimeString('id-ID');
-                // 1) update status+pelanggaran (GREATEST di DB jaga angka, tapi status tetap kami set)
-                db.from('jawaban_ujian').update({ pelanggaran: p_count, status: statusStr }).eq('id', window.idRowUjian)
-                    .then(() => console.log('[Monitor] Sinyal pelanggaran terkirim:', statusStr))
-                    .catch(err => console.warn('[Monitor] Gagal kirim sinyal pelanggaran:', err));
-                // 2) append log entry terpisah (tidak timpa) — ambil entry terakhir dari localStorage
-                try {
-                    const n = document.getElementById('nama').value;
-                    const m = document.getElementById('mapel').value;
-                    const idUser = n.replace(/\s/g, '') + "_" + m.replace(/\s/g, '');
-                    const savedLog = localStorage.getItem("log_pelanggaran_" + idUser) || '';
-                    const lastEntry = savedLog.split('\n').filter(Boolean).pop() || '';
-                    if (lastEntry) appendLogPelanggaranDB(lastEntry);
-                } catch(_){}
-            } else {
-                db.from('jawaban_ujian').update({ pelanggaran: p_count, status: 'MENGERJAKAN' }).eq('id', window.idRowUjian)
-                    .then(() => console.log('[Monitor] Sinyal kembali mengerjakan terkirim:', 'MENGERJAKAN'))
-                    .catch(err => console.warn('[Monitor] Gagal kirim sinyal kembali mengerjakan:', err));
-            }
+            // Jaringan mati lama → jangan menumpuk antrian tanpa batas.
+            // Angka & log tetap aman di localStorage dan ikut terkirim saat sinyal berikutnya sukses.
+            if (_sinyalPending >= 20) return;
+
+            const payload = {
+                pelanggaran: p_count,
+                status: isViolation
+                    ? 'PELANGGARAN (' + (detailStatus || 'Keluar Halaman') + ') - ' + new Date().toLocaleTimeString('id-ID')
+                    : 'MENGERJAKAN'
+            };
+            const logLokal = _logPelanggaranLokal();
+            if (logLokal) payload.log_pelanggaran = logLokal;
+
+            const idRow = window.idRowUjian;
+            _sinyalPending++;
+            _sinyalQueue = _sinyalQueue
+                .catch(() => {})
+                .then(async () => {
+                    const hasil = await Promise.race([
+                        db.from('jawaban_ujian').update(payload).eq('id', idRow),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), SINYAL_TIMEOUT_MS))
+                    ]);
+                    if (hasil && hasil.error) throw hasil.error;
+                    console.log('[Monitor] Sinyal terkirim (1 request):', payload.status);
+                })
+                .catch(err => console.warn('[Monitor] Gagal kirim sinyal:', err))
+                .then(() => { _sinyalPending = Math.max(0, _sinyalPending - 1); });
         }
 
         function submitJawaban(auto) {
@@ -7275,16 +7277,12 @@ let aktifSignalSent = false;
                 }
             }
             setTimeout(updateRotateWarning, 350);
-            // JANGAN kirim status 'MENGERJAKAN' di sini. Dulu begitu siswa menekan "Saya mengerti",
-            // status pelanggaran langsung ditimpa kembali ke MENGERJAKAN — padahal monitoring
-            // hanya polling 15 detik, jadi guru sering tidak pernah melihat status merahnya.
-            // Sekarang cukup sinkronkan ANGKA pelanggaran; status terakhir (PELANGGARAN) dipertahankan.
+            // Siswa menekan "Saya mengerti" = lanjut mengerjakan → status kembali MENGERJAKAN.
+            // Ini memperbaiki bug "peserta stuck PELANGGARAN di Live Monitoring padahal sudah
+            // mengerjakan lagi". Angka pelanggaran & log TIDAK hilang (dijaga trigger DB dan
+            // tetap tampil merah di kolom pelanggaran monitoring).
             try{
-                if (window.idRowUjian){
-                    db.from('jawaban_ujian').update({ pelanggaran: p_count }).eq('id', window.idRowUjian)
-                        .then(function(){ console.log('[Monitor] Angka pelanggaran disinkronkan (status dipertahankan)'); })
-                        .catch(function(err){ console.warn('[Monitor] Gagal sinkron angka pelanggaran:', err); });
-                }
+                if (window.idRowUjian && ujianSedangBerlangsung()) kirimSinyalAktif(false);
             }catch(e){}
             // Izinkan pemeriksaan ukuran berikutnya langsung memvonis lagi kalau masih split-screen
             window._splitWarnAt = 0;
