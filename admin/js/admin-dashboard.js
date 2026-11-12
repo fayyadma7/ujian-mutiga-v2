@@ -21,14 +21,25 @@ async function updateDashboardStats() {
     const elSoal = document.getElementById('tot-soal');
     if (elSoal) elSoal.innerText = jmlSoal || 0;
 
-    // 3. Siswa Sedang Ujian — sinkron dengan Live Monitoring (count head:true, tanpa filter, tanpa realtime channel)
+    // 3. Siswa Sedang Ujian — HANYA yang benar-benar sedang mengerjakan sekarang.
+    // Dulu memakai COUNT seluruh histori dengan status != 'SELESAI%', sehingga sesi yang
+    // ditinggal siswa (tutup browser / tidak submit) terus terhitung selamanya.
     try {
-        const { count: sedang } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true }).not('status', 'like', 'SELESAI%');
         const elSedang = document.getElementById('tot-sedang-ujian');
-        if (elSedang) elSedang.innerText = sedang || 0;
+        const { data: sedang, error: eSedang } = await db.rpc('hitung_siswa_aktif', { p_kelas: null, p_mapel: null, p_search: null });
+        if (eSedang) throw eSedang;
+        if (elSedang) elSedang.innerText = parseInt(sedang) || 0;
     } catch (_) {
         const elSedang = document.getElementById('tot-sedang-ujian');
-        if (elSedang) elSedang.innerText = '0';
+        try {
+            const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+            const { count: sedang } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true })
+                .not('status', 'like', 'SELESAI%')
+                .gte('created_at', awalHari.toISOString());
+            if (elSedang) elSedang.innerText = sedang || 0;
+        } catch (e) {
+            if (elSedang) elSedang.innerText = '0';
+        }
     }
 
     // 4. Ujian Sedang Aktif — dihapus sesuai permintaan (card dihapus)

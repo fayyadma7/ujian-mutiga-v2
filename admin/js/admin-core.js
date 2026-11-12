@@ -601,10 +601,10 @@ function bukaHalaman(idHalaman, elemenTombol) {
 
     // --- LAZY LOAD MODULE SCRIPTS ---
     const moduleMap = {
-        'dashboard': 'admin-dashboard.js?v=5',
+        'dashboard': 'admin-dashboard.js?v=6',
         'bank-soal': 'admin-soal.js?v=9',
         'jadwal': 'admin-jadwal.js?v=9',
-        'monitoring': 'admin-monitoring.js?v=7',
+        'monitoring': 'admin-monitoring.js?v=8',
         'laporan': 'admin-laporan.js?v=4',
         'analisis-soal-page': 'admin-analisis.js?v=4',
         'data-kelas': 'admin-siswa.js?v=4',
@@ -835,11 +835,23 @@ function animateCounter(id, targetValue) {
 
 async function updateLandingSiswaAktif() {
     try {
-        // sinkron dengan dashboard & monitoring global (count head, tanpa filter, tanpa realtime channel)
-        const { count: activeCount } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true }).not('status', 'like', 'SELESAI%');
-        animateCounter('landing-siswa-aktif', activeCount || 0);
+        // Sinkron dengan dashboard & monitoring: hanya yang sedang mengerjakan sekarang
+        // (dicocokkan dengan window jadwal). Hitungan lama ikut menghitung sesi lama yang
+        // tidak pernah diselesaikan sehingga angkanya membengkak (mis. 78 padahal tidak ada ujian).
+        const { data: aktif, error } = await db.rpc('hitung_siswa_aktif', { p_kelas: null, p_mapel: null, p_search: null });
+        if (error) throw error;
+        animateCounter('landing-siswa-aktif', parseInt(aktif) || 0);
     } catch (e) {
-        console.error('❌ Gagal memperbarui statistik siswa aktif di landing page:', e);
+        // Fallback sebelum migrasi terpasang: batasi ke hari ini
+        try {
+            const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+            const { count: activeCount } = await db.from('jawaban_ujian').select('id', { count: 'exact', head: true })
+                .not('status', 'like', 'SELESAI%')
+                .gte('created_at', awalHari.toISOString());
+            animateCounter('landing-siswa-aktif', activeCount || 0);
+        } catch (e2) {
+            console.error('❌ Gagal memperbarui statistik siswa aktif di landing page:', e2);
+        }
     }
 }
 // — Sync landing tanpa realtime: polling ringan saat overlay terlihat + helper sync dari monitoring —

@@ -525,14 +525,41 @@ async function loadMonitoring(opts) {
     // CATATAN: kolom pelanggaran bertipe TEXT — JANGAN pakai .gt('pelanggaran', 0) karena perbandingan
     // teks membuat '10'/'22' lolos dari filter (bukan angka). Pakai neq '0' + neq '' (sinkron dgn parseInt di render).
     let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0, cntBelum = 0;
+    // AKTIF = benar-benar sedang mengerjakan SEKARANG.
+    // Dulu: COUNT semua baris historis dengan status != 'SELESAI%'. Sesi yang ditinggal siswa
+    // (tutup browser / koneksi putus / tidak submit) tidak pernah ditutup, jadi menumpuk dan
+    // tampil sebagai "78 sedang mengerjakan" padahal tidak ada jadwal aktif.
+    // Sekarang: RPC hitung_siswa_aktif hanya menghitung baris yang masuk window jadwal berjalan.
+    const _hitungAktif = async () => {
+        if (!adaUjianAktif) return 0; // tanpa jadwal berjalan, tidak mungkin ada yang mengerjakan
+        try {
+            const { data: n, error: eAktif } = await db.rpc('hitung_siswa_aktif', {
+                p_kelas: filterKelas || null,
+                p_mapel: filterMapel || null,
+                p_search: searchName || null
+            });
+            if (eAktif) throw eAktif;
+            return parseInt(n) || 0;
+        } catch (eAktifErr) {
+            // Fallback sebelum migrasi terpasang: batasi ke baris hari ini saja
+            console.warn('[monitoring] RPC hitung_siswa_aktif gagal, fallback hitung hari ini:', eAktifErr.message || eAktifErr);
+            try {
+                const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+                const r = await applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true }))
+                    .not('status', 'like', 'SELESAI%')
+                    .gte('created_at', awalHari.toISOString());
+                return r.count || 0;
+            } catch (_) { return 0; }
+        }
+    };
     try {
-        const [selesaiRes, aktifRes, plgRes] = await Promise.all([
+        const [selesaiRes, aktifVal, plgRes] = await Promise.all([
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%'),
-            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).not('status', 'like', 'SELESAI%'),
+            _hitungAktif(),
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).neq('pelanggaran', '0').neq('pelanggaran', '')
         ]);
         cntSelesai = selesaiRes.count || 0;
-        cntAktif = aktifRes.count || 0;
+        cntAktif = aktifVal || 0;
         cntPelanggaran = plgRes.count || 0;
     } catch (_) {
         // fallback tetap hitung jika salah satu gagal
@@ -554,20 +581,10 @@ async function loadMonitoring(opts) {
     try{ if(typeof syncDashboardSedangFromMonitoring==='function') syncDashboardSedangFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
     try{ if(typeof syncLandingSiswaAktifFromMonitoring==='function') syncLandingSiswaAktifFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
     try{ const _isGlobal = !filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir; if(_isGlobal){ const _de=document.getElementById('tot-sedang-ujian'); if(_de) _de.innerText = String(cntAktif); const _le=document.getElementById('landing-siswa-aktif'); if(_le) _le.innerText = String(cntAktif); } }catch(_){}
-    // jika langsung buka Live tanpa filter dan tidak ada jadwal now, jangan paksa filter AKTIF/BELUM (0) — reset ke ALL biar 1434 SELESAI tetap kelihatan
-    // juga jika ada 1 AKTIF tapi user tidak klik card, tetap tampil ALL biar tidak kosong
-    if(!filterKelas && !filterMapel && (currentMonStatus === 'AKTIF' || currentMonStatus === 'BELUM')){
-        // jika AKTIF/BELUM cuma 1 tapi total 1435, user pasti mau lihat semua, bukan cuma 1
-        if(cntAktif <= 1 && (cntSelesai + cntAktif) > 10){
-            currentMonStatus = 'ALL';
-            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; }); }catch(e){}
-        }
-        // jika tidak ada jadwal now dan AKTIF/BELUM 0, juga reset
-        if(!adaUjianAktif && cntAktif === 0 && cntBelum === 0 && cntSelesai > 0){
-            currentMonStatus = 'ALL';
-            try{ document.querySelectorAll('#mon-card-aktif, #mon-card-selesai, #mon-card-pelanggaran, #mon-card-belum').forEach(c=>{ if(c) c.style.borderWidth='2px'; c.style.background='rgba(255,255,255,0.02)'; }); }catch(e){}
-        }
-    }
+    // Catatan: dulu ada blok yang memaksa currentMonStatus kembali ke ALL kalau AKTIF/BELUM <= 1.
+    // Itu dulu dipakai untuk menutupi bug hitungan "AKTIF" yang selalu nyangkut di angka 1+ dari
+    // sesi hantu. Sekarang hitungannya sudah benar, jadi klik card AKTIF harus menampilkan
+    // daftar AKTIF yang sebenarnya (termasuk kosong + banner "tidak ada ujian aktif").
     // KUNCI status untuk load ini — klik card lain di tengah load tidak boleh merusak hasil load ini
     // (klik baru otomatis antre reload sendiri via _pendingMonReload)
     const _st = currentMonStatus;
@@ -637,6 +654,18 @@ async function loadMonitoring(opts) {
             if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
             return;
         }
+        // AKTIF = sedang mengerjakan sekarang. Tanpa jadwal berjalan, daftar AKTIF memang kosong
+        // (jangan tampilkan sesi lama yang statusnya belum SELESAI).
+        if(_st === 'AKTIF' && !adaUjianAktif){
+            data = []; totalItems = 0; error = null;
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-info-circle"></i> Tidak ada ujian yang sedang berlangsung saat ini.</td></tr>';
+            const piA=document.getElementById('mon-page-info'); if(piA) piA.innerText = 'Menampilkan 0 dari 0';
+            if(banner){ banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.'; }
+            if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
+            _setMonLoading(false); isLoadingMonitoring=false;
+            if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
+            return;
+        }
         // FIX: single query dengan range+count (seperti admin-laporan.js) — hindari double-await reuse builder yang bikin kosong
         startIdx = (currentMonPage - 1) * ITEMS_PER_PAGE;
         let query = applyBaseFilters(db.from('jawaban_ujian').select('*', { count: 'exact' }).order('created_at', { ascending: false }));
@@ -697,6 +726,16 @@ async function loadMonitoring(opts) {
         const isBelum = s.is_belum === true || String(s.status)==='BELUM MENGERJAKAN';
         const isSelesai = String(s.status).startsWith('SELESAI');
         const isPlg = parseInt(s.pelanggaran) > 0;
+        // Sesi yang ditinggal (browser ditutup / koneksi putus / tidak pernah menekan Kirim)
+        // tidak pernah berubah status. Jangan tampilkan sebagai "sedang mengerjakan":
+        // ujian terpanjang jauh di bawah 6 jam, jadi lewat dari itu pasti bukan aktivitas sekarang.
+        let isTertinggal = false;
+        try{
+            if(!isBelum && !isSelesai && s.created_at && String(s.status||'').indexOf('PELANGGARAN') !== 0){
+                const _mulaiMs = new Date(s.created_at).getTime();
+                if (isFinite(_mulaiMs) && (Date.now() - _mulaiMs) > 6 * 60 * 60 * 1000) isTertinggal = true;
+            }
+        }catch(e){}
         const prev = _prevMonDataMap.get(String(s.id));
         const statusChanged = prev && prev.status !== s.status || prev && prev.pelanggaran !== s.pelanggaran;
 
@@ -722,6 +761,8 @@ async function loadMonitoring(opts) {
             statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;animation:pulse 1.5s infinite;">🚨 ${s.status}</span>`;
         } else if (isSelesai) {
             statusBadge = `<span class="badge" style="background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.2);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">✅ ${s.status}</span>`;
+        } else if (isTertinggal) {
+            statusBadge = `<span class="badge" style="background:rgba(148,163,184,0.12);color:#cbd5e1;border:1px solid rgba(148,163,184,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;" title="Sesi lama yang tidak pernah diselesaikan (siswa menutup browser / tidak menekan Kirim)">⏳ TIDAK SELESAI</span>`;
         } else {
             statusBadge = `<span class="badge" style="background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.3);white-space:nowrap;display:inline-block;font-size:11px;letter-spacing:0.3px;">🟡 ${s.status || 'Mengerjakan...'}</span>`;
         }
