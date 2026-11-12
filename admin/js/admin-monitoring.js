@@ -433,6 +433,8 @@ async function loadMonitoring(opts) {
     const filterTglAkhir = document.getElementById('filter-tgl-akhir-monitoring')?.value || '';
     const searchName = (document.getElementById('search-nama-monitoring')?.value || '').toLowerCase();
     const banner = document.getElementById('mon-status-banner');
+    // Wadah 4 kartu ringkasan (parent dari kartu AKTIF) — disembunyikan saat tidak ada jadwal aktif
+    const _monCardsWrap = (document.getElementById('mon-card-aktif') || {}).parentElement || null;
     // jika langsung buka tanpa filter apapun, paksa ALL biar 1435 SELESAI langsung kelihatan (bukan AKTIF 0) — selalu reset ke ALL saat filter kosong
     if(!filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir){
         if(currentMonStatus !== 'ALL'){
@@ -626,15 +628,17 @@ async function loadMonitoring(opts) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:48px 16px; color:var(--text-muted);"><i class="fas fa-calendar-times" style="font-size:2rem; display:block; margin-bottom:12px; opacity:.55;"></i><span style="font-size:15px; font-weight:600;">Tidak ada jadwal ujian aktif.</span><br><span style="font-size:12.5px; opacity:.8;">Live Monitoring hanya menampilkan ujian yang sedang berlangsung.</span></td></tr>';
         const piKosong = document.getElementById('mon-page-info');
         if(piKosong) piKosong.innerText = 'Menampilkan 0 dari 0';
-        if(banner){
-            banner.style.display = 'flex';
-            banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada jadwal ujian aktif saat ini.';
-        }
+        // Sembunyikan kartu ringkasan + banner "tidak ada jadwal aktif" di atas kartu.
+        // Cukup tabel kosong yang memberi tahu kondisinya.
+        if(_monCardsWrap) _monCardsWrap.style.display = 'none';
+        if(banner) banner.style.display = 'none';
         if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
         _setMonLoading(false, _isSilent); isLoadingMonitoring = false;
         if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
         return;
     }
+    // Ada jadwal aktif → pastikan kartu ringkasan tampil lagi (bisa sebelumnya disembunyikan)
+    if(_monCardsWrap) _monCardsWrap.style.display = 'grid';
     // Catatan: dulu ada blok yang memaksa currentMonStatus kembali ke ALL kalau AKTIF/BELUM <= 1.
     // Itu dulu dipakai untuk menutupi bug hitungan "AKTIF" yang selalu nyangkut di angka 1+ dari
     // sesi hantu. Sekarang hitungannya sudah benar, jadi klik card AKTIF harus menampilkan
