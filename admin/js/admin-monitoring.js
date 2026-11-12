@@ -460,6 +460,16 @@ async function loadMonitoring(opts) {
         }catch(e){ return false; }
     });
     const adaUjianAktif = jadwalAktifRows && jadwalAktifRows.length > 0;
+    // Awal window jadwal yang sedang berjalan — dipakai untuk membatasi tabel AKTIF/PELANGGARAN
+    // supaya sesi dari ujian lain (yang sudah selesai lebih awal hari ini) tidak ikut tampil.
+    let _mulaiWindowMs = null;
+    if (adaUjianAktif) {
+        const _starts = jadwalAktifRows
+            .map(j => { try { return new Date(j.waktu_mulai).getTime(); } catch (e) { return NaN; } })
+            .filter(t => isFinite(t));
+        if (_starts.length) _mulaiWindowMs = Math.min.apply(null, _starts);
+    }
+    const _batasSesiIso = () => _mulaiWindowMs ? new Date(_mulaiWindowMs - 60000).toISOString() : null;
 
     // auto dari jadwal aktif jika filter kosong — jangan ambil cuma first, biar tidak ngunci Seni Budaya; kosong = tampil semua jadwal aktif (campur)
     let autoKelas = filterKelas;
@@ -552,15 +562,41 @@ async function loadMonitoring(opts) {
             } catch (_) { return 0; }
         }
     };
+    // PELANGGARAN = pelanggaran yang terjadi pada SESI YANG SEDANG BERJALAN.
+    // Dulu: COUNT seluruh histori (termasuk sesi 28 Sep–6 Nov yang sudah lama selesai),
+    // jadi kartu menampilkan 34 padahal tidak ada ujian. Sekarang memakai RPC
+    // hitung_pelanggaran_aktif yang dibatasi window jadwal — tanpa jadwal hasilnya 0.
+    const _hitungPelanggaran = async () => {
+        if (!adaUjianAktif) return 0;
+        try {
+            const { data: n, error: ePlg } = await db.rpc('hitung_pelanggaran_aktif', {
+                p_kelas: filterKelas || null,
+                p_mapel: filterMapel || null,
+                p_search: searchName || null
+            });
+            if (ePlg) throw ePlg;
+            return parseInt(n) || 0;
+        } catch (ePlgErr) {
+            // Fallback sebelum migrasi terpasang: batasi ke baris hari ini saja
+            console.warn('[monitoring] RPC hitung_pelanggaran_aktif gagal, fallback hitung hari ini:', ePlgErr.message || ePlgErr);
+            try {
+                const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+                const r = await applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true }))
+                    .neq('pelanggaran', '0').neq('pelanggaran', '')
+                    .gte('created_at', awalHari.toISOString());
+                return r.count || 0;
+            } catch (_) { return 0; }
+        }
+    };
     try {
-        const [selesaiRes, aktifVal, plgRes] = await Promise.all([
+        const [selesaiRes, aktifVal, plgVal] = await Promise.all([
             applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).like('status', 'SELESAI%'),
             _hitungAktif(),
-            applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true })).neq('pelanggaran', '0').neq('pelanggaran', '')
+            _hitungPelanggaran()
         ]);
         cntSelesai = selesaiRes.count || 0;
         cntAktif = aktifVal || 0;
-        cntPelanggaran = plgRes.count || 0;
+        cntPelanggaran = plgVal || 0;
     } catch (_) {
         // fallback tetap hitung jika salah satu gagal
         try {
@@ -623,6 +659,15 @@ async function loadMonitoring(opts) {
             else if(_st === 'SELESAI') filtered = filtered.filter(s=> String(s.status).startsWith('SELESAI'));
             else if(_st === 'PELANGGARAN') filtered = filtered.filter(s=> parseInt(s.pelanggaran)>0);
             else if(_st === 'BELUM') filtered = filtered.filter(s=> s.is_belum);
+            // AKTIF/PELANGGARAN = sesi yang berjalan SEKARANG. RPC campuran mengambil seluruh
+            // histori untuk pasangan mapel+kelas yang jadwalnya aktif, jadi buang baris lama
+            // (mis. pelanggaran dari ujian mapel yang sama minggu lalu).
+            if((_st === 'AKTIF' || _st === 'PELANGGARAN') && _mulaiWindowMs){
+                filtered = filtered.filter(s=>{
+                    const t = s.created_at ? new Date(s.created_at).getTime() : NaN;
+                    return isFinite(t) && t >= _mulaiWindowMs - 60000;
+                });
+            }
             // Fallback ke histori HANYA saat RPC-nya sendiri kosong & status ALL.
             // Jangan fallback saat filter card (AKTIF/SELESAI/PELANGGARAN/BELUM) sengaja menghasilkan 0 —
             // itu hasil valid (mis. AKTIF=0 padahal BELUM=34), bukan error.
@@ -654,13 +699,17 @@ async function loadMonitoring(opts) {
             if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
             return;
         }
-        // AKTIF = sedang mengerjakan sekarang. Tanpa jadwal berjalan, daftar AKTIF memang kosong
-        // (jangan tampilkan sesi lama yang statusnya belum SELESAI).
-        if(_st === 'AKTIF' && !adaUjianAktif){
+        // AKTIF / PELANGGARAN = kondisi sesi yang berjalan sekarang. Tanpa jadwal berjalan,
+        // daftarnya memang kosong — jangan tampilkan sesi lama yang statusnya belum SELESAI
+        // atau pelanggaran dari ujian berminggu-minggu lalu.
+        if((_st === 'AKTIF' || _st === 'PELANGGARAN') && !adaUjianAktif){
+            const _pesanKosong = _st === 'PELANGGARAN'
+                ? 'Tidak ada pelanggaran pada sesi ujian yang sedang berjalan.'
+                : 'Tidak ada ujian yang sedang berlangsung saat ini.';
             data = []; totalItems = 0; error = null;
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-info-circle"></i> Tidak ada ujian yang sedang berlangsung saat ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><i class="fas fa-info-circle"></i> ' + _pesanKosong + '</td></tr>';
             const piA=document.getElementById('mon-page-info'); if(piA) piA.innerText = 'Menampilkan 0 dari 0';
-            if(banner){ banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada ujian yang aktif saat ini.'; }
+            if(banner){ banner.style.display = 'flex'; banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; ' + _pesanKosong; }
             if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
             _setMonLoading(false); isLoadingMonitoring=false;
             if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
@@ -672,6 +721,10 @@ async function loadMonitoring(opts) {
         if (_st === 'AKTIF') query = query.not('status', 'like', 'SELESAI%');
         else if (_st === 'SELESAI') query = query.like('status', 'SELESAI%');
         else if (_st === 'PELANGGARAN') query = query.neq('pelanggaran', '0').neq('pelanggaran', '');
+        // AKTIF/PELANGGARAN hanya untuk sesi yang mulai pada jadwal berjalan (bukan histori lama).
+        if ((_st === 'AKTIF' || _st === 'PELANGGARAN') && _batasSesiIso()) {
+            query = query.gte('created_at', _batasSesiIso());
+        }
         const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
         data = res.data; error = res.error; totalItems = res.count || 0;
         totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
@@ -682,6 +735,9 @@ async function loadMonitoring(opts) {
             if (_st === 'AKTIF') q2 = q2.not('status', 'like', 'SELESAI%');
             else if (_st === 'SELESAI') q2 = q2.like('status', 'SELESAI%');
             else if (_st === 'PELANGGARAN') q2 = q2.neq('pelanggaran', '0').neq('pelanggaran', '');
+            if ((_st === 'AKTIF' || _st === 'PELANGGARAN') && _batasSesiIso()) {
+                q2 = q2.gte('created_at', _batasSesiIso());
+            }
             const res2 = await q2.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
             data = res2.data; error = res2.error;
         }
