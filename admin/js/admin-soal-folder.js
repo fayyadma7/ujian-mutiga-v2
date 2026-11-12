@@ -31,7 +31,8 @@ const bsState = {
     previewMapel: null,
     _searchTimer: null,
     _bound: false,
-    _loading: null
+    _loading: null,
+    _mjPromise: null
 };
 
 // ---------- SESI ----------
@@ -464,12 +465,37 @@ function bsRender() {
     if (clearBtn) clearBtn.style.display = bsState.search ? 'flex' : 'none';
 }
 
+// MathJax di admin dimuat lazy (loadMathJax di admin-soal.js). Explorer bisa
+// tampil sebelum script itu selesai diunduh, jadi tunggu sekali lalu typeset.
+function bsEnsureMathJax() {
+    if (window.MathJax && typeof MathJax.typesetPromise === 'function') return Promise.resolve(true);
+    if (bsState._mjPromise) return bsState._mjPromise;
+    if (typeof loadMathJax !== 'function') return Promise.resolve(false);
+    loadMathJax();
+    bsState._mjPromise = new Promise((resolve) => {
+        let tries = 0;
+        const iv = setInterval(() => {
+            tries++;
+            if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+                clearInterval(iv);
+                resolve(true);
+            } else if (tries > 50) {
+                clearInterval(iv);
+                bsState._mjPromise = null;
+                resolve(false);
+            }
+        }, 300);
+    });
+    return bsState._mjPromise;
+}
+
 function bsTypeset(container) {
-    if (!window.MathJax || !container) return;
-    try {
-        MathJax.typesetClear([container]);
-        MathJax.typesetPromise([container]).catch(() => { });
-    } catch (_) { /* noop */ }
+    if (!container) return;
+    bsEnsureMathJax().then((ok) => {
+        if (!ok) return;
+        try { MathJax.typesetClear([container]); } catch (_) { /* noop */ }
+        try { MathJax.typesetPromise([container]).catch(() => { }); } catch (_) { /* noop */ }
+    });
 }
 
 function bsToggleSoalExpand(el) {
