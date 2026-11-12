@@ -617,6 +617,24 @@ async function loadMonitoring(opts) {
     try{ if(typeof syncDashboardSedangFromMonitoring==='function') syncDashboardSedangFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
     try{ if(typeof syncLandingSiswaAktifFromMonitoring==='function') syncLandingSiswaAktifFromMonitoring(cntAktif, filterKelas, filterMapel, searchName, filterTglAwal, filterTglAkhir); }catch(_){}
     try{ const _isGlobal = !filterKelas && !filterMapel && !searchName && !filterTglAwal && !filterTglAkhir; if(_isGlobal){ const _de=document.getElementById('tot-sedang-ujian'); if(_de) _de.innerText = String(cntAktif); const _le=document.getElementById('landing-siswa-aktif'); if(_le) _le.innerText = String(cntAktif); } }catch(_){}
+
+    // ===== TIDAK ADA JADWAL AKTIF → Live Monitoring kosong =====
+    // Halaman ini khusus memantau ujian yang SEDANG berlangsung. Riwayat/arsip ada di menu Laporan,
+    // jadi jangan tampilkan ribuan baris SELESAI dari ujian lama di sini.
+    if(!adaUjianAktif){
+        tempMonitoringData = [];
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:48px 16px; color:var(--text-muted);"><i class="fas fa-calendar-times" style="font-size:2rem; display:block; margin-bottom:12px; opacity:.55;"></i><span style="font-size:15px; font-weight:600;">Tidak ada jadwal ujian aktif.</span><br><span style="font-size:12.5px; opacity:.8;">Live Monitoring hanya menampilkan ujian yang sedang berlangsung.</span></td></tr>';
+        const piKosong = document.getElementById('mon-page-info');
+        if(piKosong) piKosong.innerText = 'Menampilkan 0 dari 0';
+        if(banner){
+            banner.style.display = 'flex';
+            banner.innerHTML = '<i class="fas fa-info-circle"></i>&nbsp; Tidak ada jadwal ujian aktif saat ini.';
+        }
+        if (typeof updatePaginationMonitoring === 'function') try{ updatePaginationMonitoring(0); }catch(e){}
+        _setMonLoading(false, _isSilent); isLoadingMonitoring = false;
+        if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
+        return;
+    }
     // Catatan: dulu ada blok yang memaksa currentMonStatus kembali ke ALL kalau AKTIF/BELUM <= 1.
     // Itu dulu dipakai untuk menutupi bug hitungan "AKTIF" yang selalu nyangkut di angka 1+ dari
     // sesi hantu. Sekarang hitungannya sudah benar, jadi klik card AKTIF harus menampilkan
