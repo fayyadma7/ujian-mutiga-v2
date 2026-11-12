@@ -58,7 +58,18 @@ async function fetchAllBankSoal(selectCols, extraFilter) {
     return { data: all, error: lastErr };
 }
 
+// Populate daftar bank soal = refresh file explorer (folder + soal).
+// Nama fungsi dipertahankan karena dipanggil dari admin-core, admin-jadwal,
+// admin-ai, admin-soal, dll. Implementasi ada di admin-soal-folder.js.
 async function populatePreviewMapel() {
+    if (typeof bsRefreshExplorer === 'function') {
+        try { return await bsRefreshExplorer(); }
+        catch (e) { console.warn('Explorer refresh gagal, pakai tampilan lama:', e); }
+    }
+    return _populatePreviewMapelLegacy();
+}
+
+async function _populatePreviewMapelLegacy() {
     const tbody = document.getElementById('tabel-daftar-mapel');
     if (!tbody) return;
     const _sSesi = getGuruSession();
@@ -294,7 +305,10 @@ async function loadPreviewSoal() {
 }
 
 function filterMapel() {
-    const query = document.getElementById('search-mapel').value.trim().toLowerCase();
+    // Pencarian daftar mapel lama digantikan kotak cari explorer (#bs-search).
+    const inp = document.getElementById('search-mapel');
+    if (!inp) return;
+    const query = inp.value.trim().toLowerCase();
     const cards = document.querySelectorAll('#tabel-daftar-mapel .banksoal-card');
     if(cards.length){
         cards.forEach(card => {
@@ -871,6 +885,18 @@ async function simpanSoalManual() {
     if (!pertanyaan || pertanyaan === '' || pertanyaan === '<br>') return showToast('Pertanyaan tidak boleh kosong!', 'error');
     if (tipe !== 'ESSAY' && !kunci) return showToast('Kunci jawaban wajib diisi untuk soal Pilihan Ganda!', 'error');
 
+    // WAJIB: tanya folder tujuan sebelum menyimpan (folder opsional — root = tanpa folder)
+    let folderPick = { folderId: null, folderPath: 'Bank Soal' };
+    if (typeof bsPickFolder === 'function') {
+        const picked = await bsPickFolder({
+            title: 'Simpan Soal ke Folder',
+            suggestedName: mapel,
+            confirmText: 'Simpan di folder ini'
+        });
+        if (!picked) { showToast('Penyimpanan dibatalkan — folder belum dipilih', 'info'); return; }
+        folderPick = picked;
+    }
+
     const origHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
@@ -879,7 +905,8 @@ async function simpanSoalManual() {
     const payload = {
         mapel, tipe_soal: tipe,
         pertanyaan, kunci_jawaban: tipe === 'ESSAY' ? '-' : kunci,
-        opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: ''
+        opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '',
+        folder_id: folderPick.folderId
     };
 
     if (tipe !== 'ESSAY') {
@@ -894,9 +921,12 @@ async function simpanSoalManual() {
     if (error) {
         status.innerHTML = `<span style="color:red;"><i class="fas fa-times-circle"></i> Gagal: ${error.message}</span>`;
     } else {
-        status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Soal berhasil disimpan ke Mapel "<b>${mapel}</b>"!</span>`;
         resetFormManual();
-        populatePreviewMapel().then(() => bukaDetailSoal(mapel));
+        status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Soal berhasil disimpan ke folder "<b>${folderPick.folderPath}</b>" (mapel: ${mapel}).</span>`;
+        await populatePreviewMapel();
+        if (typeof bsBukaFolder === 'function') {
+            try { await bsBukaFolder(folderPick.folderId); } catch (_) { }
+        }
         populateManualMapel();
     }
     btn.disabled = false;
@@ -1146,6 +1176,7 @@ async function simpanEditSoal() {
         showToast('Soal berhasil diupdate!', 'success');
         document.getElementById('modalEditSoal').style.display = 'none';
         loadPreviewSoal();
+        if (typeof bsRefreshAfterSoalChange === 'function') bsRefreshAfterSoalChange();
     }
 }
 
@@ -1421,9 +1452,23 @@ document.getElementById('inputExcel')?.addEventListener('change', async function
         e.target.value = '';
         return;
     }
+    // Tanya folder tujuan SEKALI per file, SEBELUM konflik mapel diproses
+    // (opsi "timpa" bisa menghapus soal lama — jangan sampai batal setelah terhapus)
+    let folderPick = { folderId: null, folderPath: 'Bank Soal' };
+    if (typeof bsPickFolder === 'function') {
+        const picked = await bsPickFolder({
+            title: 'Simpan Soal Excel ke Folder',
+            suggestedName: mapel,
+            confirmText: 'Simpan di folder ini'
+        });
+        if (!picked) { e.target.value = ''; status.innerHTML = ''; showToast('Upload dibatalkan — folder belum dipilih', 'info'); return; }
+        folderPick = picked;
+    }
+
     status.innerHTML = `<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Mengecek status Mapel...</span>`;
     const action = await handleMapelConflict(mapel, status);
     if (action === 'cancel' || action === 'error') { e.target.value = ''; if (action === 'cancel') status.innerHTML = ''; return; }
+
     status.innerHTML = `<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Membaca file Excel...</span>`;
     const reader = new FileReader();
     reader.onload = async function(evt) {
@@ -1437,15 +1482,17 @@ document.getElementById('inputExcel')?.addEventListener('change', async function
                 mapel, pertanyaan: row["Pertanyaan"] || "",
                 opsi_a: row["Opsi A"] || "", opsi_b: row["Opsi B"] || "",
                 opsi_c: row["Opsi C"] || "", opsi_d: row["Opsi D"] || "", opsi_e: row["Opsi E"] || "",
-                kunci_jawaban: row["Kunci Jawaban"] || "", tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG"
+                kunci_jawaban: row["Kunci Jawaban"] || "", tipe_soal: row["Tipe Soal (PG/ESSAY)"] || "PG",
+                folder_id: folderPick.folderId
             }));
             const { error } = await chunkedInsert('bank_soal', dataSoalSupabase);
             if (error) throw error;
-            status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${isiExcel.length} baris soal untuk "${mapel}" tersimpan di database.</span>`;
+            status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${isiExcel.length} baris soal untuk "${mapel}" tersimpan di folder "${folderPick.folderPath}".</span>`;
             showToast(`Sukses! ${isiExcel.length} soal untuk "${mapel}" berhasil disimpan!`, 'success');
             document.getElementById('inputExcel').value = '';
             await populatePreviewMapel();
-            bukaDetailSoal(mapel);
+            if (typeof bsBukaFolder === 'function') { try { await bsBukaFolder(folderPick.folderId); } catch (_) { } }
+            if (typeof populateManualMapel === 'function') populateManualMapel();
         } catch (err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal menyimpan soal: ${err.message}</span>`; showToast(`Gagal menyimpan soal: ${err.message}`, 'error'); }
     };
     reader.readAsArrayBuffer(file);
@@ -1466,9 +1513,23 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
         status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-circle"></i> Isi dulu Nama Mata Pelajaran sebelum upload file Word!</span>`;
         e.target.value = ''; return;
     }
+    // Tanya folder tujuan SEKALI per file, SEBELUM konflik mapel diproses
+    // (opsi "timpa" bisa menghapus soal lama — jangan sampai batal setelah terhapus)
+    let folderPick = { folderId: null, folderPath: 'Bank Soal' };
+    if (typeof bsPickFolder === 'function') {
+        const picked = await bsPickFolder({
+            title: 'Simpan Soal Word ke Folder',
+            suggestedName: mapel,
+            confirmText: 'Simpan di folder ini'
+        });
+        if (!picked) { e.target.value = ''; status.innerHTML = ''; showToast('Upload dibatalkan — folder belum dipilih', 'info'); return; }
+        folderPick = picked;
+    }
+
     status.innerHTML = `<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Mengecek status Mapel...</span>`;
     const action = await handleMapelConflict(mapel, status);
     if (action === 'cancel' || action === 'error') { e.target.value = ''; if (action === 'cancel') status.innerHTML = ''; return; }
+
     status.innerHTML = `<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Membaca dokumen Word...</span>`;
     const reader = new FileReader();
     reader.onload = function(event) {
@@ -1684,13 +1745,15 @@ document.getElementById('inputWord')?.addEventListener('change', async function(
                 return;
             }
             status.innerHTML = `<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Menyimpan ${soalArray.length} soal ke database...</span>`;
+            soalArray.forEach(s => { s.folder_id = folderPick.folderId; });
             const { error } = await chunkedInsert('bank_soal', soalArray);
             if (error) throw error;
-            status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${soalArray.length} soal untuk "${mapel}" dari Word berhasil disimpan.</span>`;
+            status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Sukses! ${soalArray.length} soal untuk "${mapel}" dari Word berhasil disimpan di folder "${folderPick.folderPath}".</span>`;
             showToast(`Sukses! ${soalArray.length} soal untuk "${mapel}" dari Word berhasil disimpan!`, 'success');
             document.getElementById('inputWord').value = '';
             await populatePreviewMapel();
-            bukaDetailSoal(mapel);
+            if (typeof bsBukaFolder === 'function') { try { await bsBukaFolder(folderPick.folderId); } catch (_) { } }
+            if (typeof populateManualMapel === 'function') populateManualMapel();
         }).catch(function(err) { status.innerHTML = `<span style="color:red;"><i class="fas fa-exclamation-triangle"></i> Gagal mengekstrak Word: ${err.message}</span>`; showToast(`Gagal mengekstrak Word: ${err.message}`, 'error'); });
     };
     reader.readAsArrayBuffer(file);

@@ -503,10 +503,28 @@ const AIGenerator = {
       const totalDiminta = jmlPg + jmlEssay;
       if (soalArray.length > totalDiminta) soalArray.length = totalDiminta;
 
+      // Pilih folder tujuan sebelum menyimpan — WAJIB ditanya (folder root juga boleh)
+      let aiFolder = { folderId: null, folderPath: 'Bank Soal' };
+      if (typeof bsPickFolder === 'function') {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+        const picked = await bsPickFolder({
+          title: 'Simpan Soal AI ke Folder',
+          suggestedName: mapel,
+          confirmText: 'Simpan di folder ini'
+        });
+        if (!picked) return; // batal → modal AI tetap terbuka, soal tidak disimpan
+        aiFolder = picked;
+      }
+      soalArray.forEach(s => { s.folder_id = aiFolder.folderId; });
+
       // update overlay text ke tahap menyimpan
-      {
+      if (typeof showGlobalLoader === 'function') {
+        showGlobalLoader('Menyimpan ke database...', { immediate: true });
+      } else {
+        const _gl = document.getElementById('global-loader');
         const _glT = document.getElementById('global-loader-text');
         if (_glT) _glT.textContent = 'Menyimpan ke database...';
+        if (_gl) { _gl.style.display = 'flex'; _gl.classList.add('show'); }
       }
 
       const { error: insertError } = await chunkedInsert('bank_soal', soalArray, { silent: true });
@@ -527,15 +545,13 @@ const AIGenerator = {
       await Swal.fire({ icon: soalArray.length < totalDiminta ? 'info' : 'success', title: 'Generate Berhasil!', text: msg, confirmButtonColor: '#10b981', background: 'rgba(12,19,38,0.97)', color: '#e2e8f0' });
 
       await populatePreviewMapel();
-      const optMapel = document.getElementById('preview-mapel');
-      if (optMapel) {
-        optMapel.value = mapel;
-        document.getElementById('panel-daftar-mapel').style.display = 'none';
-        document.getElementById('panel-detail-soal').style.display = 'block';
-        document.getElementById('detail-mapel-title').innerText = 'Mata Pelajaran: ' + mapel;
-        await loadPreviewSoal();
-        this._renderMathInContainer(document.getElementById('panel-detail-soal'));
-        this._applyRTL(document.getElementById('panel-detail-soal'));
+      if (typeof bsBukaFolder === 'function') {
+        try { await bsBukaFolder(aiFolder.folderId); } catch (_) { }
+      }
+      const panelBank = document.getElementById('bank-soal');
+      if (panelBank) {
+        this._renderMathInContainer(panelBank);
+        this._applyRTL(panelBank);
       }
     } catch (err) {
       console.error('[AIGenerator]', err);
