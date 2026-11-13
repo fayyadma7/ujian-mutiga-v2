@@ -12,6 +12,17 @@
 //     muncul di tiap mapel, klik kartu = memilih (BUKAN membuka Preview Soal),
 //     dan mapel terpilih bisa dipindah bersama ke satu folder.
 //
+// Visibilitas lintas akun:
+//   - Admin bisa memindahkan mapel guru ke folder buatannya. Folder itu punya
+//     kolom `visibilitas` (inherit | private | selected | all) dan daftar guru
+//     di tabel bank_soal_folder_akses untuk nilai "selected".
+//   - Guru selalu melihat simpul miliknya sendiri; simpul lain mengikuti
+//     visibilitas folder. Leluhur dari simpul yang terlihat selalu diikutkan
+//     supaya mapel guru tidak pernah hilang jalurnya.
+//   - Guru tetap hanya boleh MEMBUKA soal miliknya sendiri. Mapel guru lain
+//     tampil sebagai informasi (dan isi folder yang dibagikan admin), tetapi
+//     klik -> modal "bukan buatan Anda".
+//
 // Tabel: bank_soal_folder
 //   mapel IS NULL      -> folder grup
 //   mapel IS NOT NULL  -> entri mapel (daun, tidak boleh diberi subfolder)
@@ -22,7 +33,13 @@ const BS_MAX_DEPTH = 3;
 
 const bsState = {
     nodes: [],            // semua baris bank_soal_folder (folder grup + entri mapel)
-    counts: {},           // lower(mapel) -> { total, pg, essay }
+    counts: {},           // lower(mapel) -> { total, pg, essay } milik sendiri
+    countsBy: {},         // `${created_by}|${lower(mapel)}` -> { total, pg, essay }
+    akses: new Set(),     // id folder (string) yang dibagikan ke guru yang login
+    aksesCount: {},       // id folder -> jumlah guru yang diberi akses
+    visibleIds: new Set(),// id node yang boleh tampil untuk akun ini
+    gurus: [],            // daftar guru (untuk nama pemilik + modal akses)
+    guruNames: {},        // id guru (string) -> nama
     currentFolderId: null,
     search: '',
     searchResult: null,   // null = bukan mode cari
@@ -31,6 +48,7 @@ const bsState = {
     _bound: false,
     _loading: null,
     _loaded: false,
+    _guruLoaded: false,
     _searchTimer: null
 };
 
@@ -76,18 +94,16 @@ function bsSwal(opts) {
 // ---------- DATA ----------
 async function bsLoadFolders(force) {
     if (bsState._loaded && !force) return { error: null };
-    const isAdmin = bsIsAdmin();
-    const gid = bsGuruId();
     const PAGE = 1000;
     let all = [];
     let from = 0;
+    // Semua simpul dimuat (bukan hanya milik sendiri): guru perlu melihat folder
+    // admin yang dibagikan, lalu visibilitas disaring di sisi klien.
     while (true) {
-        let q = db.from('bank_soal_folder')
-            .select('id, nama, parent_id, mapel, created_by, created_at')
+        const { data, error } = await db.from('bank_soal_folder')
+            .select('id, nama, parent_id, mapel, created_by, created_at, visibilitas')
             .order('id', { ascending: true })
             .range(from, from + PAGE - 1);
-        if (!isAdmin && gid) q = q.eq('created_by', gid);
-        const { data, error } = await q;
         if (error) return { error };
         if (!data || data.length === 0) break;
         all = all.concat(data);
@@ -97,22 +113,75 @@ async function bsLoadFolders(force) {
     }
     bsState.nodes = all;
     bsState._loaded = true;
+    await bsLoadAkses();
+    await bsLoadGuruList();
+    bsComputeVisibility();
     return { error: null };
+}
+
+// Folder yang dibagikan ke guru yang sedang login (visibilitas "selected").
+async function bsLoadAkses() {
+    const gid = bsGuruId();
+    const own = new Set();
+    const counts = {};
+    let q = db.from('bank_soal_folder_akses').select('folder_id, guru_id');
+    if (!bsIsAdmin() && gid) q = q.eq('guru_id', gid);
+    const { data, error } = await q;
+    if (!error) {
+        (data || []).forEach(r => {
+            const fid = String(r.folder_id);
+            counts[fid] = (counts[fid] || 0) + 1;
+            if (gid !== null && gid !== undefined && String(r.guru_id) === String(gid)) own.add(fid);
+        });
+    }
+    bsState.akses = own;
+    bsState.aksesCount = counts;
+}
+
+// Daftar guru: nama pemilik mapel + checklist di modal visibilitas.
+async function bsLoadGuruList(force) {
+    if (bsState._guruLoaded && !force) return bsState.gurus;
+    const { data, error } = await db.from('guru')
+        .select('id, nama, username, role, is_active')
+        .order('id', { ascending: true });
+    if (error) return bsState.gurus;
+    bsState.gurus = data || [];
+    bsState._guruLoaded = true;
+    const names = {};
+    bsState.gurus.forEach(g => {
+        names[String(g.id)] = g.nama || g.username || ('Guru #' + g.id);
+    });
+    bsState.guruNames = names;
+    return bsState.gurus;
+}
+
+function bsGuruName(id) {
+    if (id === null || id === undefined) return 'Tanpa pemilik';
+    const nm = bsState.guruNames[String(id)];
+    if (nm) return nm;
+    if (String(id) === String(bsGuruId())) {
+        const s = (typeof getGuruSession === 'function') ? getGuruSession() : null;
+        return (s && (s.nama || s.username)) || 'Anda';
+    }
+    return 'Guru #' + id;
 }
 
 async function bsLoadIndex() {
     const isAdmin = bsIsAdmin();
     const gid = bsGuruId();
+    if (!bsState.guruNames || !Object.keys(bsState.guruNames).length) {
+        await bsLoadGuruList();
+    }
     const PAGE = 1000;
     let all = [];
     let from = 0;
+    // Semua soal dibaca (hanya mapel/tipe/pemilik) supaya kartu mapel guru lain
+    // menampilkan jumlah soal yang benar. Isi soal tetap tidak dimuat.
     while (true) {
-        let q = db.from('bank_soal')
-            .select('mapel, tipe_soal')
+        const { data, error } = await db.from('bank_soal')
+            .select('mapel, tipe_soal, created_by')
             .order('id', { ascending: true })
             .range(from, from + PAGE - 1);
-        if (!isAdmin && gid) q = q.eq('created_by', gid);
-        const { data, error } = await q;
         if (error) return { error };
         if (!data || data.length === 0) break;
         all = all.concat(data);
@@ -120,16 +189,26 @@ async function bsLoadIndex() {
         from += PAGE;
         if (from > 40000) break;
     }
-    const counts = {};
+    const counts = {};    // milik sendiri (dipakai rename/hapus)
+    const countsBy = {};  // per pembuat: `${created_by}|${lower(mapel)}`
     all.forEach(r => {
         const k = String(r.mapel || '').trim().toLowerCase();
         if (!k) return;
-        const c = counts[k] || (counts[k] = { total: 0, pg: 0, essay: 0 });
-        c.total++;
-        if (String(r.tipe_soal || '').toUpperCase() === 'ESSAY') c.essay++;
-        else c.pg++;
+        const owner = String(r.created_by == null ? '' : r.created_by);
+        const key = owner + '|' + k;
+        const cb = countsBy[key] || (countsBy[key] = { total: 0, pg: 0, essay: 0 });
+        cb.total++;
+        if (String(r.tipe_soal || '').toUpperCase() === 'ESSAY') cb.essay++;
+        else cb.pg++;
+        if (isAdmin || (gid !== null && gid !== undefined && owner === String(gid))) {
+            const c = counts[k] || (counts[k] = { total: 0, pg: 0, essay: 0 });
+            c.total++;
+            if (String(r.tipe_soal || '').toUpperCase() === 'ESSAY') c.essay++;
+            else c.pg++;
+        }
     });
     bsState.counts = counts;
+    bsState.countsBy = countsBy;
     return { error: null };
 }
 
@@ -192,19 +271,29 @@ function bsCollectSubtreeIds(id) {
 function bsMapelCount(mapel) {
     return bsState.counts[String(mapel || '').trim().toLowerCase()] || { total: 0, pg: 0, essay: 0 };
 }
+// Jumlah soal untuk satu SIMPUL (pemiliknya bisa guru lain).
+function bsNodeCount(n) {
+    if (!n || !n.mapel) return { total: 0, pg: 0, essay: 0 };
+    const owner = String(n.created_by == null ? '' : n.created_by);
+    const key = owner + '|' + String(n.mapel).trim().toLowerCase();
+    return (bsState.countsBy && bsState.countsBy[key]) || { total: 0, pg: 0, essay: 0 };
+}
 function bsFolderTotals(id) {
     let folders = 0, mapels = 0, soal = 0;
-    bsState.nodes.filter(n => bsSameParent(n.parent_id, id)).forEach(n => {
-        if (n.mapel) {
-            mapels++;
-            soal += bsMapelCount(n.mapel).total;
-        } else {
-            const t = bsFolderTotals(n.id);
-            folders += 1 + t.folders;
-            mapels += t.mapels;
-            soal += t.soal;
-        }
-    });
+    bsState.nodes
+        .filter(n => bsSameParent(n.parent_id, id))
+        .filter(n => !bsState.visibleIds || bsState.visibleIds.size === 0 || bsIsVisible(n))
+        .forEach(n => {
+            if (n.mapel) {
+                mapels++;
+                soal += bsNodeCount(n).total;
+            } else {
+                const t = bsFolderTotals(n.id);
+                folders += 1 + t.folders;
+                mapels += t.mapels;
+                soal += t.soal;
+            }
+        });
     return { folders, mapels, soal };
 }
 function bsMapelNodeFor(name) {
@@ -218,6 +307,75 @@ function bsMapelNodeFor(name) {
     // untuk admin: utamakan entri milik sendiri
     hits.sort((a, b) => (String(a.created_by) === String(gid) ? -1 : 0) - (String(b.created_by) === String(gid) ? -1 : 0));
     return hits[0];
+}
+
+// ---------- VISIBILITAS LINTAS AKUN ----------
+function bsIsOwn(node) {
+    if (!node) return false;
+    const gid = bsGuruId();
+    return gid !== null && gid !== undefined && String(node.created_by) === String(gid);
+}
+
+// Hanya admin atau pemilik simpul yang boleh rename / pindah / hapus / atur.
+function bsCanManage(node) {
+    return !!node && (bsIsAdmin() || bsIsOwn(node));
+}
+
+// Visibilitas efektif: telusuri simpul lalu leluhurnya, nilai pertama yang
+// bukan 'inherit' menang. Habis di root tanpa keputusan -> private.
+function bsResolveVis(node) {
+    let cur = node;
+    let guard = 0;
+    while (cur && guard < 25) {
+        const v = String(cur.visibilitas || 'inherit').toLowerCase();
+        if (v === 'all') return true;
+        if (v === 'private') return false;
+        if (v === 'selected') return bsState.akses.has(String(cur.id));
+        cur = cur.parent_id ? bsFindNode(cur.parent_id) : null;
+        guard++;
+    }
+    return false;
+}
+
+// Guru selalu melihat simpul miliknya sendiri.
+function bsIsNodeVisible(node) {
+    if (!node) return false;
+    if (bsIsAdmin()) return true;
+    if (bsIsOwn(node)) return true;
+    return bsResolveVis(node);
+}
+
+// Hitung sekali per muat. Leluhur dari simpul yang terlihat selalu diikutkan,
+// supaya mapel guru tetap punya jalur folder walau foldernya privat.
+function bsComputeVisibility() {
+    const set = new Set();
+    if (bsIsAdmin()) {
+        bsState.nodes.forEach(n => set.add(String(n.id)));
+    } else {
+        bsState.nodes.forEach(n => {
+            if (!bsIsNodeVisible(n)) return;
+            set.add(String(n.id));
+            let p = n.parent_id ? bsFindNode(n.parent_id) : null;
+            let guard = 0;
+            while (p && guard < 25) {
+                set.add(String(p.id));
+                p = p.parent_id ? bsFindNode(p.parent_id) : null;
+                guard++;
+            }
+        });
+    }
+    bsState.visibleIds = set;
+}
+
+function bsIsVisible(node) {
+    return !!node && bsState.visibleIds.has(String(node.id));
+}
+
+function bsVisibleChildrenFolders(parentId) {
+    return bsChildrenFolders(parentId).filter(bsIsVisible);
+}
+function bsVisibleChildrenMapels(parentId) {
+    return bsChildrenMapels(parentId).filter(bsIsVisible);
 }
 
 // ---------- REFRESH + RENDER ----------
@@ -244,10 +402,10 @@ async function bsRefreshExplorer(opts) {
             bsState.search = '';
             bsState.searchResult = null;
         }
-        // buang centang yang mapelnya sudah tidak ada (terhapus / dipindah user lain)
+        // buang centang yang mapelnya sudah tidak ada / bukan milik sendiri
         Array.from(bsState.selected).forEach(id => {
             const n = bsFindNode(id);
-            if (!n || !n.mapel) bsState.selected.delete(id);
+            if (!n || !n.mapel || !bsCanManage(n)) bsState.selected.delete(id);
         });
         bsRender();
     })();
@@ -279,6 +437,7 @@ function bsBindUi() {
 }
 
 function bsRender() {
+    if (!bsState.visibleIds || bsState.visibleIds.size === 0) bsComputeVisibility();
     bsRenderBreadcrumb();
     const up = document.getElementById('bs-up-row');
     if (up) up.style.display = (!bsState.search && bsState.currentFolderId !== null) ? 'block' : 'none';
@@ -308,11 +467,46 @@ function bsRenderBreadcrumb() {
     el.innerHTML = html;
 }
 
+const BS_VIS_INFO = {
+    inherit: {
+        text: 'Ikut induk', icon: 'fa-turn-up',
+        hint: 'Mengikuti pengaturan visibilitas folder di atasnya.'
+    },
+    private: {
+        text: 'Hanya saya', icon: 'fa-lock',
+        hint: 'Hanya admin yang bisa melihat folder ini.'
+    },
+    selected: {
+        text: 'Guru tertentu', icon: 'fa-user-check',
+        hint: 'Hanya guru yang dicentang yang bisa melihat folder ini beserta isinya.'
+    },
+    all: {
+        text: 'Semua guru', icon: 'fa-users',
+        hint: 'Semua guru bisa melihat folder ini beserta isinya.'
+    }
+};
+
+function bsVisInfo(v) {
+    return BS_VIS_INFO[String(v || 'inherit').toLowerCase()] || BS_VIS_INFO.inherit;
+}
+
+function bsVisBadgeHtml(n) {
+    const v = String(n.visibilitas || 'inherit').toLowerCase();
+    const info = bsVisInfo(v);
+    const jumlah = v === 'selected' ? (bsState.aksesCount[String(n.id)] || 0) : 0;
+    const extra = v === 'selected' ? ` · ${jumlah}` : '';
+    return `<span class="bs-node-vis ${v}" title="Siapa yang bisa melihat folder ini">
+        <i class="fas ${info.icon}"></i> ${bsEsc(info.text)}${extra}</span>`;
+}
+
 function bsCardHtml(n, showPath) {
     const isMapel = !!n.mapel;
+    const own = bsIsOwn(n);
+    const manage = bsCanManage(n);
+    const other = !bsIsAdmin() && !own;
     let sub;
     if (isMapel) {
-        const c = bsMapelCount(n.mapel);
+        const c = bsNodeCount(n);
         sub = c.total
             ? `${c.total} soal · ${c.pg} PG${c.essay ? ` · ${c.essay} essay` : ''}`
             : 'belum ada soal';
@@ -325,23 +519,30 @@ function bsCardHtml(n, showPath) {
     }
     const path = showPath ? bsPath(n.parent_id) : '';
     const mode = bsState.selectMode;
-    const checked = isMapel && bsState.selected.has(String(n.id));
-    // Kotak centang & menu ⋮ hanya relevan di luar/dalam mode pilih banyak.
-    const check = (isMapel && mode)
+    // Hanya mapel yang boleh dikelola yang bisa dicentang (mapel guru lain tidak).
+    const pickable = mode && isMapel && manage;
+    const checked = pickable && bsState.selected.has(String(n.id));
+    // Kotak centang & menu ⋮ hanya relevan bila item ini boleh dikelola.
+    const check = pickable
         ? `<input type="checkbox" class="bs-node-check" tabindex="-1" title="Pilih mapel ini"
                 ${checked ? 'checked' : ''}
                 onclick="event.stopPropagation();bsToggleSelect(${Number(n.id)})">`
         : '';
-    const menu = mode
+    const menu = (mode || !manage)
         ? ''
         : `<span class="bs-node-menu" role="button" tabindex="0" title="Aksi"
                 onclick="event.stopPropagation();bsNodeMenu(${Number(n.id)})"
                 onkeydown="event.stopPropagation();if(event.key==='Enter'){bsNodeMenu(${Number(n.id)});}">
                 <i class="fas fa-ellipsis-vertical"></i>
             </span>`;
-    const pickable = mode && isMapel;
+    // Label pemilik (mapel guru lain) / visibilitas (folder, hanya admin yang lihat).
+    const tags = [];
+    if (isMapel && other) {
+        tags.push(`<span class="bs-node-owner"><i class="fas fa-user"></i> ${bsEsc(bsGuruName(n.created_by))}</span>`);
+    }
+    if (!isMapel && bsIsAdmin()) tags.push(bsVisBadgeHtml(n));
     return `
-        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${checked ? 'is-selected' : ''} ${pickable ? 'is-pickable' : ''}"
+        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${other ? 'is-other' : ''} ${checked ? 'is-selected' : ''} ${pickable ? 'is-pickable' : ''}"
             role="${pickable ? 'checkbox' : 'button'}" tabindex="0" data-id="${Number(n.id)}"
             ${pickable ? `aria-checked="${checked ? 'true' : 'false'}"` : ''}
             onclick="bsCardClick(event, ${Number(n.id)})"
@@ -351,6 +552,7 @@ function bsCardHtml(n, showPath) {
             <span class="bs-node-body">
                 <span class="bs-node-name" title="${bsEsc(n.nama)}">${bsEsc(n.nama)}</span>
                 <span class="bs-node-sub">${bsEsc(sub)}</span>
+                ${tags.length ? `<span class="bs-node-tags">${tags.join('')}</span>` : ''}
                 ${path ? `<span class="bs-node-path" title="${bsEsc(path)}"><i class="fas fa-location-dot"></i> ${bsEsc(path)}</span>` : ''}
             </span>
             ${menu}
@@ -368,8 +570,8 @@ function bsRenderGrid() {
         mapels = bsState.searchResult.mapels;
         showPath = true;
     } else {
-        folders = bsChildrenFolders(bsState.currentFolderId);
-        mapels = bsChildrenMapels(bsState.currentFolderId);
+        folders = bsVisibleChildrenFolders(bsState.currentFolderId);
+        mapels = bsVisibleChildrenMapels(bsState.currentFolderId);
     }
 
     grid.style.display = 'grid';
@@ -414,9 +616,31 @@ function bsBukaFolder(id) {
     if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Mapel guru lain boleh dilihat kartunya (isi folder yang dibagikan admin),
+// tetapi TIDAK boleh dibuka. Muncul modal penjelasan, bukan Preview Soal.
+function bsTolakBukaMapel(n) {
+    const pemilik = bsGuruName(n.created_by);
+    bsSwal({
+        title: 'Soal tidak bisa dibuka',
+        html: `<div class="bs-denied">
+            <div class="bs-denied-icon"><i class="fas fa-lock"></i></div>
+            <div class="bs-denied-mapel">${bsEsc(n.mapel)}</div>
+            <div class="bs-denied-info">Mapel ini milik <b>${bsEsc(pemilik)}</b>.
+                Anda hanya bisa membuka soal yang Anda buat sendiri.</div>
+            <div class="bs-denied-note">Hubungi ${bsEsc(pemilik)} atau admin bila butuh soal ini.</div>
+        </div>`,
+        icon: 'info',
+        showCancelButton: false,
+        confirmButtonText: 'Mengerti',
+        confirmButtonColor: '#3b82f6',
+        width: 470
+    }).catch(() => { });
+}
+
 function bsBukaMapel(id) {
     const n = bsFindNode(id);
     if (!n || !n.mapel) return;
+    if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     if (typeof bukaDetailSoal === 'function') {
         bukaDetailSoal(n.mapel);
     } else {
@@ -433,19 +657,23 @@ function bsBukaNode(id) {
 // Klik kartu:
 //   - mode pilih banyak & kartu mapel -> memilih (tidak membuka Preview Soal)
 //   - mode pilih banyak & kartu folder -> masuk folder (pilihan tetap tersimpan)
+//   - mapel guru lain               -> modal "tidak bisa dibuka"
 //   - Ctrl/Cmd/Shift+klik mapel     -> masuk mode pilih lalu memilih mapel itu
 //   - klik biasa                    -> buka Preview Soal / folder
 function bsCardClick(ev, id) {
     const n = bsFindNode(id);
     if (!n) return;
     if (!n.mapel) { bsBukaFolder(id); return; }
+    const manage = bsCanManage(n);
     if (bsState.selectMode) {
         if (ev && ev.preventDefault) ev.preventDefault();
+        if (!manage) return bsTolakBukaMapel(n);
         bsToggleSelect(id);
         return;
     }
     if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey)) {
         if (ev.preventDefault) ev.preventDefault();
+        if (!manage) return bsTolakBukaMapel(n);
         bsSetSelectMode(true);
         bsToggleSelect(id);
         bsToast('Mode pilih banyak aktif — klik mapel lain untuk memilih', 'info');
@@ -483,6 +711,7 @@ function bsIsSelected(id) {
 function bsToggleSelect(id) {
     const n = bsFindNode(id);
     if (!n || !n.mapel) return;
+    if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     if (!bsState.selectMode) bsSetSelectMode(true);
     const key = String(id);
     if (bsState.selected.has(key)) bsState.selected.delete(key);
@@ -500,7 +729,9 @@ function bsPilihSemuaMapel() {
     const cards = Array.from(document.querySelectorAll('#bs-folder-grid .bs-node-card.is-mapel'));
     if (!cards.length) return;
     if (!bsState.selectMode) bsSetSelectMode(true);
-    const ids = cards.map(c => String(c.getAttribute('data-id')));
+    const ids = cards.map(c => String(c.getAttribute('data-id')))
+        .filter(id => bsCanManage(bsFindNode(id)));
+    if (!ids.length) return bsToast('Tidak ada mapel milik Anda di sini', 'info');
     const semuaTerpilih = ids.every(id => bsState.selected.has(id));
     ids.forEach(id => {
         if (semuaTerpilih) bsState.selected.delete(id);
@@ -550,8 +781,10 @@ function bsSyncSelectionUi() {
 
     const allBtn = document.getElementById('bs-btn-select-all');
     if (allBtn) {
-        const total = cards.length;
-        const terpilih = Array.from(cards).filter(c => bsState.selected.has(String(c.getAttribute('data-id')))).length;
+        const total = Array.from(cards).filter(c => bsCanManage(bsFindNode(c.getAttribute('data-id')))).length;
+        const terpilih = Array.from(cards)
+            .filter(c => bsCanManage(bsFindNode(c.getAttribute('data-id'))))
+            .filter(c => bsState.selected.has(String(c.getAttribute('data-id')))).length;
         const semua = total > 0 && terpilih === total;
         allBtn.innerHTML = semua
             ? '<i class="fas fa-xmark"></i> <span>Batal pilih semua</span>'
@@ -560,8 +793,8 @@ function bsSyncSelectionUi() {
 }
 
 async function bsPindahkanTerpilih() {
-    const ids = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel; });
-    if (!ids.length) return bsToast('Pilih dulu mapel yang mau dipindah', 'warning');
+    const ids = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel && bsCanManage(n); });
+    if (!ids.length) return bsToast('Pilih dulu mapel milik Anda yang mau dipindah', 'warning');
 
     const pick = await bsPickFolder({
         title: ids.length === 1 ? 'Pindahkan 1 mapel' : `Pindahkan ${ids.length} mapel`,
@@ -632,6 +865,7 @@ function bsOnSearch() {
     const folders = [];
     const mapels = [];
     bsState.nodes.forEach(n => {
+        if (!bsIsVisible(n)) return;
         const nama = String(n.nama || '').toLowerCase();
         if (!nama.includes(q) && !bsPath(n.id).toLowerCase().includes(q)) return;
         (n.mapel ? mapels : folders).push(n);
@@ -640,6 +874,18 @@ function bsOnSearch() {
     mapels.sort((a, b) => String(a.nama).localeCompare(String(b.nama), 'id'));
     bsState.searchResult = { folders, mapels };
     bsRender();
+}
+
+// Cek nama kembar di satu lokasi. Untuk guru, hanya item yang boleh ia kelola
+// yang dihitung (mapel guru lain di folder admin tidak boleh memblokir).
+function bsSiblingNameExists(parentId, name, exceptId) {
+    const key = String(name || '').trim().toLowerCase();
+    if (!key) return false;
+    return bsChildrenFolders(parentId).concat(bsChildrenMapels(parentId)).some(n =>
+        String(n.nama).toLowerCase() === key
+        && (!exceptId || String(n.id) !== String(exceptId))
+        && (bsIsAdmin() || bsIsOwn(n))
+    );
 }
 
 // ---------- CRUD FOLDER ----------
@@ -653,8 +899,7 @@ async function bsCreateFolder(nama, parentId) {
         bsToast(`Maksimal ${BS_MAX_DEPTH} tingkat folder`, 'error');
         return null;
     }
-    const dup = bsChildrenFolders(parent).concat(bsChildrenMapels(parent))
-        .find(n => String(n.nama).toLowerCase() === nama.toLowerCase());
+    const dup = bsSiblingNameExists(parent, nama);
     if (dup) { bsToast('Sudah ada nama yang sama di lokasi ini', 'warning'); return null; }
 
     const { error } = await adminDb.insert('bank_soal_folder', [{ nama, parent_id: parent }]);
@@ -664,8 +909,18 @@ async function bsCreateFolder(nama, parentId) {
     let q = db.from('bank_soal_folder').select('*').eq('nama', nama).eq('created_by', gid);
     q = parent === null ? q.is('parent_id', null) : q.eq('parent_id', parent);
     const { data } = await q.order('id', { ascending: false }).limit(1);
+    const created = (data && data[0]) ? data[0] : null;
+    // Folder root buatan admin langsung dibagikan ke semua guru; subfolder ikut induk.
+    if (created && bsIsAdmin() && parent === null) {
+        try {
+            await bsSetVisibilitas(created.id, 'all', []);
+            created.visibilitas = 'all';
+        } catch (e) {
+            bsToast('Folder dibuat, tetapi visibilitas belum diatur: ' + (e && e.message ? e.message : e), 'warning');
+        }
+    }
     await bsLoadFolders(true);
-    return (data && data[0]) ? data[0] : null;
+    return created;
 }
 
 async function bsCreateMapelNode(mapel, parentId) {
@@ -676,9 +931,10 @@ async function bsCreateMapelNode(mapel, parentId) {
     const existing = bsMapelNodeFor(nama);
     if (existing) return existing;
 
-    const dup = bsChildrenFolders(parent).concat(bsChildrenMapels(parent))
-        .find(n => String(n.nama).toLowerCase() === nama.toLowerCase());
-    if (dup) { bsToast('Sudah ada nama yang sama di lokasi itu', 'warning'); return null; }
+    if (bsSiblingNameExists(parent, nama)) {
+        bsToast('Sudah ada nama yang sama di lokasi itu', 'warning');
+        return null;
+    }
 
     const { error } = await adminDb.insert('bank_soal_folder', [{ nama, mapel: nama, parent_id: parent }]);
     if (error) { bsToast('Gagal menyiapkan lokasi mapel: ' + (error.message || error), 'error'); return null; }
@@ -713,9 +969,7 @@ async function bsBuatFolder() {
             const t = String(v || '').trim();
             if (!t) return 'Nama folder wajib diisi';
             if (t.length > 60) return 'Maksimal 60 karakter';
-            const dup = bsChildrenFolders(parent).concat(bsChildrenMapels(parent))
-                .find(n => String(n.nama).toLowerCase() === t.toLowerCase());
-            if (dup) return 'Sudah ada nama yang sama di sini';
+            if (bsSiblingNameExists(parent, t)) return 'Sudah ada nama yang sama di sini';
         }
     });
     if (res.isDismissed || !res.value) return;
@@ -729,6 +983,7 @@ async function bsBuatFolder() {
 async function bsRenameFolder(id) {
     const n = bsFindNode(id);
     if (!n || n.mapel) return;
+    if (!bsCanManage(n)) return bsToast('Folder ini bukan buatan Anda', 'warning');
     const res = await bsSwal({
         title: 'Rename Folder',
         input: 'text',
@@ -743,9 +998,7 @@ async function bsRenameFolder(id) {
             if (!t) return 'Nama folder wajib diisi';
             if (t === n.nama) return 'Nama belum berubah';
             if (t.length > 60) return 'Maksimal 60 karakter';
-            const dup = bsChildrenFolders(n.parent_id).concat(bsChildrenMapels(n.parent_id))
-                .find(x => String(x.id) !== String(n.id) && String(x.nama).toLowerCase() === t.toLowerCase());
-            if (dup) return 'Sudah ada nama yang sama di sini';
+            if (bsSiblingNameExists(n.parent_id, t, n.id)) return 'Sudah ada nama yang sama di sini';
         }
     });
     if (res.isDismissed || !res.value) return;
@@ -759,6 +1012,7 @@ async function bsRenameFolder(id) {
 async function bsRenameMapel(id) {
     const n = bsFindNode(id);
     if (!n || !n.mapel) return;
+    if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     const res = await bsSwal({
         title: 'Rename Mapel',
         html: `<div class="bs-swal-hint">Nama mapel di <b>${bsMapelCount(n.mapel).total} soal</b> dan jadwal ujian ikut berubah.</div>`,
@@ -776,9 +1030,7 @@ async function bsRenameMapel(id) {
             if (t.length < 2) return 'Minimal 2 karakter';
             if (t.length > 80) return 'Maksimal 80 karakter';
             if (bsMapelNodeFor(t)) return 'Mapel dengan nama itu sudah ada';
-            const dup = bsChildrenFolders(n.parent_id).concat(bsChildrenMapels(n.parent_id))
-                .find(x => String(x.id) !== String(n.id) && String(x.nama).toLowerCase() === t.toLowerCase());
-            if (dup) return 'Sudah ada nama yang sama di lokasi ini';
+            if (bsSiblingNameExists(n.parent_id, t, n.id)) return 'Sudah ada nama yang sama di lokasi ini';
         }
     });
     if (res.isDismissed || !res.value) return;
@@ -812,6 +1064,7 @@ async function bsRenameMapel(id) {
 async function bsHapusMapel(id) {
     const n = bsFindNode(id);
     if (!n || !n.mapel) return;
+    if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     const jumlah = bsMapelCount(n.mapel).total;
 
     const res = await bsSwal({
@@ -856,7 +1109,32 @@ async function bsHapusMapel(id) {
 async function bsHapusFolder(id) {
     const n = bsFindNode(id);
     if (!n || n.mapel) return;
+    if (!bsCanManage(n)) return bsToast('Folder ini bukan buatan Anda', 'warning');
     const t = bsFolderTotals(n.id);
+
+    // Guru tidak boleh menghapus folder yang berisi data guru lain
+    // (cascade akan ikut menghapus soal mereka).
+    const subtree = bsCollectSubtreeIds(n.id).map(bsFindNode).filter(Boolean);
+    const asing = subtree.filter(x => !bsCanManage(x));
+    if (!bsIsAdmin() && asing.length) {
+        return bsSwal({
+            title: 'Tidak bisa menghapus folder ini',
+            html: `<div class="bs-denied">
+                <div class="bs-denied-icon"><i class="fas fa-lock"></i></div>
+                <div class="bs-denied-info">Folder <b>${bsEsc(n.nama)}</b> berisi
+                    <b>${asing.length} item milik guru lain</b>. Anda hanya bisa menghapus
+                    mapel atau folder buatan sendiri.</div>
+                <div class="bs-denied-note">Pindahkan dulu mapel Anda, atau minta admin merapikan folder ini.</div>
+            </div>`,
+            icon: 'info',
+            showCancelButton: false,
+            confirmButtonText: 'Mengerti',
+            width: 470
+        }).catch(() => { });
+    }
+    const asingInfo = asing.length
+        ? `<div class="bs-del-note danger">Termasuk <b>${asing.length} item milik guru lain</b> — soalnya ikut terhapus.</div>`
+        : '';
 
     if (!t.mapels && !t.folders) {
         const ok = await bsSwal({
@@ -884,6 +1162,7 @@ async function bsHapusFolder(id) {
                 <b>${t.mapels} mapel</b>${t.folders ? ` dan <b>${t.folders} subfolder</b>` : ''},
                 total <b>${t.soal} soal</b>.
                 Semua akan dihapus permanen.</div>
+            ${asingInfo}
             <div class="bs-del-note">Tindakan ini tidak bisa dibatalkan.</div>
         </div>`,
         icon: 'warning',
@@ -926,6 +1205,7 @@ async function bsHapusFolder(id) {
 async function bsPindahkanNode(id) {
     const n = bsFindNode(id);
     if (!n) return;
+    if (!bsCanManage(n)) return bsToast('Item ini bukan buatan Anda', 'warning');
     const isFolder = !n.mapel;
     const exclude = isFolder ? bsCollectSubtreeIds(n.id).map(String) : [String(n.id)];
 
@@ -959,20 +1239,28 @@ async function bsPindahkanNode(id) {
 function bsNodeMenu(id) {
     const n = bsFindNode(id);
     if (!n) return;
+    if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     const isMapel = !!n.mapel;
+    const aksesBtn = (!isMapel && bsIsAdmin())
+        ? `<button type="button" onclick="_bsAction('akses', ${Number(id)})">
+                <i class="fas fa-users"></i> Atur visibilitas
+                <span class="bs-menu-meta">${bsEsc(bsVisInfo(n.visibilitas).text)}</span>
+            </button>`
+        : '';
     bsSwal({
         title: bsEsc(n.nama),
         html: `<div class="bs-menu-list">
             <button type="button" onclick="_bsAction('open', ${Number(id)})"><i class="fas ${isMapel ? 'fa-list' : 'fa-folder-open'}"></i> ${isMapel ? 'Buka daftar soal' : 'Buka folder'}</button>
             <button type="button" onclick="_bsAction('rename', ${Number(id)})"><i class="fas fa-pen"></i> ${isMapel ? 'Rename mapel' : 'Rename folder'}</button>
             <button type="button" onclick="_bsAction('move', ${Number(id)})"><i class="fas fa-folder-tree"></i> Pindahkan</button>
+            ${aksesBtn}
             <button type="button" class="danger" onclick="_bsAction('delete', ${Number(id)})"><i class="fas fa-trash-alt"></i> ${isMapel ? 'Hapus mapel' : 'Hapus folder'}</button>
         </div>`,
         showConfirmButton: false,
         showCancelButton: true,
         cancelButtonText: 'Tutup',
         width: 420
-    });
+    }).catch(() => { });
 }
 
 window._bsAction = function (action, id) {
@@ -983,9 +1271,138 @@ window._bsAction = function (action, id) {
         if (action === 'open') { n.mapel ? bsBukaMapel(id) : bsBukaFolder(id); }
         else if (action === 'rename') { n.mapel ? bsRenameMapel(id) : bsRenameFolder(id); }
         else if (action === 'move') bsPindahkanNode(id);
+        else if (action === 'akses') bsAturAkses(id);
         else if (action === 'delete') { n.mapel ? bsHapusMapel(id) : bsHapusFolder(id); }
     }, 150);
 };
+
+// ---------- VISIBILITAS FOLDER (ADMIN) ----------
+// Semua penulisan lewat admin-proxy (action set-folder-akses) yang memvalidasi
+// ulang bahwa pelakunya benar-benar admin.
+async function bsSetVisibilitas(folderId, vis, guruIds) {
+    const res = await adminDb.setFolderAkses(folderId, vis, guruIds || [], { silent: true });
+    const err = (res && res.error) || (res && res.data && res.data.error);
+    if (err) throw new Error(err.message || err);
+    return (res && res.data) || null;
+}
+
+// Dipanggil dari dalam modal (atribut onchange/onclick) — harus global.
+window.bsAksesSyncUi = function () {
+    const sel = document.querySelector('#bs-akses-opts input[name="bs-vis"]:checked');
+    const vis = sel ? sel.value : 'inherit';
+    const wrap = document.getElementById('bs-akses-list-wrap');
+    if (wrap) wrap.style.display = vis === 'selected' ? 'block' : 'none';
+    const hint = document.getElementById('bs-akses-hint');
+    if (hint) hint.innerHTML = `<i class="fas ${bsVisInfo(vis).icon}"></i> ${bsEsc(bsVisInfo(vis).hint)}`;
+    document.querySelectorAll('.bs-akses-opt').forEach(el => {
+        const inp = el.querySelector('input');
+        el.classList.toggle('is-active', !!(inp && inp.checked));
+    });
+    window.bsAksesCount();
+};
+
+window.bsAksesCount = function () {
+    const el = document.getElementById('bs-akses-terpilih');
+    if (!el) return;
+    const n = document.querySelectorAll('#bs-akses-list input[type="checkbox"]:checked').length;
+    el.textContent = n ? `${n} guru dipilih` : 'belum ada yang dipilih';
+};
+
+window.bsAksesPilihSemua = function (on) {
+    document.querySelectorAll('#bs-akses-list input[type="checkbox"]').forEach(cb => { cb.checked = !!on; });
+    window.bsAksesCount();
+};
+
+async function bsAturAkses(id) {
+    const n = bsFindNode(id);
+    if (!n || n.mapel) return;
+    if (!bsIsAdmin()) return bsToast('Hanya admin yang bisa mengatur visibilitas folder', 'warning');
+
+    await bsLoadGuruList(true);
+    const gurus = (bsState.gurus || []).filter(g => String(g.role || 'guru') !== 'admin');
+    const checked = new Set();
+    const { data } = await db.from('bank_soal_folder_akses').select('guru_id').eq('folder_id', id);
+    (data || []).forEach(r => checked.add(String(r.guru_id)));
+
+    let vis = String(n.visibilitas || 'inherit').toLowerCase();
+    if (!BS_VIS_INFO[vis]) vis = 'inherit';
+    const atRoot = n.parent_id === null || n.parent_id === undefined;
+    // Di root tidak ada induk, jadi "ikut induk" sama saja dengan pribadi.
+    const pilihan = ['all', 'selected', 'private'].concat(atRoot ? [] : ['inherit']);
+
+    const optHtml = pilihan.map(v => {
+        const info = bsVisInfo(v);
+        return `<label class="bs-akses-opt ${v === vis ? 'is-active' : ''}">
+            <input type="radio" name="bs-vis" value="${v}" ${v === vis ? 'checked' : ''} onchange="bsAksesSyncUi()">
+            <span class="bs-akses-opt-body">
+                <span class="bs-akses-opt-title"><i class="fas ${info.icon}"></i> ${bsEsc(info.text)}</span>
+                <span class="bs-akses-opt-sub">${bsEsc(info.hint)}</span>
+            </span>
+        </label>`;
+    }).join('');
+
+    const guruHtml = gurus.length
+        ? gurus.map(g => `<label class="bs-akses-row">
+                <input type="checkbox" value="${Number(g.id)}" ${checked.has(String(g.id)) ? 'checked' : ''} onchange="bsAksesCount()">
+                <span class="bs-akses-name">${bsEsc(g.nama || g.username)}</span>
+                <span class="bs-akses-user">@${bsEsc(g.username || '')}</span>
+                ${g.is_active === false ? '<span class="bs-akses-off">nonaktif</span>' : ''}
+            </label>`).join('')
+        : '<div class="bs-pick-empty">Belum ada akun guru.</div>';
+
+    const html = `<div class="bs-akses">
+        <div class="bs-akses-head">
+            <i class="fas fa-folder"></i>
+            <span class="bs-akses-path">${bsEsc(bsPath(n.id))}</span>
+        </div>
+        <div class="bs-akses-opts" id="bs-akses-opts">${optHtml}</div>
+        <div class="bs-akses-list-wrap" id="bs-akses-list-wrap" style="display:none;">
+            <div class="bs-akses-list-head">
+                <span id="bs-akses-terpilih">belum ada yang dipilih</span>
+                <span class="bs-akses-mini-actions">
+                    <button type="button" onclick="bsAksesPilihSemua(true)">Pilih semua</button>
+                    <button type="button" onclick="bsAksesPilihSemua(false)">Kosongkan</button>
+                </span>
+            </div>
+            <div class="bs-akses-list" id="bs-akses-list">${guruHtml}</div>
+        </div>
+        <div class="bs-akses-hint" id="bs-akses-hint"></div>
+    </div>`;
+
+    const res = await bsSwal({
+        title: 'Atur Visibilitas Folder',
+        html,
+        width: 560,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#3b82f6',
+        focusConfirm: false,
+        didOpen: () => { window.bsAksesSyncUi(); },
+        preConfirm: () => {
+            const sel = document.querySelector('#bs-akses-opts input[name="bs-vis"]:checked');
+            const v = sel ? sel.value : 'inherit';
+            const ids = Array.from(document.querySelectorAll('#bs-akses-list input[type="checkbox"]:checked'))
+                .map(x => Number(x.value));
+            if (v === 'selected' && !ids.length) {
+                try { Swal.showValidationMessage('Pilih minimal satu guru untuk opsi "Guru tertentu"'); } catch (_) { }
+                return false;
+            }
+            return { vis: v, guruIds: ids };
+        }
+    }).catch(() => null);
+
+    if (!res || !res.isConfirmed || !res.value) return;
+
+    try {
+        await bsSetVisibilitas(n.id, res.value.vis, res.value.guruIds);
+    } catch (e) {
+        return bsToast('Gagal menyimpan visibilitas: ' + (e && e.message ? e.message : e), 'error');
+    }
+    bsToast(`Visibilitas folder "${n.nama}" disimpan`, 'success');
+    bsState._loaded = false;
+    await bsRefreshExplorer();
+}
 
 // ---------- PEMILIH FOLDER ----------
 const bsPickState = { selectedId: null, allowRoot: true, exclude: new Set() };
@@ -1001,6 +1418,7 @@ function bsPickRowsHtml() {
     }
     const walk = (parentId, depth) => {
         bsChildrenFolders(parentId).forEach(f => {
+            if (!bsIsVisible(f)) return;
             if (bsPickState.exclude.has(String(f.id))) return;
             const path = bsPath(f.id);
             html += `<button type="button" class="bs-pick-row ${String(bsPickState.selectedId) === String(f.id) ? 'is-selected' : ''}"

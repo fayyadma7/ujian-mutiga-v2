@@ -1,6 +1,13 @@
-﻿.opencode/
+.opencode/
 .ui-ux-pro-max-skill/
 opencode.json
+
+# Screenshot kerja (preview desain)
+.preview/
+
+# Temporary development scripts
+_*
+*.landing_bak
 
 # Keamanan — jangan commit API key atau secrets
 .env

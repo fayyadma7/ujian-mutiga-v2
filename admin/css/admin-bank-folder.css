@@ -718,6 +718,338 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, .18);
 }
 
+/* ---------- BADGE PEMILIK / VISIBILITAS ---------- */
+.bs-node-tags {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+}
+
+.bs-node-owner,
+.bs-node-vis {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, .28);
+    background: rgba(148, 163, 184, .1);
+    color: #cbd5e1;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bs-node-owner > i,
+.bs-node-vis > i {
+    font-size: 9px;
+}
+
+.bs-node-owner {
+    border-color: rgba(251, 146, 60, .32);
+    background: rgba(251, 146, 60, .12);
+    color: #fdba74;
+}
+
+.bs-node-vis.all {
+    border-color: rgba(52, 211, 153, .34);
+    background: rgba(52, 211, 153, .12);
+    color: #6ee7b7;
+}
+
+.bs-node-vis.selected {
+    border-color: rgba(96, 165, 250, .36);
+    background: rgba(96, 165, 250, .13);
+    color: #93c5fd;
+}
+
+.bs-node-vis.private {
+    border-color: rgba(148, 163, 184, .34);
+    background: rgba(148, 163, 184, .12);
+    color: #cbd5e1;
+}
+
+.bs-node-vis.inherit {
+    border-color: rgba(148, 163, 184, .22);
+    background: rgba(148, 163, 184, .07);
+    color: #94a3b8;
+}
+
+/* Kartu milik guru lain: tetap terbaca, tapi terasa tidak bisa dibuka */
+.bs-node-card.is-other {
+    border-style: dashed;
+}
+
+.bs-node-card.is-other .bs-node-icon {
+    background: rgba(148, 163, 184, .12);
+    border-color: rgba(148, 163, 184, .22);
+    color: #94a3b8;
+}
+
+.bs-node-card.is-other:hover {
+    border-color: rgba(148, 163, 184, .4);
+    background: rgba(148, 163, 184, .06);
+}
+
+/* Kotak centang diabaikan untuk mapel guru lain (tidak pernah tampil) */
+.bs-folder-grid.is-select-mode .bs-node-card.is-other {
+    cursor: default;
+}
+
+/* Label kecil di menu aksi */
+.bs-menu-list .bs-menu-meta {
+    margin-left: auto;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, .28);
+    background: rgba(59, 130, 246, .14);
+    color: #93c5fd;
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ---------- SWAL: SOAL GURU LAIN (DITOLAK) ---------- */
+.bs-denied {
+    text-align: center;
+}
+
+.bs-denied-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(239, 68, 68, .3);
+    background: rgba(239, 68, 68, .12);
+    color: #fca5a5;
+    font-size: 18px;
+}
+
+.bs-denied-mapel {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+    word-break: break-word;
+}
+
+.bs-denied-info {
+    font-size: 12.5px;
+    color: #cbd5e1;
+    line-height: 1.65;
+}
+
+.bs-denied-note {
+    margin-top: 9px;
+    font-size: 11.5px;
+    color: #94a3b8;
+}
+
+/* ---------- SWAL: ATUR VISIBILITAS FOLDER ---------- */
+.bs-akses {
+    text-align: left;
+}
+
+.bs-akses-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 10px;
+    font-size: 11.5px;
+    color: #94a3b8;
+}
+
+.bs-akses-head > i {
+    color: #fbbf24;
+}
+
+.bs-akses-path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-akses-opts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bs-akses-opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 11px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .03);
+    cursor: pointer;
+    transition: background .16s, border-color .16s;
+}
+
+.bs-akses-opt:hover {
+    border-color: rgba(59, 130, 246, .3);
+    background: rgba(59, 130, 246, .07);
+}
+
+.bs-akses-opt.is-active {
+    border-color: rgba(59, 130, 246, .5);
+    background: rgba(59, 130, 246, .12);
+}
+
+.bs-akses-opt input {
+    margin-top: 2px;
+    accent-color: #3b82f6;
+}
+
+.bs-akses-opt-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.bs-akses-opt-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.bs-akses-opt-title > i {
+    font-size: 11px;
+    color: #93c5fd;
+}
+
+.bs-akses-opt-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.bs-akses-list-wrap {
+    margin-top: 10px;
+}
+
+.bs-akses-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    color: #94a3b8;
+}
+
+.bs-akses-mini-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.bs-akses-mini-actions button {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(148, 163, 184, .28);
+    background: rgba(255, 255, 255, .04);
+    color: #cbd5e1;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bs-akses-mini-actions button:hover {
+    border-color: rgba(59, 130, 246, .32);
+    background: rgba(59, 130, 246, .16);
+    color: #dbeafe;
+}
+
+.bs-akses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 9px;
+    background: rgba(2, 6, 23, .4);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, .38) transparent;
+}
+
+.bs-akses-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    color: #cbd5e1;
+    font-size: 12.5px;
+    cursor: pointer;
+}
+
+.bs-akses-row:hover {
+    border-color: rgba(59, 130, 246, .2);
+    background: rgba(59, 130, 246, .1);
+}
+
+.bs-akses-row input {
+    accent-color: #3b82f6;
+}
+
+.bs-akses-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.bs-akses-user {
+    font-size: 10.5px;
+    color: #64748b;
+}
+
+.bs-akses-off {
+    padding: 0 5px;
+    border: 1px solid rgba(239, 68, 68, .3);
+    border-radius: 999px;
+    color: #fca5a5;
+    font-size: 9.5px;
+}
+
+.bs-akses-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 9px;
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.55;
+}
+
+.bs-akses-hint > i {
+    margin-top: 2px;
+    color: #93c5fd;
+}
+
+.bs-del-note.danger {
+    color: #fca5a5;
+}
+
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 1100px) {
     .bs-folder-grid {

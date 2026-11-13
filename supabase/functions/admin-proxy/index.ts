@@ -50,6 +50,20 @@ serve(async (req: Request) => {
     const isAdmin = guru.role === 'admin';
     const OWNED_TABLES = ['bank_soal', 'bank_soal_folder', 'jadwal_ujian', 'kelas', 'siswa'];
     const ADMIN_TABLES = ['guru', 'registrasi_guru'];
+    const VIS_VALUES = ['inherit', 'private', 'selected', 'all'];
+
+    // Visibilitas folder hanya boleh diatur admin (lewat action set-folder-akses).
+    // Guru tidak boleh menyelundupkan field ini lewat update/insert biasa.
+    const stripVisibilitas = (payload: any) => {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+      const copy: any = { ...payload };
+      delete copy.visibilitas;
+      return copy;
+    };
+    const sanitizeSet = (setPayload: any) => {
+      if (isAdmin) return setPayload || {};
+      return stripVisibilitas(setPayload) || {};
+    };
 
     // ========== RBAC ==========
     let body: any = {};
@@ -103,10 +117,16 @@ serve(async (req: Request) => {
 
       case 'update':
         if (!isAdmin && OWNED_TABLES.includes(table)) {
+          const setPayload = sanitizeSet(data?.set);
+          if (!setPayload || Object.keys(setPayload).length === 0) {
+            return new Response(JSON.stringify({ error: 'Tidak ada perubahan yang diizinkan' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
           if (id) {
-            result = await supabase.from(table).update(data.set).eq('id', id).eq('created_by', guru.id);
+            result = await supabase.from(table).update(setPayload).eq('id', id).eq('created_by', guru.id);
           } else if (filter) {
-            result = await supabase.from(table).update(data.set).match({ ...filter, created_by: guru.id });
+            result = await supabase.from(table).update(setPayload).match({ ...filter, created_by: guru.id });
           }
         } else if (id) {
           result = await supabase.from(table).update(data.set).eq('id', id);
@@ -115,16 +135,119 @@ serve(async (req: Request) => {
         }
         break;
 
-      case 'insert':
+      case 'insert': {
+        let payload = data;
+        if (table === 'bank_soal_folder') {
+          if (!isAdmin) {
+            // Guru selalu membuat folder dengan visibilitas default (inherit).
+            payload = Array.isArray(data) ? data.map(row => stripVisibilitas(row)) : stripVisibilitas(data);
+          } else {
+            // Folder baru buatan admin: root langsung terlihat semua guru.
+            const withDefaultVis = (row: any) => {
+              const copy: any = { ...row };
+              if (copy.visibilitas === undefined || copy.visibilitas === null) {
+                copy.visibilitas = (copy.parent_id === null || copy.parent_id === undefined) ? 'all' : 'inherit';
+              }
+              return copy;
+            };
+            payload = Array.isArray(data) ? data.map(withDefaultVis) : withDefaultVis(data);
+          }
+        }
         if (OWNED_TABLES.includes(table)) {
-          const withOwner = Array.isArray(data)
-            ? data.map(row => ({ ...row, created_by: row.created_by ?? guru.id }))
-            : { ...data, created_by: (data as any).created_by ?? guru.id };
+          const withOwner = Array.isArray(payload)
+            ? payload.map(row => ({ ...row, created_by: row.created_by ?? guru.id }))
+            : { ...payload, created_by: (payload as any).created_by ?? guru.id };
           result = await supabase.from(table).insert(withOwner);
         } else {
-          result = await supabase.from(table).insert(data);
+          result = await supabase.from(table).insert(payload);
         }
         break;
+      }
+
+      case 'set-folder-akses': {
+        if (!isAdmin) {
+          return new Response(JSON.stringify({ error: 'Forbidden: hanya admin yang boleh mengatur visibilitas folder' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        const folderId = parseInt(String(data?.folder_id ?? data?.folderId ?? ''), 10);
+        if (!folderId || isNaN(folderId)) {
+          return new Response(JSON.stringify({ error: 'ID folder tidak valid' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        const vis = String(data?.visibilitas ?? '').trim().toLowerCase();
+        if (!VIS_VALUES.includes(vis)) {
+          return new Response(JSON.stringify({ error: 'Nilai visibilitas tidak dikenal' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        const rawIds = Array.isArray(data?.guru_ids) ? data.guru_ids
+          : (Array.isArray(data?.guruIds) ? data.guruIds : []);
+        const guruIds = Array.from(new Set(
+          rawIds.map((x: any) => parseInt(String(x), 10)).filter((n: number) => !isNaN(n) && n > 0)
+        ));
+
+        const { data: folderRow, error: folderErr } = await supabase
+          .from('bank_soal_folder')
+          .select('id, nama, mapel, parent_id')
+          .eq('id', folderId)
+          .maybeSingle();
+        if (folderErr) {
+          return new Response(JSON.stringify({ error: folderErr.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        if (!folderRow) {
+          return new Response(JSON.stringify({ error: 'Folder tidak ditemukan' }), {
+            status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const { error: visErr } = await supabase
+          .from('bank_soal_folder')
+          .update({ visibilitas: vis })
+          .eq('id', folderId);
+        if (visErr) {
+          return new Response(JSON.stringify({ error: visErr.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const { error: delErr } = await supabase
+          .from('bank_soal_folder_akses')
+          .delete()
+          .eq('folder_id', folderId);
+        if (delErr) {
+          return new Response(JSON.stringify({ error: delErr.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (vis === 'selected' && guruIds.length) {
+          const rows = guruIds.map(g => ({ folder_id: folderId, guru_id: g }));
+          const { error: insErr } = await supabase.from('bank_soal_folder_akses').insert(rows);
+          if (insErr) {
+            return new Response(JSON.stringify({ error: insErr.message }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+
+        const { data: aksesRows } = await supabase
+          .from('bank_soal_folder_akses')
+          .select('guru_id')
+          .eq('folder_id', folderId);
+        result = {
+          data: {
+            folder_id: folderId,
+            visibilitas: vis,
+            guru_ids: (aksesRows || []).map((r: any) => r.guru_id)
+          },
+          error: null
+        };
+        break;
+      }
 
       case 'rpc':
         result = await supabase.rpc(data.function_name, data.params);

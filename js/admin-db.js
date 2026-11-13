@@ -73,7 +73,7 @@ async function callProxy(action, body, opts) {
   opts = opts || {};
   // hapus harus instan tanpa delay 300ms
   if(['delete','batch-delete'].includes(action)) opts.immediate = true;
-  const _msgMap={ 'delete':'Menghapus...','batch-delete':'Menghapus...','update':'Menyimpan...','insert':'Menyimpan...','rename-mapel':'Memproses...','update-guru-profile':'Menyimpan...','update-guru-password':'Menyimpan...','rpc':'Memproses...' };
+  const _msgMap={ 'delete':'Menghapus...','batch-delete':'Menghapus...','update':'Menyimpan...','insert':'Menyimpan...','rename-mapel':'Memproses...','set-folder-akses':'Menyimpan...','update-guru-profile':'Menyimpan...','update-guru-password':'Menyimpan...','rpc':'Memproses...' };
   showGlobalLoader(_msgMap[action]||'Memproses...', opts);
 
   try {
@@ -142,6 +142,15 @@ const adminDb = {
   // Rename mapel di bank_soal (RBAC: admin semua, guru hanya miliknya)
   async renameMapel(oldMapel, newMapel, opts) {
     return callProxy('rename-mapel', { table: 'bank_soal', data: { oldMapel, newMapel } }, opts);
+  },
+
+  // Atur visibilitas folder Bank Soal (admin saja).
+  // visibilitas: 'inherit' | 'private' | 'selected' | 'all'
+  // guruIds dipakai hanya saat visibilitas = 'selected'.
+  async setFolderAkses(folderId, visibilitas, guruIds, opts) {
+    return callProxy('set-folder-akses', {
+      data: { folder_id: Number(folderId), visibilitas, guru_ids: Array.isArray(guruIds) ? guruIds : [] }
+    }, opts);
   },
 
   // Update profil guru (nama & username) — self atau admin
