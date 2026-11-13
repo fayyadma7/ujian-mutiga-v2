@@ -23,6 +23,7 @@ const bsState = {
     currentFolderId: null,
     search: '',
     searchResult: null,   // null = bukan mode cari
+    selected: new Set(),  // id (string) entri mapel yang dicentang untuk dipindah massal
     _bound: false,
     _loading: null,
     _loaded: false,
@@ -239,6 +240,11 @@ async function bsRefreshExplorer(opts) {
             bsState.search = '';
             bsState.searchResult = null;
         }
+        // buang centang yang mapelnya sudah tidak ada (terhapus / dipindah user lain)
+        Array.from(bsState.selected).forEach(id => {
+            const n = bsFindNode(id);
+            if (!n || !n.mapel) bsState.selected.delete(id);
+        });
         bsRender();
     })();
 
@@ -273,6 +279,7 @@ function bsRender() {
     const up = document.getElementById('bs-up-row');
     if (up) up.style.display = (!bsState.search && bsState.currentFolderId !== null) ? 'block' : 'none';
     bsRenderGrid();
+    bsSyncSelectionUi();
     const clearBtn = document.getElementById('bs-search-clear');
     if (clearBtn) clearBtn.style.display = bsState.search ? 'flex' : 'none';
 }
@@ -313,11 +320,14 @@ function bsCardHtml(n, showPath) {
         sub = bits.join(' · ');
     }
     const path = showPath ? bsPath(n.parent_id) : '';
-    const click = isMapel ? `bsBukaMapel(${Number(n.id)})` : `bsBukaFolder(${Number(n.id)})`;
+    const checked = isMapel && bsState.selected.has(String(n.id));
     return `
-        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'}" role="button" tabindex="0" data-id="${Number(n.id)}"
-            onclick="${click}"
-            onkeydown="if(event.key==='Enter'){${click};}">
+        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${checked ? 'is-selected' : ''}" role="button" tabindex="0" data-id="${Number(n.id)}"
+            onclick="bsCardClick(event, ${Number(n.id)})"
+            onkeydown="if(event.key==='Enter'){bsBukaNode(${Number(n.id)});}">
+            ${isMapel ? `<input type="checkbox" class="bs-node-check" title="Pilih mapel untuk dipindah" ${checked ? 'checked' : ''}
+                onclick="event.stopPropagation();bsToggleSelect(${Number(n.id)})"
+                onkeydown="event.stopPropagation();">` : ''}
             <span class="bs-node-icon"><i class="fas ${isMapel ? 'fa-book-open' : 'fa-folder'}"></i></span>
             <span class="bs-node-body">
                 <span class="bs-node-name" title="${bsEsc(n.nama)}">${bsEsc(n.nama)}</span>
@@ -396,6 +406,127 @@ function bsBukaMapel(id) {
     } else {
         bsToast('Modul bank soal belum siap, muat ulang halaman', 'error');
     }
+}
+
+function bsBukaNode(id) {
+    const n = bsFindNode(id);
+    if (!n) return;
+    n.mapel ? bsBukaMapel(id) : bsBukaFolder(id);
+}
+
+// Klik kartu: Ctrl/Cmd/Shift+klik = centang (pilih banyak), klik biasa = buka.
+function bsCardClick(ev, id) {
+    const n = bsFindNode(id);
+    if (!n) return;
+    if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey)) {
+        if (n.mapel) {
+            if (ev.preventDefault) ev.preventDefault();
+            bsToggleSelect(id);
+        }
+        return;
+    }
+    bsBukaNode(id);
+}
+
+// ---------- PILIH BANYAK MAPEL ----------
+function bsSelectedIds() {
+    return Array.from(bsState.selected);
+}
+
+function bsIsSelected(id) {
+    return bsState.selected.has(String(id));
+}
+
+function bsToggleSelect(id) {
+    const n = bsFindNode(id);
+    if (!n || !n.mapel) return;
+    const key = String(id);
+    if (bsState.selected.has(key)) bsState.selected.delete(key);
+    else bsState.selected.add(key);
+    bsSyncSelectionUi();
+}
+
+function bsClearSelection() {
+    bsState.selected.clear();
+    bsSyncSelectionUi();
+}
+
+// Pilih / batalkan semua mapel yang tampil di layar sekarang (hasil cari atau isi folder).
+function bsPilihSemuaMapel() {
+    const cards = Array.from(document.querySelectorAll('#bs-folder-grid .bs-node-card.is-mapel'));
+    if (!cards.length) return;
+    const ids = cards.map(c => String(c.getAttribute('data-id')));
+    const semuaTerpilih = ids.every(id => bsState.selected.has(id));
+    ids.forEach(id => {
+        if (semuaTerpilih) bsState.selected.delete(id);
+        else bsState.selected.add(id);
+    });
+    bsSyncSelectionUi();
+}
+
+function bsSyncSelectionUi() {
+    const cards = document.querySelectorAll('#bs-folder-grid .bs-node-card.is-mapel');
+    cards.forEach(card => {
+        const on = bsState.selected.has(String(card.getAttribute('data-id')));
+        card.classList.toggle('is-selected', on);
+        const cb = card.querySelector('.bs-node-check');
+        if (cb) cb.checked = on;
+    });
+
+    const n = bsState.selected.size;
+    const bar = document.getElementById('bs-selection-bar');
+    const countEl = document.getElementById('bs-selection-count');
+    if (bar) bar.style.display = n ? 'flex' : 'none';
+    if (countEl) countEl.textContent = n === 1 ? '1 mapel dipilih' : `${n} mapel dipilih`;
+
+    const allBtn = document.getElementById('bs-btn-select-all');
+    if (allBtn) {
+        const total = cards.length;
+        const terpilih = Array.from(cards).filter(c => bsState.selected.has(String(c.getAttribute('data-id')))).length;
+        const semua = total > 0 && terpilih === total;
+        allBtn.innerHTML = semua
+            ? '<i class="fas fa-xmark"></i> <span>Batal pilih semua</span>'
+            : '<i class="fas fa-check-double"></i> <span>Pilih semua di sini</span>';
+    }
+}
+
+async function bsPindahkanTerpilih() {
+    const ids = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel; });
+    if (!ids.length) return bsToast('Belum ada mapel yang dicentang', 'warning');
+
+    const pick = await bsPickFolder({
+        title: ids.length === 1 ? 'Pindahkan 1 mapel' : `Pindahkan ${ids.length} mapel`,
+        hint: 'Semua mapel yang dicentang akan dipindah ke folder yang sama.',
+        confirmText: 'Pindahkan ke sini',
+        defaultFolderId: bsState.currentFolderId,
+        allowRoot: true
+    });
+    if (!pick) return;
+
+    const dest = (pick.folderId === null || pick.folderId === undefined) ? null : Number(pick.folderId);
+    const tujuan = pick.folderPath || 'Bank Soal';
+
+    bsLoading(true, 'Memindahkan mapel...');
+    let pindah = 0, tetap = 0, gagal = 0;
+    try {
+        for (const id of ids) {
+            const n = bsFindNode(id);
+            if (!n) continue;
+            if (bsSameParent(n.parent_id, dest)) { tetap++; continue; }
+            const { error } = await adminDb.update('bank_soal_folder', Number(id), { parent_id: dest }, { silent: true });
+            if (error) gagal++;
+            else pindah++;
+        }
+    } finally {
+        bsLoading(false);
+    }
+
+    if (gagal) bsToast(`${pindah} mapel dipindah, ${gagal} gagal ke "${tujuan}"`, 'error');
+    else if (pindah) bsToast(`${pindah} mapel dipindahkan ke "${tujuan}"`, 'success');
+    else bsToast('Mapel sudah berada di folder itu', 'info');
+
+    bsClearSelection();
+    await bsRefreshExplorer();
 }
 
 function bsNaikFolder() {

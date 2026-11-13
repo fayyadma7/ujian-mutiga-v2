@@ -133,6 +133,67 @@
     color: #fca5a5;
 }
 
+/* ---------- SELECTION BAR (pilih banyak mapel) ---------- */
+.bs-selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 9px 12px;
+    border: 1px solid rgba(59, 130, 246, .28);
+    border-radius: 10px;
+    background: rgba(59, 130, 246, .1);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #bfdbfe;
+}
+
+.bs-selection-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.bs-btn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, .3);
+    background: rgba(255, 255, 255, .05);
+    color: var(--text-main, #e2e8f0);
+    cursor: pointer;
+    transition: background .16s, border-color .16s, color .16s;
+}
+
+.bs-btn-chip:hover {
+    background: rgba(59, 130, 246, .18);
+    border-color: rgba(59, 130, 246, .4);
+    color: #dbeafe;
+}
+
+.bs-btn-chip.primary {
+    background: rgba(59, 130, 246, .24);
+    border-color: rgba(59, 130, 246, .52);
+    color: #dbeafe;
+}
+
+.bs-btn-chip.primary:hover {
+    background: rgba(59, 130, 246, .36);
+    color: #eff6ff;
+}
+
+.bs-btn-chip.ghost {
+    background: transparent;
+    color: var(--text-subtle, #94a3b8);
+}
+
 /* ---------- UP ROW ---------- */
 .bs-up-row {
     margin-bottom: 10px;
@@ -193,6 +254,55 @@
 .bs-node-card:focus-visible {
     outline: 2px solid rgba(59, 130, 246, .55);
     outline-offset: 2px;
+}
+
+.bs-node-check {
+    flex: 0 0 auto;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    margin: 0 0 0 2px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, .45);
+    background: rgba(255, 255, 255, .04);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .14s, border-color .14s;
+}
+
+.bs-node-check:hover {
+    border-color: rgba(59, 130, 246, .6);
+}
+
+.bs-node-check:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.bs-node-check:checked::after {
+    content: '';
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(0, -1px);
+}
+
+.bs-node-check:focus-visible {
+    outline: 2px solid rgba(59, 130, 246, .55);
+    outline-offset: 1px;
+}
+
+.bs-node-card.is-selected {
+    border-color: rgba(59, 130, 246, .55);
+    background: rgba(59, 130, 246, .12);
+}
+
+.bs-node-card.is-selected .bs-node-name {
+    color: #dbeafe;
 }
 
 .bs-node-icon {
@@ -591,6 +701,15 @@
 
     .bs-folder-grid {
         grid-template-columns: 1fr;
+    }
+
+    .bs-selection-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bs-selection-actions {
+        justify-content: flex-end;
     }
 
     .bs-node-card {

@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="admin/css/admin-mobile.css?v=29">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=6">
     <!-- Folder Bank Soal (file explorer) — sengaja file terpisah agar tidak menimpa admin-components.css -->
-    <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=2">
+    <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=3">
     <style>
         .pwd-toggle-glass{
             position:absolute;right:10px;top:50%;transform:translateY(-50%);
@@ -784,6 +784,21 @@
                                 <button type="button" id="bs-search-clear" class="bs-search-clear" style="display:none;"
                                     onclick="bsClearSearch()" title="Hapus pencarian"><i class="fas fa-times"></i></button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div id="bs-selection-bar" class="bs-selection-bar" style="display:none;">
+                        <span id="bs-selection-count">0 mapel dipilih</span>
+                        <div class="bs-selection-actions">
+                            <button type="button" class="bs-btn-chip" id="bs-btn-select-all" onclick="bsPilihSemuaMapel()">
+                                <i class="fas fa-check-double"></i> <span>Pilih semua di sini</span>
+                            </button>
+                            <button type="button" class="bs-btn-chip primary" onclick="bsPindahkanTerpilih()" title="Pindahkan semua mapel yang dicentang ke satu folder">
+                                <i class="fas fa-folder-tree"></i> Pindahkan ke folder
+                            </button>
+                            <button type="button" class="bs-btn-chip ghost" onclick="bsClearSelection()" title="Batal pilih">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -2524,7 +2539,7 @@
 
     <script src="admin/js/admin-core.js?v=14"></script>
     <!-- Folder Bank Soal: dimuat eager supaya fungsi bs* sudah ada saat halaman bank soal dibuka -->
-    <script src="admin/js/admin-soal-folder.js?v=3"></script>
+    <script src="admin/js/admin-soal-folder.js?v=4"></script>
     <!-- Eager preload jadwal picker (desktop scrollbar fix) — also lazy-loaded via admin-core -->
     <script src="admin/js/admin-jadwal.js?v=9" defer></script>
     <script>
