@@ -1131,6 +1131,500 @@ select.csl-native { display: none; }
 }
 
 /* ================================================================
+   10. LANDING OVERLAY — Full Hero Section
+   Source: lines 1268-1900
+   ================================================================ */
+#landingOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #040812;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: 'Outfit', sans-serif;
+    padding: 3rem 1.5rem;
+}
+
+#landingOverlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.landing-bg {
+    position: fixed;
+    inset: 0;
+    background: url('../../assets/background-landingpage.png') center/cover no-repeat;
+    z-index: 0;
+}
+
+.landing-dim {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(4, 8, 18, 0.65) 0%, rgba(4, 8, 18, 0.8) 100%);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1;
+}
+
+.landing-bottom-gradient {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 350px;
+    background: linear-gradient(to top, #040812 0%, rgba(4, 8, 18, 0.95) 20%, rgba(4, 8, 18, 0.5) 60%, transparent 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.landing-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: 0.15;
+    animation: landingFloat 22s infinite alternate ease-in-out;
+    z-index: 1;
+}
+
+.landing-orb-1 {
+    top: -15%;
+    left: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, #2563eb, transparent 70%);
+}
+
+.landing-orb-2 {
+    bottom: -20%;
+    right: -10%;
+    width: 45vw;
+    height: 45vw;
+    background: radial-gradient(circle, #7c3aed, transparent 70%);
+    animation-delay: -6s;
+}
+
+.landing-orb-3 {
+    top: 40%;
+    left: 50%;
+    width: 30vw;
+    height: 30vw;
+    background: radial-gradient(circle, #06b6d4, transparent 70%);
+    animation-delay: -12s;
+    opacity: 0.1;
+}
+
+/* Pause background animations when login modal is open */
+body:has(#loginModalOverlay.show) .landing-orb,
+body:has(#loginModalOverlay.show) .live-dot,
+body:has(#loginModalOverlay.show) .feature-slide,
+body:has(#loginModalOverlay.show) .landing-brand {
+    animation-play-state: paused !important;
+}
+body:has(#loginModalOverlay.show) #landingOverlay {
+    filter: brightness(0.6);
+    transition: filter 0.3s ease;
+}
+
+.landing-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    margin: auto;
+}
+
+/* LEFT PANEL: HERO & BRANDING */
+.landing-panel-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: #f8fafc;
+    animation: landingFadeRight 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 2rem;
+    animation: landingLogoFloat 6s ease-in-out infinite;
+}
+
+.landing-logo {
+    height: 70px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 25px rgba(59, 130, 246, 0.35));
+}
+
+.landing-brand-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-left: 2px solid rgba(255, 255, 255, 0.15);
+    padding-left: 16px;
+    text-align: left;
+}
+
+.landing-school-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.landing-school-loc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: #60a5fa;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.landing-tagline {
+    font-family: 'Outfit', sans-serif;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    padding: 0.5rem 1.2rem;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1);
+}
+
+.landing-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4.2rem);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #64748b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.2rem;
+}
+
+.landing-title-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.8rem;
+}
+
+.landing-desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #94a3b8;
+    margin-bottom: 2.5rem;
+    max-width: 520px;
+}
+
+.landing-action {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.landing-btn {
+    font-family: 'Outfit', sans-serif;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+    padding: 1.1rem 3.2rem;
+    border-radius: 100px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    outline: none;
+}
+
+.landing-btn:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 20px 45px rgba(96, 165, 250, 0.45);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.landing-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.landing-btn.clicked {
+    background: linear-gradient(135deg, #1d4ed8, #6d28d9);
+    pointer-events: none;
+    animation: btnPulseGlow 1s ease-in-out infinite;
+}
+
+.landing-btn.clicked i {
+    animation: btnSpinArrow 1s linear infinite;
+}
+
+/* RIGHT PANEL: TELEMETRY & CAROUSEL */
+.landing-panel-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    color: #f8fafc;
+    animation: landingFadeLeft 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Glassmorphic cards */
+.landing-card {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 1.8rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.landing-card:hover {
+    border-color: rgba(96, 165, 250, 0.2);
+    box-shadow: 0 25px 60px rgba(37, 99, 235, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Live Counter Card */
+.live-card {
+    position: relative;
+    background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.45) 80%);
+    border-left: 4px solid #10b981;
+}
+
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #10b981;
+    margin-bottom: 0.8rem;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #10b981;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 10px #10b981;
+    animation: neonPulse 1.8s infinite ease-in-out;
+}
+
+.live-stat-container {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 0.4rem;
+}
+
+.live-stat-value {
+    font-size: 3.2rem;
+    font-weight: 900;
+    line-height: 1;
+    font-family: 'Outfit', sans-serif;
+    background: linear-gradient(to right, #10b981, #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+.live-stat-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.live-stat-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Stats Grid */
+.landing-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+}
+
+.mini-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.2rem 1.5rem;
+}
+
+.mini-icon {
+    font-size: 1.2rem;
+    color: #60a5fa;
+    opacity: 0.8;
+}
+
+.mini-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #f8fafc;
+    line-height: 1.1;
+}
+
+.mini-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Showcase Slideshow Card */
+.feature-card {
+    border-top: 3px solid #7c3aed;
+}
+
+.feature-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #a78bfa;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-slideshow-container {
+    position: relative;
+    min-height: 110px;
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+}
+
+.feature-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(0.96);
+    visibility: hidden;
+    filter: blur(8px);
+    transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), filter 0.6s ease, visibility 0.6s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.feature-slide.active {
+    opacity: 1;
+    transform: scale(1);
+    visibility: visible;
+    filter: blur(0);
+}
+
+.slide-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.4rem;
+}
+
+.slide-desc {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #94a3b8;
+}
+
+/* Dots indicator */
+.feature-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+    padding-top: 0.4rem;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.dot.active {
+    width: 18px;
+    border-radius: 10px;
+    background: #a78bfa;
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
+}
+
+/* Footer */
+.landing-footer {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    text-align: center;
+    z-index: 2;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    margin-top: auto;
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+}
+
+/* Ripple effect inside premium button */
+.landing-btn .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(0);
+    animation: btnRipple 0.6s linear;
+    pointer-events: none;
+}
+
+/* ================================================================
    11. LOGIN MODAL — Glassmorphism
    Source: lines 1902-2116
    ================================================================ */
