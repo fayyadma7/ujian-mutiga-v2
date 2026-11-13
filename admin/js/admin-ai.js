@@ -503,19 +503,17 @@ const AIGenerator = {
       const totalDiminta = jmlPg + jmlEssay;
       if (soalArray.length > totalDiminta) soalArray.length = totalDiminta;
 
-      // Pilih folder tujuan sebelum menyimpan — WAJIB ditanya (folder root juga boleh)
-      let aiFolder = { folderId: null, folderPath: 'Bank Soal' };
-      if (typeof bsPickFolder === 'function') {
-        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-        const picked = await bsPickFolder({
-          title: 'Simpan Soal AI ke Folder',
-          suggestedName: mapel,
-          confirmText: 'Simpan di folder ini'
+      // Lokasi mapel: tanya folder hanya kalau mapel ini belum ada di Bank Soal.
+      // Mapel lama tidak ditanya lagi — soal otomatis ikut entri mapelnya.
+      let mapelEntry = { folderId: null, parentId: null };
+      if (typeof bsEnsureMapelEntry === 'function') {
+        const entry = await bsEnsureMapelEntry(mapel, {
+          // overlay "AI sedang menulis soal..." jangan menutupi dialog pilih folder
+          beforePicker: function () { if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); }
         });
-        if (!picked) return; // batal → modal AI tetap terbuka, soal tidak disimpan
-        aiFolder = picked;
+        if (!entry) return; // batal → modal AI tetap terbuka, soal tidak disimpan
+        mapelEntry = entry;
       }
-      soalArray.forEach(s => { s.folder_id = aiFolder.folderId; });
 
       // update overlay text ke tahap menyimpan
       if (typeof showGlobalLoader === 'function') {
@@ -545,8 +543,11 @@ const AIGenerator = {
       await Swal.fire({ icon: soalArray.length < totalDiminta ? 'info' : 'success', title: 'Generate Berhasil!', text: msg, confirmButtonColor: '#10b981', background: 'rgba(12,19,38,0.97)', color: '#e2e8f0' });
 
       await populatePreviewMapel();
+      if (typeof bsRefreshAfterSoalChange === 'function') {
+        try { await bsRefreshAfterSoalChange(); } catch (_) { }
+      }
       if (typeof bsBukaFolder === 'function') {
-        try { await bsBukaFolder(aiFolder.folderId); } catch (_) { }
+        try { await bsBukaFolder(mapelEntry.parentId); } catch (_) { }
       }
       const panelBank = document.getElementById('bank-soal');
       if (panelBank) {

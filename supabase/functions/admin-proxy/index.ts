@@ -80,7 +80,12 @@ serve(async (req: Request) => {
     switch (normAction) {
       case 'delete':
         if (!isAdmin && OWNED_TABLES.includes(table)) {
-          result = await supabase.from(table).delete().eq('id', id).eq('created_by', guru.id);
+          if (id) {
+            result = await supabase.from(table).delete().eq('id', id).eq('created_by', guru.id);
+          } else if (filter) {
+            // filter massal (mis. hapus semua soal satu mapel) tetap dibatasi milik guru
+            result = await supabase.from(table).delete().match({ ...filter, created_by: guru.id });
+          }
         } else if (id) {
           result = await supabase.from(table).delete().eq('id', id);
         } else if (filter) {

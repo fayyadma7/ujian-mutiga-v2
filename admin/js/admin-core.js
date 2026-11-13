@@ -602,7 +602,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
     // --- LAZY LOAD MODULE SCRIPTS ---
     const moduleMap = {
         'dashboard': 'admin-dashboard.js?v=6',
-        'bank-soal': 'admin-soal.js?v=10',
+        'bank-soal': 'admin-soal.js?v=11',
         'jadwal': 'admin-jadwal.js?v=9',
         'monitoring': 'admin-monitoring.js?v=11',
         'laporan': 'admin-laporan.js?v=4',
@@ -666,7 +666,7 @@ function initPage(idHalaman) {
         }
         // Load AI generator module
         if (typeof AIGenerator === 'undefined') {
-            loadScript('admin/js/admin-ai.js?v=2');
+            loadScript('admin/js/admin-ai.js?v=3');
         }
     }
     if (idHalaman === 'analisis-soal-page') {

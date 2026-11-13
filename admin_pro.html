@@ -23,7 +23,7 @@
     <!-- Config DB pusat (profil harian/event + flag ACTIVE_DB) — HARUS sebelum admin-db.js -->
     <script src="js/supabase-config.js?v=1"></script>
     <!-- Admin Database Proxy (bypass RLS untuk delete/update/insert) -->
-    <script src="js/admin-db.js?v=1"></script>
+    <script src="js/admin-db.js?v=2"></script>
 
     <!-- ⚡ Library berat (Chart.js, Tone.js, docx) di-load LAZY saat dibutuhkan — lihat fungsi loadScript() -->
     <!-- MathJax juga di-load secara conditional saat halaman bank-soal dibuka -->
@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="admin/css/admin-mobile.css?v=29">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=6">
     <!-- Folder Bank Soal (file explorer) — sengaja file terpisah agar tidak menimpa admin-components.css -->
-    <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=1">
+    <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=2">
     <style>
         .pwd-toggle-glass{
             position:absolute;right:10px;top:50%;transform:translateY(-50%);
@@ -758,7 +758,7 @@
                         <div id="status-manual"
                             style="margin-top:10px; text-align:center; font-weight:500; font-size:13px;"></div>
                     </div>
-                              <!-- PANEL BANK SOAL — FILE EXPLORER (folder + soal) -->
+                              <!-- PANEL BANK SOAL — DAFTAR MAPEL (folder + mapel) -->
                 <div class="card-panel" id="panel-daftar-mapel">
                     <div class="panel-header bs-panel-header">
                         <div class="bs-head-main">
@@ -774,12 +774,12 @@
                             <button type="button" class="btn btn-outline" onclick="bsScrollToUpload()" title="Upload soal dari Excel/Word">
                                 <i class="fas fa-file-import"></i> <span>Upload</span>
                             </button>
-                            <button type="button" class="btn btn-outline bs-btn-icon" onclick="populatePreviewMapel()" title="Muat ulang">
+                            <button type="button" class="btn btn-outline bs-btn-icon" onclick="bsRefreshExplorer()" title="Muat ulang">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                             <div class="bs-search-wrap">
                                 <i class="fas fa-search"></i>
-                                <input type="text" id="bs-search" class="form-control" placeholder="Cari folder atau soal..."
+                                <input type="text" id="bs-search" class="form-control" placeholder="Cari mapel atau folder..."
                                     autocomplete="off">
                                 <button type="button" id="bs-search-clear" class="bs-search-clear" style="display:none;"
                                     onclick="bsClearSearch()" title="Hapus pencarian"><i class="fas fa-times"></i></button>
@@ -787,44 +787,15 @@
                         </div>
                     </div>
 
-                    <div id="bs-selection-bar" class="bs-selection-bar" style="display:none;">
-                        <span id="bs-selection-count">0 soal dipilih</span>
-                        <div class="bs-selection-actions">
-                            <button type="button" class="bs-btn-chip" onclick="bsPindahkanSoalTerpilih()"><i class="fas fa-folder-tree"></i> Pindahkan</button>
-                            <button type="button" class="bs-btn-chip" onclick="bulkActionSoal('move')"><i class="fas fa-exchange-alt"></i> Ubah Mapel</button>
-                            <button type="button" class="bs-btn-chip danger" onclick="bsHapusSoalTerpilih()"><i class="fas fa-trash-alt"></i> Hapus</button>
-                            <button type="button" class="bs-btn-chip ghost" onclick="bsClearSelection()" title="Batal pilih"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-
                     <div id="bs-up-row" class="bs-up-row" style="display:none;">
                         <button type="button" onclick="bsNaikFolder()"><i class="fas fa-arrow-up"></i> Naik satu folder</button>
                     </div>
 
-                    <div id="bs-folder-grid" class="bs-folder-grid"></div>
-
-                    <div class="bs-file-head" id="bs-file-head" style="display:none;">
-                        <label class="bs-check-all">
-                            <input type="checkbox" id="select-all-soal" onchange="toggleSelectAll('soal')"> Pilih semua
-                        </label>
-                        <div class="bs-file-head-right">
-                            <span id="bs-file-count" class="bs-file-count"></span>
-                            <button type="button" id="bs-btn-mapel-preview" class="bs-btn-chip ghost" style="display:none;"
-                                onclick="bsPreviewMapelFolder()" title="Buka preview per mapel (ekspor Word & kisi-kisi)">
-                                <i class="fas fa-eye"></i> Preview mapel
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="bs-file-list" class="bs-file-list">
-                        <div class="bs-loading"><i class="fas fa-spinner fa-spin"></i> Memuat bank soal...</div>
+                    <div id="bs-folder-grid" class="bs-folder-grid">
+                        <div class="bs-loading" style="grid-column:1/-1;"><i class="fas fa-spinner fa-spin"></i> Memuat bank soal...</div>
                     </div>
 
                     <div id="bs-empty-state" class="bs-empty-state" style="display:none;"></div>
-
-                    <div id="bs-load-more-wrap" style="display:none; text-align:center; margin-top:12px;">
-                        <button type="button" class="btn btn-outline" onclick="bsLoadMore()"><i class="fas fa-chevron-down"></i> Tampilkan lebih banyak</button>
-                    </div>
                 </div>
 
                 <!-- PANEL PREVIEW SOAL DETAIL (HIDDEN BY DEFAULT) -->
@@ -2551,9 +2522,9 @@
         </div>
     </div>
 
-    <script src="admin/js/admin-core.js?v=13"></script>
+    <script src="admin/js/admin-core.js?v=14"></script>
     <!-- Folder Bank Soal: dimuat eager supaya fungsi bs* sudah ada saat halaman bank soal dibuka -->
-    <script src="admin/js/admin-soal-folder.js?v=2"></script>
+    <script src="admin/js/admin-soal-folder.js?v=3"></script>
     <!-- Eager preload jadwal picker (desktop scrollbar fix) — also lazy-loaded via admin-core -->
     <script src="admin/js/admin-jadwal.js?v=9" defer></script>
     <script>

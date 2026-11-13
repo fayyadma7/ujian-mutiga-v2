@@ -123,6 +123,12 @@ const adminDb = {
     return callProxy('batch-delete', { table, data: { ids } }, opts);
   },
 
+  // Hapus banyak baris by filter (mis. semua soal milik satu mapel).
+  // Proxy memaksa created_by = guru untuk non-admin.
+  async deleteWhere(table, filter, opts) {
+    return callProxy('delete', { table, filter }, opts);
+  },
+
   // Update 1 baris by ID
   async update(table, id, setObj, opts) {
     return callProxy('update', { table, id, data: { set: setObj } }, opts);
