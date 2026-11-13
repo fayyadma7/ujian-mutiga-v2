@@ -457,7 +457,12 @@ async function loadMonitoring(opts) {
     const jadwalAktifRows = (_allJadwal||[]).filter(j=>{
         try{
             const m = new Date(j.waktu_mulai);
-            let s = j.waktu_selesai ? new Date(j.waktu_selesai) : new Date(m.getTime() + (j.durasi_menit||90)*60000);
+            const durasiMs = (j.durasi_menit || 90) * 60000;
+            // Waktu selesai sesi ujian sesungguhnya = waktu_selesai (batas masuk) + durasi_menit,
+            // atau waktu_mulai + durasi_menit jika waktu_selesai tidak diset.
+            let s = j.waktu_selesai 
+                ? new Date(new Date(j.waktu_selesai).getTime() + durasiMs) 
+                : new Date(m.getTime() + durasiMs);
             return nowMon >= m && nowMon <= s;
         }catch(e){ return false; }
     });
@@ -471,7 +476,7 @@ async function loadMonitoring(opts) {
             .filter(t => isFinite(t));
         if (_starts.length) _mulaiWindowMs = Math.min.apply(null, _starts);
     }
-    const _batasSesiIso = () => _mulaiWindowMs ? new Date(_mulaiWindowMs - 60000).toISOString() : null;
+    const _batasSesiIso = () => _mulaiWindowMs ? new Date(_mulaiWindowMs - 15 * 60000).toISOString() : null;
 
     // auto dari jadwal aktif jika filter kosong — jangan ambil cuma first, biar tidak ngunci Seni Budaya; kosong = tampil semua jadwal aktif (campur)
     let autoKelas = filterKelas;
@@ -537,56 +542,86 @@ async function loadMonitoring(opts) {
     // CATATAN: kolom pelanggaran bertipe TEXT — JANGAN pakai .gt('pelanggaran', 0) karena perbandingan
     // teks membuat '10'/'22' lolos dari filter (bukan angka). Pakai neq '0' + neq '' (sinkron dgn parseInt di render).
     let cntAktif = 0, cntSelesai = 0, cntPelanggaran = 0, cntBelum = 0;
-    // AKTIF = benar-benar sedang mengerjakan SEKARANG.
-    // Dulu: COUNT semua baris historis dengan status != 'SELESAI%'. Sesi yang ditinggal siswa
-    // (tutup browser / koneksi putus / tidak submit) tidak pernah ditutup, jadi menumpuk dan
-    // tampil sebagai "78 sedang mengerjakan" padahal tidak ada jadwal aktif.
-    // Sekarang: RPC hitung_siswa_aktif hanya menghitung baris yang masuk window jadwal berjalan.
+    // AKTIF = benar-benar sedang mengerjakan SEKARANG pada sesi aktif / filter terpilih.
+    // Dihitung langsung dari jawaban_ujian dengan filter window sesi hari ini / jadwal aktif,
+    // plus filter sesi zombie (> 3 jam tanpa submit).
     const _hitungAktif = async () => {
-        if (!adaUjianAktif) return 0; // tanpa jadwal berjalan, tidak mungkin ada yang mengerjakan
+        if (!adaUjianAktif && !filterKelas && !filterMapel && !filterTglAwal && !searchName) return 0;
         try {
-            const { data: n, error: eAktif } = await db.rpc('hitung_siswa_aktif', {
-                p_kelas: filterKelas || null,
-                p_mapel: filterMapel || null,
-                p_search: searchName || null
-            });
-            if (eAktif) throw eAktif;
-            return parseInt(n) || 0;
+            const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+            let batasMulaiIso = awalHari.toISOString();
+            if (_mulaiWindowMs && _mulaiWindowMs > awalHari.getTime()) {
+                batasMulaiIso = new Date(_mulaiWindowMs - 15 * 60000).toISOString();
+            }
+
+            let q = applyBaseFilters(db.from('jawaban_ujian').select('id, created_at, status', { count: 'exact' }))
+                .not('status', 'like', 'SELESAI%');
+
+            if (!filterTglAwal) {
+                q = q.gte('created_at', batasMulaiIso);
+            }
+
+            const { data: rows, count, error } = await q;
+            if (error) throw error;
+
+            if (rows && rows.length) {
+                const nowMs = Date.now();
+                // Filter sesi mati/zombie yang ditinggal > 3 jam lalu tanpa submit
+                const validAktif = rows.filter(r => {
+                    const t = r.created_at ? new Date(r.created_at).getTime() : 0;
+                    return (nowMs - t) < 3 * 3600000;
+                });
+                return validAktif.length;
+            }
+            return count || 0;
         } catch (eAktifErr) {
-            // Fallback sebelum migrasi terpasang: batasi ke baris hari ini saja
-            console.warn('[monitoring] RPC hitung_siswa_aktif gagal, fallback hitung hari ini:', eAktifErr.message || eAktifErr);
+            console.warn('[monitoring] _hitungAktif direct error, coba RPC:', eAktifErr);
             try {
-                const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
-                const r = await applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true }))
-                    .not('status', 'like', 'SELESAI%')
-                    .gte('created_at', awalHari.toISOString());
-                return r.count || 0;
+                const { data: n } = await db.rpc('hitung_siswa_aktif', {
+                    p_kelas: filterKelas || null,
+                    p_mapel: filterMapel || null,
+                    p_search: searchName || null
+                });
+                return parseInt(n) || 0;
             } catch (_) { return 0; }
         }
     };
-    // PELANGGARAN = pelanggaran yang terjadi pada SESI YANG SEDANG BERJALAN.
-    // Dulu: COUNT seluruh histori (termasuk sesi 28 Sep–6 Nov yang sudah lama selesai),
-    // jadi kartu menampilkan 34 padahal tidak ada ujian. Sekarang memakai RPC
-    // hitung_pelanggaran_aktif yang dibatasi window jadwal — tanpa jadwal hasilnya 0.
+
+    // PELANGGARAN = siswa yang melakukan pelanggaran pada sesi yang sedang berjalan / filter terpilih.
     const _hitungPelanggaran = async () => {
-        if (!adaUjianAktif) return 0;
+        if (!adaUjianAktif && !filterKelas && !filterMapel && !filterTglAwal && !searchName) return 0;
         try {
-            const { data: n, error: ePlg } = await db.rpc('hitung_pelanggaran_aktif', {
-                p_kelas: filterKelas || null,
-                p_mapel: filterMapel || null,
-                p_search: searchName || null
-            });
-            if (ePlg) throw ePlg;
-            return parseInt(n) || 0;
+            const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+            let batasMulaiIso = awalHari.toISOString();
+            if (_mulaiWindowMs && _mulaiWindowMs > awalHari.getTime()) {
+                batasMulaiIso = new Date(_mulaiWindowMs - 15 * 60000).toISOString();
+            }
+
+            let q = applyBaseFilters(db.from('jawaban_ujian').select('id, pelanggaran, created_at', { count: 'exact' }))
+                .neq('pelanggaran', '0')
+                .neq('pelanggaran', '');
+
+            if (!filterTglAwal) {
+                q = q.gte('created_at', batasMulaiIso);
+            }
+
+            const { data: rows, count, error } = await q;
+            if (error) throw error;
+
+            if (rows && rows.length) {
+                const validPlg = rows.filter(r => parseInt(r.pelanggaran || '0', 10) > 0);
+                return validPlg.length;
+            }
+            return count || 0;
         } catch (ePlgErr) {
-            // Fallback sebelum migrasi terpasang: batasi ke baris hari ini saja
-            console.warn('[monitoring] RPC hitung_pelanggaran_aktif gagal, fallback hitung hari ini:', ePlgErr.message || ePlgErr);
+            console.warn('[monitoring] _hitungPelanggaran direct error, coba RPC:', ePlgErr);
             try {
-                const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
-                const r = await applyBaseFilters(db.from('jawaban_ujian').select('id', { count: 'exact', head: true }))
-                    .neq('pelanggaran', '0').neq('pelanggaran', '')
-                    .gte('created_at', awalHari.toISOString());
-                return r.count || 0;
+                const { data: n } = await db.rpc('hitung_pelanggaran_aktif', {
+                    p_kelas: filterKelas || null,
+                    p_mapel: filterMapel || null,
+                    p_search: searchName || null
+                });
+                return parseInt(n) || 0;
             } catch (_) { return 0; }
         }
     };
@@ -687,7 +722,7 @@ async function loadMonitoring(opts) {
             if((_st === 'AKTIF' || _st === 'PELANGGARAN') && _mulaiWindowMs){
                 filtered = filtered.filter(s=>{
                     const t = s.created_at ? new Date(s.created_at).getTime() : NaN;
-                    return isFinite(t) && t >= _mulaiWindowMs - 60000;
+                    return isFinite(t) && t >= _mulaiWindowMs - 15 * 60000;
                 });
             }
             // Fallback ke histori HANYA saat RPC-nya sendiri kosong & status ALL.
@@ -702,6 +737,15 @@ async function loadMonitoring(opts) {
             } else {
                 data = filtered;
                 error = null;
+                // Sinkronisasi angka kartu jika tabel menemukan data
+                if (_st === 'AKTIF' && filtered.length > cntAktif) {
+                    cntAktif = filtered.length;
+                    const elAkt = document.getElementById('mon-aktif'); if (elAkt) elAkt.innerText = String(cntAktif);
+                }
+                if (_st === 'PELANGGARAN' && filtered.length > cntPelanggaran) {
+                    cntPelanggaran = filtered.length;
+                    const elPlgU = document.getElementById('mon-pelanggaran'); if (elPlgU) elPlgU.innerText = String(cntPelanggaran);
+                }
             }
         }catch(e){ console.warn('[monitoring campuran] fallback',e); _isCampuranMode=false; }
     }
@@ -721,10 +765,9 @@ async function loadMonitoring(opts) {
             if(_pendingMonReload){ _pendingMonReload=false; setTimeout(()=>{ if(typeof loadMonitoring==='function') loadMonitoring(); }, 80); }
             return;
         }
-        // AKTIF / PELANGGARAN = kondisi sesi yang berjalan sekarang. Tanpa jadwal berjalan,
-        // daftarnya memang kosong — jangan tampilkan sesi lama yang statusnya belum SELESAI
-        // atau pelanggaran dari ujian berminggu-minggu lalu.
-        if((_st === 'AKTIF' || _st === 'PELANGGARAN') && !adaUjianAktif){
+        // AKTIF / PELANGGARAN = kondisi sesi yang berjalan sekarang. Tanpa jadwal berjalan DAN tanpa filter spesifik,
+        // daftarnya memang kosong.
+        if((_st === 'AKTIF' || _st === 'PELANGGARAN') && !adaUjianAktif && !filterKelas && !filterMapel && !filterTglAwal){
             const _pesanKosong = _st === 'PELANGGARAN'
                 ? 'Tidak ada pelanggaran pada sesi ujian yang sedang berjalan.'
                 : 'Tidak ada ujian yang sedang berlangsung saat ini.';
@@ -744,11 +787,19 @@ async function loadMonitoring(opts) {
         else if (_st === 'SELESAI') query = query.like('status', 'SELESAI%');
         else if (_st === 'PELANGGARAN') query = query.neq('pelanggaran', '0').neq('pelanggaran', '');
         // AKTIF/PELANGGARAN hanya untuk sesi yang mulai pada jadwal berjalan (bukan histori lama).
-        if ((_st === 'AKTIF' || _st === 'PELANGGARAN') && _batasSesiIso()) {
+        if ((_st === 'AKTIF' || _st === 'PELANGGARAN') && _batasSesiIso() && !filterTglAwal) {
             query = query.gte('created_at', _batasSesiIso());
         }
         const res = await query.range(startIdx, startIdx + ITEMS_PER_PAGE - 1);
         data = res.data; error = res.error; totalItems = res.count || 0;
+        if (_st === 'AKTIF' && totalItems > cntAktif) {
+            cntAktif = totalItems;
+            const elAkt = document.getElementById('mon-aktif'); if (elAkt) elAkt.innerText = String(cntAktif);
+        }
+        if (_st === 'PELANGGARAN' && totalItems > cntPelanggaran) {
+            cntPelanggaran = totalItems;
+            const elPlgU = document.getElementById('mon-pelanggaran'); if (elPlgU) elPlgU.innerText = String(cntPelanggaran);
+        }
         totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
         if (currentMonPage > totalPages) {
             currentMonPage = totalPages;
