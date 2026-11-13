@@ -8,6 +8,9 @@
 //   - Folder hanya pengelompokan (tidak berisi soal langsung).
 //   - Soal TIDAK dikelola di sini. Klik sebuah mapel -> panel "Preview Soal"
 //     (bukaDetailSoal) tempat edit / ubah mapel / hapus soal.
+//   - Mode "Pilih banyak": tombol di toolbar. Selama mode ini aktif, kotak centang
+//     muncul di tiap mapel, klik kartu = memilih (BUKAN membuka Preview Soal),
+//     dan mapel terpilih bisa dipindah bersama ke satu folder.
 //
 // Tabel: bank_soal_folder
 //   mapel IS NULL      -> folder grup
@@ -23,7 +26,8 @@ const bsState = {
     currentFolderId: null,
     search: '',
     searchResult: null,   // null = bukan mode cari
-    selected: new Set(),  // id (string) entri mapel yang dicentang untuk dipindah massal
+    selectMode: false,    // true = mode pilih banyak (klik mapel = memilih, bukan buka preview)
+    selected: new Set(),  // id (string) entri mapel yang dipilih untuk dipindah massal
     _bound: false,
     _loading: null,
     _loaded: false,
@@ -320,25 +324,36 @@ function bsCardHtml(n, showPath) {
         sub = bits.join(' · ');
     }
     const path = showPath ? bsPath(n.parent_id) : '';
+    const mode = bsState.selectMode;
     const checked = isMapel && bsState.selected.has(String(n.id));
+    // Kotak centang & menu ⋮ hanya relevan di luar/dalam mode pilih banyak.
+    const check = (isMapel && mode)
+        ? `<input type="checkbox" class="bs-node-check" tabindex="-1" title="Pilih mapel ini"
+                ${checked ? 'checked' : ''}
+                onclick="event.stopPropagation();bsToggleSelect(${Number(n.id)})">`
+        : '';
+    const menu = mode
+        ? ''
+        : `<span class="bs-node-menu" role="button" tabindex="0" title="Aksi"
+                onclick="event.stopPropagation();bsNodeMenu(${Number(n.id)})"
+                onkeydown="event.stopPropagation();if(event.key==='Enter'){bsNodeMenu(${Number(n.id)});}">
+                <i class="fas fa-ellipsis-vertical"></i>
+            </span>`;
+    const pickable = mode && isMapel;
     return `
-        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${checked ? 'is-selected' : ''}" role="button" tabindex="0" data-id="${Number(n.id)}"
+        <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${checked ? 'is-selected' : ''} ${pickable ? 'is-pickable' : ''}"
+            role="${pickable ? 'checkbox' : 'button'}" tabindex="0" data-id="${Number(n.id)}"
+            ${pickable ? `aria-checked="${checked ? 'true' : 'false'}"` : ''}
             onclick="bsCardClick(event, ${Number(n.id)})"
-            onkeydown="if(event.key==='Enter'){bsBukaNode(${Number(n.id)});}">
-            ${isMapel ? `<input type="checkbox" class="bs-node-check" title="Pilih mapel untuk dipindah" ${checked ? 'checked' : ''}
-                onclick="event.stopPropagation();bsToggleSelect(${Number(n.id)})"
-                onkeydown="event.stopPropagation();">` : ''}
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bsCardClick(event, ${Number(n.id)});}">
+            ${check}
             <span class="bs-node-icon"><i class="fas ${isMapel ? 'fa-book-open' : 'fa-folder'}"></i></span>
             <span class="bs-node-body">
                 <span class="bs-node-name" title="${bsEsc(n.nama)}">${bsEsc(n.nama)}</span>
                 <span class="bs-node-sub">${bsEsc(sub)}</span>
                 ${path ? `<span class="bs-node-path" title="${bsEsc(path)}"><i class="fas fa-location-dot"></i> ${bsEsc(path)}</span>` : ''}
             </span>
-            <span class="bs-node-menu" role="button" tabindex="0" title="Aksi"
-                onclick="event.stopPropagation();bsNodeMenu(${Number(n.id)})"
-                onkeydown="event.stopPropagation();if(event.key==='Enter'){bsNodeMenu(${Number(n.id)});}">
-                <i class="fas fa-ellipsis-vertical"></i>
-            </span>
+            ${menu}
         </div>`;
 }
 
@@ -358,6 +373,7 @@ function bsRenderGrid() {
     }
 
     grid.style.display = 'grid';
+    grid.classList.toggle('is-select-mode', !!bsState.selectMode);
     grid.innerHTML = folders.map(n => bsCardHtml(n, showPath)).join('')
         + mapels.map(n => bsCardHtml(n, showPath)).join('');
 
@@ -414,18 +430,45 @@ function bsBukaNode(id) {
     n.mapel ? bsBukaMapel(id) : bsBukaFolder(id);
 }
 
-// Klik kartu: Ctrl/Cmd/Shift+klik = centang (pilih banyak), klik biasa = buka.
+// Klik kartu:
+//   - mode pilih banyak & kartu mapel -> memilih (tidak membuka Preview Soal)
+//   - mode pilih banyak & kartu folder -> masuk folder (pilihan tetap tersimpan)
+//   - Ctrl/Cmd/Shift+klik mapel     -> masuk mode pilih lalu memilih mapel itu
+//   - klik biasa                    -> buka Preview Soal / folder
 function bsCardClick(ev, id) {
     const n = bsFindNode(id);
     if (!n) return;
-    if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey)) {
-        if (n.mapel) {
-            if (ev.preventDefault) ev.preventDefault();
-            bsToggleSelect(id);
-        }
+    if (!n.mapel) { bsBukaFolder(id); return; }
+    if (bsState.selectMode) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        bsToggleSelect(id);
         return;
     }
-    bsBukaNode(id);
+    if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey)) {
+        if (ev.preventDefault) ev.preventDefault();
+        bsSetSelectMode(true);
+        bsToggleSelect(id);
+        bsToast('Mode pilih banyak aktif — klik mapel lain untuk memilih', 'info');
+        return;
+    }
+    bsBukaMapel(id);
+}
+
+// ---------- MODE PILIH BANYAK ----------
+function bsSetSelectMode(on) {
+    const next = !!on;
+    if (bsState.selectMode === next) return;
+    bsState.selectMode = next;
+    if (!next) bsState.selected.clear();
+    bsRender();
+}
+
+function bsToggleSelectMode() {
+    bsSetSelectMode(!bsState.selectMode);
+}
+
+function bsKeluarModePilih() {
+    bsSetSelectMode(false);
 }
 
 // ---------- PILIH BANYAK MAPEL ----------
@@ -440,6 +483,7 @@ function bsIsSelected(id) {
 function bsToggleSelect(id) {
     const n = bsFindNode(id);
     if (!n || !n.mapel) return;
+    if (!bsState.selectMode) bsSetSelectMode(true);
     const key = String(id);
     if (bsState.selected.has(key)) bsState.selected.delete(key);
     else bsState.selected.add(key);
@@ -455,6 +499,7 @@ function bsClearSelection() {
 function bsPilihSemuaMapel() {
     const cards = Array.from(document.querySelectorAll('#bs-folder-grid .bs-node-card.is-mapel'));
     if (!cards.length) return;
+    if (!bsState.selectMode) bsSetSelectMode(true);
     const ids = cards.map(c => String(c.getAttribute('data-id')));
     const semuaTerpilih = ids.every(id => bsState.selected.has(id));
     ids.forEach(id => {
@@ -471,13 +516,37 @@ function bsSyncSelectionUi() {
         card.classList.toggle('is-selected', on);
         const cb = card.querySelector('.bs-node-check');
         if (cb) cb.checked = on;
+        if (card.getAttribute('role') === 'checkbox') card.setAttribute('aria-checked', on ? 'true' : 'false');
+        else card.removeAttribute('aria-checked');
     });
 
+    const mode = !!bsState.selectMode;
     const n = bsState.selected.size;
+
+    // Tombol toolbar: label + status aktif
+    const modeBtn = document.getElementById('bs-btn-select-mode');
+    if (modeBtn) {
+        modeBtn.classList.toggle('is-active', mode);
+        const lbl = modeBtn.querySelector('span');
+        if (lbl) lbl.textContent = mode ? 'Selesai pilih' : 'Pilih banyak';
+        modeBtn.title = mode
+            ? 'Keluar dari mode pilih banyak'
+            : 'Pilih beberapa mapel sekaligus untuk dipindahkan';
+    }
+
+    // Bar aksi: tampil selama mode aktif (walau belum ada yang dipilih)
     const bar = document.getElementById('bs-selection-bar');
+    if (bar) bar.style.display = mode ? 'flex' : 'none';
     const countEl = document.getElementById('bs-selection-count');
-    if (bar) bar.style.display = n ? 'flex' : 'none';
     if (countEl) countEl.textContent = n === 1 ? '1 mapel dipilih' : `${n} mapel dipilih`;
+
+    const moveBtn = document.getElementById('bs-btn-move-selected');
+    if (moveBtn) {
+        moveBtn.disabled = n === 0;
+        moveBtn.title = n
+            ? `Pindahkan ${n} mapel terpilih ke satu folder`
+            : 'Pilih dulu minimal satu mapel';
+    }
 
     const allBtn = document.getElementById('bs-btn-select-all');
     if (allBtn) {
@@ -492,11 +561,11 @@ function bsSyncSelectionUi() {
 
 async function bsPindahkanTerpilih() {
     const ids = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel; });
-    if (!ids.length) return bsToast('Belum ada mapel yang dicentang', 'warning');
+    if (!ids.length) return bsToast('Pilih dulu mapel yang mau dipindah', 'warning');
 
     const pick = await bsPickFolder({
         title: ids.length === 1 ? 'Pindahkan 1 mapel' : `Pindahkan ${ids.length} mapel`,
-        hint: 'Semua mapel yang dicentang akan dipindah ke folder yang sama.',
+        hint: 'Semua mapel yang dipilih akan dipindah ke folder yang sama.',
         confirmText: 'Pindahkan ke sini',
         defaultFolderId: bsState.currentFolderId,
         allowRoot: true
@@ -525,7 +594,9 @@ async function bsPindahkanTerpilih() {
     else if (pindah) bsToast(`${pindah} mapel dipindahkan ke "${tujuan}"`, 'success');
     else bsToast('Mapel sudah berada di folder itu', 'info');
 
-    bsClearSelection();
+    // Setelah berhasil pindah, keluar dari mode pilih supaya kembali normal.
+    if (pindah && !gagal) bsSetSelectMode(false);
+    else bsSyncSelectionUi();
     await bsRefreshExplorer();
 }
 

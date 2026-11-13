@@ -150,6 +150,20 @@
     color: #bfdbfe;
 }
 
+.bs-selection-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.bs-selection-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(191, 219, 254, .72);
+}
+
 .bs-selection-actions {
     display: flex;
     align-items: center;
@@ -192,6 +206,29 @@
 .bs-btn-chip.ghost {
     background: transparent;
     color: var(--text-subtle, #94a3b8);
+}
+
+.bs-btn-chip:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.bs-btn-chip:disabled:hover {
+    background: rgba(255, 255, 255, .05);
+    border-color: rgba(148, 163, 184, .3);
+    color: var(--text-main, #e2e8f0);
+}
+
+/* Tombol toolbar "Pilih banyak" saat mode aktif */
+.bs-toolbar .btn.is-active {
+    background: rgba(59, 130, 246, .24);
+    border-color: rgba(59, 130, 246, .6);
+    color: #dbeafe;
+}
+
+.bs-toolbar .btn.is-active:hover {
+    background: rgba(59, 130, 246, .34);
+    color: #eff6ff;
 }
 
 /* ---------- UP ROW ---------- */
@@ -260,9 +297,9 @@
     flex: 0 0 auto;
     appearance: none;
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    margin: 0 0 0 2px;
+    width: 17px;
+    height: 17px;
+    margin: 0;
     border-radius: 4px;
     border: 1px solid rgba(148, 163, 184, .45);
     background: rgba(255, 255, 255, .04);
@@ -303,6 +340,21 @@
 
 .bs-node-card.is-selected .bs-node-name {
     color: #dbeafe;
+}
+
+/* Mode pilih banyak: kartu mapel terasa seperti item yang bisa dicentang */
+.bs-folder-grid.is-select-mode .bs-node-card.is-pickable {
+    border-style: dashed;
+}
+
+.bs-folder-grid.is-select-mode .bs-node-card.is-mapel:hover {
+    border-color: rgba(59, 130, 246, .5);
+    background: rgba(59, 130, 246, .1);
+    transform: translateY(-1px);
+}
+
+.bs-folder-grid.is-select-mode .bs-node-card.is-selected {
+    border-style: solid;
 }
 
 .bs-node-icon {
