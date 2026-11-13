@@ -744,17 +744,25 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
     position:fixed; z-index:9999;
     background:#2e3440; background:linear-gradient(180deg,#343a4a 0%,#2b3242 100%);
     border:1px solid rgba(255,255,255,0.08);
-    border-radius:12px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    border-radius:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset;
     overflow:hidden;
     display:flex;
-    flex-direction:row;
-    min-width:520px; max-width:min(560px,96vw);
-    max-height:min(460px,84vh);
+    flex-direction:column;
+    min-width:520px; max-width:min(570px,96vw);
+    max-height:min(500px,88vh);
     font-family:'Inter',sans-serif;
     user-select:none;
+    box-sizing:border-box;
 }
-.dtp-cal{ flex:1 1 320px; padding:14px 14px 18px 14px; min-width:300px; display:flex; flex-direction:column; }
+.dtp-body{
+    display:flex;
+    flex-direction:row;
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+}
+.dtp-cal{ flex:1 1 320px; padding:14px 14px 14px 14px; min-width:300px; display:flex; flex-direction:column; position:relative; }
 .dtp-cal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
 .dtp-month-btn{
     display:flex; align-items:center; gap:6px;
@@ -785,9 +793,85 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
 .dtp-day.today{ border-color:rgba(59,130,246,0.45); color:#93c5fd; }
 .dtp-day.selected{ background:#60a5fa !important; color:#0f172a !important; font-weight:800; border-color:#60a5fa !important; }
 .dtp-day.selected.other{ background:#3b82f6 !important; color:white !important; }
-.dtp-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); }
-.dtp-foot button{ background:transparent; border:none; color:#60a5fa; font-size:13px; font-weight:600; cursor:pointer; padding:7px 12px; border-radius:8px; }
-.dtp-foot button:hover{ background:rgba(59,130,246,0.1); }
+.dtp-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:10px 14px;
+    background:rgba(15,23,42,0.5);
+    border-top:1px solid rgba(255,255,255,0.08);
+    flex-shrink:0;
+    box-sizing:border-box;
+}
+.dtp-foot-left, .dtp-foot-right{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+.dtp-foot button{
+    background:transparent;
+    border:none;
+    color:#94a3b8;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    padding:6px 12px;
+    border-radius:8px;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    transition:background 0.15s, color 0.15s, transform 0.1s;
+}
+.dtp-foot button:hover{
+    background:rgba(255,255,255,0.06);
+    color:#e2e8f0;
+}
+.dtp-foot #dtp-clear:hover{
+    color:#f87171;
+    background:rgba(239,68,68,0.12);
+}
+.dtp-foot #dtp-today{
+    color:#60a5fa;
+}
+.dtp-foot #dtp-today:hover{
+    background:rgba(59,130,246,0.12);
+    color:#93c5fd;
+}
+.dtp-preview-badge{
+    font-size:12px;
+    color:#93c5fd;
+    font-weight:600;
+    background:rgba(59,130,246,0.12);
+    padding:5px 12px;
+    border-radius:20px;
+    border:1px solid rgba(59,130,246,0.25);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+}
+.dtp-foot .dtp-btn-ok{
+    background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    color:#ffffff !important;
+    font-weight:700 !important;
+    font-size:13px !important;
+    padding:7px 18px !important;
+    border-radius:8px !important;
+    border:1px solid rgba(255,255,255,0.15) !important;
+    box-shadow:0 3px 12px rgba(37,99,235,0.38), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+    cursor:pointer !important;
+    gap:6px !important;
+}
+.dtp-foot .dtp-btn-ok:hover{
+    background:linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%) !important;
+    box-shadow:0 5px 16px rgba(37,99,235,0.48) !important;
+    transform:translateY(-1px);
+    color:#ffffff !important;
+}
+.dtp-foot .dtp-btn-ok:active{
+    transform:translateY(0);
+}
 /* Month/Year picker dropdown — muncul saat klik "September 2026 ▾" */
 .dtp-month-picker{
     position:absolute; top:46px; left:14px; z-index:12;
@@ -804,7 +888,6 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
 .dtp-mp-mon{ padding:9px 4px; text-align:center; font-size:12px; font-weight:600; color:#cbd5e1; background:rgba(255,255,255,0.04); border:1px solid transparent; border-radius:8px; cursor:pointer; }
 .dtp-mp-mon:hover{ background:rgba(255,255,255,0.08); color:#f1f5f9; }
 .dtp-mp-mon.sel{ background:#3b82f6 !important; color:white !important; border-color:#60a5fa; font-weight:800; box-shadow:0 2px 10px rgba(59,130,246,0.3); }
-.dtp-cal{ position:relative; }
 .dtp-time{
     width:148px; min-width:148px; max-width:148px;
     border-left:1px solid rgba(255,255,255,0.08);
@@ -854,10 +937,11 @@ input[type="datetime-local"]::-webkit-scrollbar-corner {
 .dtp-input{ position:relative; }
 /* Mobile */
 @media (max-width: 640px){
-    .dtp-popup{ flex-direction:column; min-width:0; width:min(96vw,380px); max-height:82vh; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(59,130,246,0.45) transparent; }
-    .dtp-popup::-webkit-scrollbar{ width:8px; }
-    .dtp-popup::-webkit-scrollbar-thumb{ background:rgba(59,130,246,0.45); border-radius:10px; }
-    .dtp-cal{ min-width:0; padding:12px 12px 16px 12px; }
-    .dtp-time{ width:100%; min-width:0; max-width:none; height:180px; min-height:180px; border-left:none; border-top:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
-    .dtp-time-list{ max-height:140px; }
+    .dtp-popup{ min-width:0; width:min(96vw,380px); max-height:86vh; }
+    .dtp-body{ flex-direction:column; overflow-y:auto; flex:1 1 auto; }
+    .dtp-cal{ min-width:0; padding:12px 12px 10px 12px; flex:none; }
+    .dtp-time{ width:100%; min-width:0; max-width:none; height:160px; min-height:160px; border-left:none; border-top:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
+    .dtp-time-list{ max-height:120px; }
+    .dtp-foot{ flex-wrap:wrap; gap:8px; padding:10px 12px; justify-content:space-between; }
+    .dtp-preview-badge{ order:3; width:100%; justify-content:center; }
 }

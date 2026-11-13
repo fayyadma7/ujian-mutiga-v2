@@ -860,7 +860,15 @@ function _dtpEnsureDom(){
     document.body.appendChild(_dtpOverlay);
     document.body.appendChild(_dtpPopup);
     window.addEventListener('resize', ()=>{ if(_dtpActive) _dtpPosition(); });
-    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _dtpActive) closeDTP(); });
+    document.addEventListener('keydown', e=>{
+        if(!_dtpActive) return;
+        if(e.key==='Escape') closeDTP();
+        else if(e.key==='Enter'){
+            e.preventDefault();
+            _dtpSyncInput();
+            closeDTP();
+        }
+    });
 }
 function _dtpPosition(){
     if(!_dtpActive || !_dtpPopup) return;
@@ -916,6 +924,10 @@ function _dtpSyncInput(){
     try{ _dtpActive.dataset.iso = iso; _dtpActive.dataset.display = disp; }catch(e){}
     _dtpActive.dispatchEvent(new Event('change',{bubbles:true}));
     _dtpActive.dispatchEvent(new Event('input',{bubbles:true}));
+    const pt = document.getElementById('dtp-preview-text');
+    if(pt && _dtpMonthShort && _dtpMonthShort[_dtpState.m] !== undefined){
+        pt.textContent = `${_dtpPad(_dtpState.d)} ${_dtpMonthShort[_dtpState.m]} ${_dtpState.y}, ${_dtpPad(_dtpState.h)}:${_dtpPad(_dtpState.mi)}`;
+    }
 }
 function _dtpScrollToSelected(){
     if(!_dtpPopup) return;
@@ -969,31 +981,43 @@ function _dtpRender(){
             </div>
             <div class="dtp-mp-grid">${_mps}</div>
         </div>`; })();
+    const _previewText = `${_dtpPad(_dtpState.d)} ${_dtpMonthShort[_dtpState.m]} ${_dtpState.y}, ${_dtpPad(_dtpState.h)}:${_dtpPad(_dtpState.mi)}`;
     _dtpPopup.innerHTML = `
-        <div class="dtp-cal">
-            <div class="dtp-cal-head">
-                <button type="button" class="dtp-month-btn${_dtpMPOpen?' open':''}" id="dtp-monthBtn">${_dtpMonthNames[m]} ${y} <i class="fas fa-chevron-down"></i></button>
-                <div class="dtp-nav">
-                    <button type="button" id="dtp-prev" aria-label="Bulan sebelumnya"><i class="fas fa-arrow-up"></i></button>
-                    <button type="button" id="dtp-next" aria-label="Bulan berikutnya"><i class="fas fa-arrow-down"></i></button>
+        <div class="dtp-body">
+            <div class="dtp-cal">
+                <div class="dtp-cal-head">
+                    <button type="button" class="dtp-month-btn${_dtpMPOpen?' open':''}" id="dtp-monthBtn">${_dtpMonthNames[m]} ${y} <i class="fas fa-chevron-down"></i></button>
+                    <div class="dtp-nav">
+                        <button type="button" id="dtp-prev" aria-label="Bulan sebelumnya"><i class="fas fa-arrow-up"></i></button>
+                        <button type="button" id="dtp-next" aria-label="Bulan berikutnya"><i class="fas fa-arrow-down"></i></button>
+                    </div>
+                </div>
+                ${_mpHtml}
+                <div class="dtp-week"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+                <div class="dtp-days">${daysHtml}</div>
+            </div>
+            <div class="dtp-time">
+                <div class="dtp-time-col">
+                    <div class="dtp-time-head">Jam</div>
+                    <div class="dtp-time-list" id="dtp-hlist">${hHtml}</div>
+                </div>
+                <div class="dtp-time-col">
+                    <div class="dtp-time-head">Menit</div>
+                    <div class="dtp-time-list" id="dtp-milist">${miHtml}</div>
                 </div>
             </div>
-            ${_mpHtml}
-            <div class="dtp-week"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
-            <div class="dtp-days">${daysHtml}</div>
-            <div class="dtp-foot">
-                <button type="button" id="dtp-clear">Clear</button>
-                <button type="button" id="dtp-today">Today</button>
-            </div>
         </div>
-        <div class="dtp-time">
-            <div class="dtp-time-col">
-                <div class="dtp-time-head">Jam</div>
-                <div class="dtp-time-list" id="dtp-hlist">${hHtml}</div>
+        <div class="dtp-foot">
+            <div class="dtp-foot-left">
+                <button type="button" id="dtp-clear" title="Kosongkan tanggal dan waktu"><i class="fas fa-trash-alt" style="font-size:11px;margin-right:4px;opacity:0.75;"></i>Clear</button>
+                <button type="button" id="dtp-today" title="Pilih waktu sekarang"><i class="fas fa-clock" style="font-size:11px;margin-right:4px;opacity:0.75;"></i>Today</button>
             </div>
-            <div class="dtp-time-col">
-                <div class="dtp-time-head">Menit</div>
-                <div class="dtp-time-list" id="dtp-milist">${miHtml}</div>
+            <div class="dtp-preview-badge" id="dtp-preview-badge" title="Waktu yang dipilih">
+                <i class="far fa-calendar-check" style="font-size:12px;opacity:0.85;"></i>
+                <span id="dtp-preview-text">${_previewText}</span>
+            </div>
+            <div class="dtp-foot-right">
+                <button type="button" id="dtp-ok" class="dtp-btn-ok" title="Terapkan tanggal dan jam ini"><i class="fas fa-check"></i> Simpan</button>
             </div>
         </div>
     `;
@@ -1027,8 +1051,9 @@ function _dtpRender(){
             _dtpMPOpen=false; _dtpRender(); requestAnimationFrame(_dtpScrollToSelected);
         }
     });
-    _dtpPopup.querySelector('#dtp-clear').onclick = ()=>{ if(_dtpActive){ _dtpActive.value=''; _dtpActive.dispatchEvent(new Event('change',{bubbles:true})); } closeDTP(); };
-    _dtpPopup.querySelector('#dtp-today').onclick = ()=>{ const n=new Date(); _dtpState.y=n.getFullYear(); _dtpState.m=n.getMonth(); _dtpState.d=n.getDate(); _dtpState.h=n.getHours(); _dtpState.mi=Math.floor(n.getMinutes()/1); _dtpSyncInput(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); _dtpSyncInput(); };
+    _dtpPopup.querySelector('#dtp-clear').onclick = ()=>{ if(_dtpActive){ _dtpActive.value=''; try{ delete _dtpActive.dataset.iso; delete _dtpActive.dataset.display; }catch(e){} _dtpActive.dispatchEvent(new Event('change',{bubbles:true})); _dtpActive.dispatchEvent(new Event('input',{bubbles:true})); } closeDTP(); };
+    _dtpPopup.querySelector('#dtp-today').onclick = ()=>{ const n=new Date(); _dtpState.y=n.getFullYear(); _dtpState.m=n.getMonth(); _dtpState.d=n.getDate(); _dtpState.h=n.getHours(); _dtpState.mi=n.getMinutes(); _dtpSyncInput(); _dtpRender(); requestAnimationFrame(_dtpScrollToSelected); _dtpSyncInput(); };
+    _dtpPopup.querySelector('#dtp-ok').onclick = ()=>{ _dtpSyncInput(); closeDTP(); };
     _dtpPopup.querySelectorAll('.dtp-day').forEach(el=>{
         el.addEventListener('click', ()=>{
             const o = el.getAttribute('data-other')==='1';
