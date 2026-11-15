@@ -516,6 +516,7 @@ const AIGenerator = {
       }
 
       // update overlay text ke tahap menyimpan
+      if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
       if (typeof showGlobalLoader === 'function') {
         showGlobalLoader('Menyimpan ke database...', { immediate: true });
       } else {

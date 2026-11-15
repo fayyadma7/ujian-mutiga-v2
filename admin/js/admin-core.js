@@ -666,7 +666,7 @@ function initPage(idHalaman) {
         }
         // Load AI generator module
         if (typeof AIGenerator === 'undefined') {
-            loadScript('admin/js/admin-ai.js?v=3');
+            loadScript('admin/js/admin-ai.js?v=4');
         }
     }
     if (idHalaman === 'analisis-soal-page') {
