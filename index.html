@@ -1475,6 +1475,21 @@
             font-size: 1.1em;
             line-height: 1.8;
         }
+        /* Harakat adalah combining marks; beri ruang vertikal dan font Arab pada
+           blok yang mengandung karakter Arab, termasuk teks Arab tanpa span RTL. */
+        .soal-text.contains-arabic,
+        .option-label-inner.contains-arabic {
+            font-family: "Noto Naskh Arabic", "Amiri", 'Plus Jakarta Sans', sans-serif !important;
+            line-height: 2 !important;
+            overflow: visible !important;
+            padding-block: .12em;
+        }
+        .soal-text.contains-arabic span[dir="rtl"],
+        .option-label-inner.contains-arabic span[dir="rtl"],
+        .contains-arabic .arab-segment {
+            font-family: "Amiri", "Noto Naskh Arabic", serif !important;
+            line-height: 2 !important;
+        }
         /* Kimia: pastikan subscript/superscript & panah tetap terbaca di HP */
         .soal-text sub, .soal-text sup, .option-label-inner sub, .option-label-inner sup {
             font-family: 'Plus Jakarta Sans', 'Noto Sans Javanese', 'Noto Naskh Arabic', sans-serif;
@@ -5756,6 +5771,8 @@
                         continue;
                     }
                     const isRagu = window.stateRagu && window.stateRagu[i];
+                    const hasArabic = (value) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(value || ''));
+                    const questionArabicClass = hasArabic(s[0]) ? ' contains-arabic' : '';
                     const raguClass = isRagu ? 'btn-ragu ragu-active' : 'btn-ragu';
                     const raguIcon = isRagu ? 'fas fa-bookmark' : 'far fa-bookmark';
                     h += `<div class="soal-item${i === 0 ? ' soal-aktif' : ''}" id="soal-wrap-${i}">
@@ -5765,7 +5782,7 @@
                 <i class="${raguIcon}"></i> Ragu-Ragu
             </button>
         </div>
-        <div class="soal-text" dir="auto">${s[0]||''}</div>`;
+        <div class="soal-text${questionArabicClass}" dir="auto">${s[0]||''}</div>`;
                     if (s[8] === "PG") {
                         h += `<div class="option-list">`;
                         const opts = ['A','B','C','D','E'];
@@ -5784,7 +5801,7 @@
                                     h += `<label class="option-item" id="opt-${i}-${o}" onclick="pilihjawaban(${i},'${o}',event)" style="touch-action:manipulation">
               <input type="radio" name="q${i}" value="${o}" id="r${i}${o}" onchange="saveProgress(); updateProgressBar();">
               <div class="option-key">${o}</div>
-              <div class="option-label"><div class="option-label-inner" dir="auto">${teksOpsi}</div></div>
+              <div class="option-label"><div class="option-label-inner${hasArabic(teksOpsi) ? ' contains-arabic' : ''}" dir="auto">${teksOpsi}</div></div>
             </label>`;
                                 }
                             } catch (_e) { /* skip opsi rusak */ }

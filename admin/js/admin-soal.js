@@ -225,6 +225,11 @@ async function loadPreviewSoal() {
 
     let html = '';
     data.forEach((s, idx) => {
+        // Harakat adalah combining marks di luar tinggi huruf dasar. Beri penanda
+        // khusus pada konten Arab agar preview memakai font Arab + ruang vertikal
+        // yang cukup, tanpa mengubah HTML/data yang tersimpan di database.
+        const hasArabic = (value) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(value || ''));
+        const questionArabicClass = hasArabic(s.pertanyaan) ? ' contains-arabic' : '';
         const creatorName = _psIsAdmin && s.guru ? s.guru.nama : null;
         const creatorBadge = creatorName
             ? `<span style="font-size:10px; color:var(--text-muted); margin-left:8px;"><i class="fas fa-user"></i> ${creatorName}</span>`
@@ -247,7 +252,7 @@ async function loadPreviewSoal() {
                         </button>
                     </div>
                 </div>
-                <div class="teks-pertanyaan soal-text" dir="auto" style="margin-bottom: 12px; line-height:1.7; font-size:15px;">${s.pertanyaan}</div>
+                <div class="teks-pertanyaan soal-text${questionArabicClass}" dir="auto" style="margin-bottom: 12px; line-height:1.7; font-size:15px;">${s.pertanyaan}</div>
         `;
 
         if (s.tipe_soal !== 'ESSAY') {
@@ -255,6 +260,7 @@ async function loadPreviewSoal() {
             const opsi = ['a', 'b', 'c', 'd', 'e'];
             opsi.forEach(o => {
                 const val = s[`opsi_${o}`];
+                const optionArabicClass = hasArabic(val) ? ' contains-arabic' : '';
                 let isEmpty = true;
                 if (val) {
                     let str = val.toString().trim();
@@ -269,7 +275,7 @@ async function loadPreviewSoal() {
                     html += `
                         <li style="display:flex; align-items:flex-start; padding:10px 0; ${s.kunci_jawaban === o.toUpperCase() ? 'font-weight:bold; color:var(--success);' : ''}">
                             <strong style="margin-right:8px; flex-shrink:0;">${o.toUpperCase()}.</strong>
-                            <div class="option-label-inner" dir="auto" style="flex-grow:1; overflow-x:auto; overflow-y:hidden; line-height:1.7; margin-top:-2px;">${val}</div>
+                            <div class="option-label-inner${optionArabicClass}" dir="auto" style="flex-grow:1; overflow-x:auto; overflow-y:hidden; line-height:1.7; margin-top:-2px;">${val}</div>
                         </li>`;
                 }
             });

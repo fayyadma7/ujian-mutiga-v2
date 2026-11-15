@@ -353,6 +353,21 @@ tbody#tabel-jadwal tr td[data-label="Mapel"]::before{
 .soal-item .btn-soal-delete, .soal-item .btn-soal-delete i{ color:#ef4444 !important; }
 .soal-item .btn-soal-edit:hover, .soal-item .btn-soal-edit:hover i{ color:#2563eb !important; }
 .soal-item .btn-soal-delete:hover, .soal-item .btn-soal-delete:hover i{ color:#dc2626 !important; }
+
+/* Preview Bahasa Arab: harakat adalah combining marks yang dapat berada di luar
+   kotak huruf. Jangan potong sumbu vertikalnya dan gunakan font Arab khusus. */
+#preview-container .contains-arabic{
+  font-family:"Noto Naskh Arabic", "Amiri", "Outfit", sans-serif !important;
+  line-height:2 !important;
+  overflow:visible !important;
+  overflow-y:visible !important;
+  padding-block:.12em;
+}
+#preview-container .contains-arabic span[dir="rtl"],
+#preview-container .contains-arabic .arab-segment{
+  font-family:"Amiri", "Noto Naskh Arabic", serif !important;
+  line-height:2 !important;
+}
 /* Rumus Excel dalam <code> — biar tetap terlihat di card gelap */
 code, code *{ background: rgba(255,255,255,0.08) !important; color:#f1f5f9 !important; border:1px solid rgba(255,255,255,0.12) !important; padding:2px 6px !important; border-radius:6px !important; font-family:ui-monospace,SFMono-Regular,Menlo,monospace !important; font-size:0.95em !important; }
 
