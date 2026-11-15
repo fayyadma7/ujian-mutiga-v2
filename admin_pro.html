@@ -35,10 +35,12 @@
     <link rel="stylesheet" href="admin/css/admin-base.css?v=11">
     <link rel="stylesheet" href="admin/css/admin-components.css?v=6">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=3">
-    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=29">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=30">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=6">
     <!-- Folder Bank Soal (file explorer) — sengaja file terpisah agar tidak menimpa admin-components.css -->
     <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=5">
+    <!-- Menu akun header dan inisial sambutan -->
+    <link rel="stylesheet" href="admin/css/admin-profile.css?v=1">
     <style>
         .pwd-toggle-glass{
             position:absolute;right:10px;top:50%;transform:translateY(-50%);
@@ -402,38 +404,41 @@
                 <!-- toast-container di body, bukan header -->
                 <div class="header-title" id="judul-halaman">Dashboard Overview</div>
             </div>
-            <div
-                style="display:flex; align-items:center; gap:12px; color:var(--text-muted); font-size:0.9rem; font-weight: 500;">
-                <span id="tanggal-sekarang" style="color:var(--text-main);"></span>
-                <div
-                    style="display:flex; align-items:center; gap:6px; background:rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color:#93c5fd; padding:4px 12px; border-radius:20px; font-weight:600;">
-                    <i class="fas fa-clock" style="font-size:12px; color:#60a5fa;"></i>
-                    <span id="jam-sekarang"></span>
+            <div class="header-profile" id="header-profile">
+                <button type="button" class="header-profile-trigger" id="header-profile-trigger"
+                    onclick="toggleHeaderProfile(event)" aria-expanded="false" aria-controls="header-profile-menu"
+                    title="Buka menu akun">
+                    <span class="header-profile-avatar"><i class="fas fa-user"></i></span>
+                    <span class="header-profile-trigger-text">
+                        <span id="header-profile-name">Akun</span>
+                        <small id="header-profile-role">Pengaturan & informasi</small>
+                    </span>
+                    <i class="fas fa-chevron-down header-profile-chevron" aria-hidden="true"></i>
+                </button>
+                <div class="header-profile-menu" id="header-profile-menu" role="menu" aria-label="Menu akun" hidden>
+                    <div class="header-profile-summary">
+                        <span class="header-profile-avatar large"><i class="fas fa-user"></i></span>
+                        <div class="header-profile-summary-text">
+                            <strong id="header-user-name-text">Pengguna</strong>
+                            <span id="header-user-name">Belum masuk</span>
+                        </div>
+                        <span id="role-badge" class="header-role-badge">
+                            <i class="fas fa-shield-halved"></i><span id="role-badge-text">Guru</span>
+                        </span>
+                    </div>
+                    <div class="header-profile-meta">
+                        <span><i class="fas fa-calendar-alt"></i><span id="tanggal-sekarang"></span></span>
+                        <span><i class="fas fa-clock"></i><span id="jam-sekarang"></span></span>
+                    </div>
+                    <div class="header-profile-actions">
+                        <button type="button" onclick="bukaModalEditProfilSaya(); tutupHeaderProfile();" role="menuitem">
+                            <i class="fas fa-user-cog"></i> Pengaturan akun
+                        </button>
+                        <button type="button" class="is-danger" onclick="logoutGuru()" role="menuitem">
+                            <i class="fas fa-sign-out-alt"></i> Keluar
+                        </button>
+                    </div>
                 </div>
-                <span id="header-user-name"
-                    style="font-size:0.85rem;color:var(--text-subtle);font-weight:500;display:none;align-items:center;gap:5px;white-space:nowrap;">
-                    <i class="fas fa-user-circle" style="color:var(--primary);"></i>
-                    <span id="header-user-name-text"></span>
-                </span>
-                <span id="role-badge"
-                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border:1px solid;transition:all 0.3s;">
-                    <i class="fas fa-shield-halved" style="font-size:10px;"></i>
-                    <span id="role-badge-text">Guru</span>
-                </span>
-                <button id="header-settings-btn" onclick="bukaModalEditProfilSaya()"
-                    style="display:none;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.1);color:#93c5fd;font-family:'Inter',sans-serif;transition:all 0.25s;white-space:nowrap;"
-                    onmouseover="this.style.background='rgba(59,130,246,0.18)';this.style.borderColor='rgba(59,130,246,0.4)';"
-                    onmouseout="this.style.background='rgba(59,130,246,0.1)';this.style.borderColor='rgba(59,130,246,0.25)';"
-                    title="Pengaturan akun — ganti nama & password">
-                    <i class="fas fa-user-cog" style="font-size:11px;"></i> Akun
-                </button>
-                <button id="header-logout-btn" onclick="logoutGuru()"
-                    style="display:none;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;white-space:nowrap;"
-                    onmouseover="this.style.background='rgba(239,68,68,0.15)';this.style.borderColor='rgba(239,68,68,0.4)';"
-                    onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';"
-                    title="Keluar dari panel">
-                    <i class="fas fa-sign-out-alt" style="font-size:11px;"></i> Keluar
-                </button>
             </div>
         </header>
 
@@ -445,9 +450,7 @@
                 <div id="dashboard-welcome"
                     style="background:linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.05));border:1px solid rgba(59,130,246,0.15);border-radius:20px;padding:22px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;backdrop-filter:blur(12px);">
                     <div style="display:flex;align-items:center;gap:16px;">
-                        <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.08));border:1px solid rgba(245,158,11,0.25);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fbbf24;flex-shrink:0;">
-                            <i class="fas fa-hand-wave"></i>
-                        </div>
+                        <div id="welcome-account-initials" class="welcome-account-initials" aria-label="Inisial akun">PG</div>
                         <div>
                             <div style="font-size:1.2rem;font-weight:700;color:var(--text-main);">
                                 Selamat datang, <span id="welcome-user-name">Pengguna</span>!
@@ -458,14 +461,6 @@
                                 </span>
                             </div>
                         </div>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:10px; flex-wrap:wrap;">
-                        <button onclick="bukaModalEditProfilSaya()" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.1);color:#93c5fd;font-family:'Inter',sans-serif;transition:all 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">
-                            <i class="fas fa-user-cog"></i> Pengaturan Akun
-                        </button>
-                        <button onclick="logoutGuru()" style="display:none;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#fca5a5;font-family:'Inter',sans-serif;transition:all 0.25s;" onmouseover="this.style.background='rgba(239,68,68,0.18)';this.style.borderColor='rgba(239,68,68,0.4)';" onmouseout="this.style.background='rgba(239,68,68,0.08)';this.style.borderColor='rgba(239,68,68,0.25)';">
-                            <i class="fas fa-sign-out-alt"></i> Keluar
-                        </button>
                     </div>
                 </div>
                 <div class="grid-cards">
@@ -2546,7 +2541,7 @@
         </div>
     </div>
 
-    <script src="admin/js/admin-core.js?v=17"></script>
+    <script src="admin/js/admin-core.js?v=18"></script>
     <!-- Folder Bank Soal: dimuat eager supaya fungsi bs* sudah ada saat halaman bank soal dibuka -->
     <script src="admin/js/admin-soal-folder.js?v=6"></script>
     <!-- Eager preload jadwal picker (desktop scrollbar fix) — also lazy-loaded via admin-core -->

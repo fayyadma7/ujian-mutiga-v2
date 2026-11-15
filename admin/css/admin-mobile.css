@@ -44,10 +44,8 @@
   }
   header > div:first-child{ gap:10px !important; }
   header > div:last-child{ gap:8px !important; flex-wrap:wrap; justify-content:flex-end; width:100%; }
-  #tanggal-sekarang{ display:none !important; }
   .header-title{ font-size:.95rem; }
   .header-title::before{ display:none; }
-  #header-user-name, #role-badge, #header-logout-btn{ font-size:11px; }
   /* Landing — stack 1 kolom */
   .landing-container{ grid-template-columns:1fr !important; gap:2rem; }
   .landing-panel-left{ align-items:center; text-align:center; }

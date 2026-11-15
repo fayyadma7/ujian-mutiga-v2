@@ -1,0 +1,39 @@
+/* Header account menu and welcome initials — independent from the active theme. */
+.header-profile { position: relative; display: none; }
+.header-profile-trigger { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 5px 8px 5px 6px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--text-main); cursor: pointer; font-family: inherit; text-align: left; }
+.header-profile-trigger:hover, .header-profile-trigger[aria-expanded="true"] { background: rgba(255,255,255,.06); border-color: var(--border); }
+.header-profile-avatar { width: 29px; height: 29px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: rgba(59,130,246,.15); color: #60a5fa; font-size: 12px; flex-shrink: 0; }
+.header-profile-avatar.large { width: 38px; height: 38px; border-radius: 11px; font-size: 15px; }
+.header-profile-trigger-text { display: flex; flex-direction: column; min-width: 0; max-width: 145px; line-height: 1.25; }
+.header-profile-trigger-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
+.header-profile-trigger-text small { color: var(--text-muted); font-size: 10px; font-weight: 500; }
+.header-profile-chevron { color: var(--text-muted); font-size: 10px; transition: transform .18s ease; }
+.header-profile-trigger[aria-expanded="true"] .header-profile-chevron { transform: rotate(180deg); }
+.header-profile-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 1001; width: 286px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: #0f172a; box-shadow: 0 16px 35px rgba(0,0,0,.35); }
+.header-profile-menu[hidden] { display: none; }
+.header-profile-summary { display: flex; align-items: center; gap: 10px; padding: 10px; }
+.header-profile-summary-text { min-width: 0; flex: 1 1 auto; }
+.header-profile-summary strong { display: block; color: var(--text-main); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-profile-summary-text > span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+.header-profile-meta { display: grid; gap: 7px; padding: 10px; border-top: 1px solid var(--border); color: var(--text-subtle); font-size: 11px; }
+.header-profile-meta > span { display: flex; align-items: center; gap: 8px; }
+.header-profile-meta i { width: 14px; color: #60a5fa; text-align: center; }
+#tanggal-sekarang, #jam-sekarang { color: var(--text-subtle); }
+.header-role-badge { display: inline-flex !important; align-items: center; gap: 6px; flex-shrink: 0; margin: 0 0 0 auto; padding: 4px 8px; border: 1px solid; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.header-profile-actions { display: grid; gap: 2px; padding-top: 7px; border-top: 1px solid var(--border); }
+.header-profile-actions button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text-subtle); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2; text-align: left; }
+.header-profile-actions button:hover { background: rgba(255,255,255,.06); color: var(--text-main); }
+.header-profile-actions button i { width: 16px; color: #60a5fa; text-align: center; }
+.header-profile-actions button.is-danger { color: #fca5a5; }
+.header-profile-actions button.is-danger i { color: #f87171; }
+.header-profile-actions button.is-danger:hover { background: rgba(239,68,68,.1); }
+.welcome-account-initials { width: 52px; height: 52px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid rgba(245,158,11,.25); border-radius: 16px; background: linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.08)); color: #fbbf24; font-family: 'JetBrains Mono', sans-serif; font-size: 17px; font-weight: 750; letter-spacing: -.04em; }
+@media (max-width: 768px) {
+    header { min-height: 56px; flex-wrap: nowrap; }
+    header > div:first-child { flex: 1; min-width: 0; }
+    header > div.header-profile { width: auto !important; flex: 0 0 auto; margin-left: auto; }
+    .header-profile-trigger { min-height: 36px; padding: 4px 6px; }
+    .header-profile-trigger-text, .header-profile-chevron { display: none; }
+    .header-profile-avatar { width: 28px; height: 28px; }
+    .header-profile-menu { width: min(286px, calc(100vw - 28px)); }
+}

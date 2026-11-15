@@ -507,6 +507,17 @@ function updateWelcomeGreeting() {
         if (elWelcome) elWelcome.textContent = nama;
         const elHeaderName = document.getElementById('header-user-name-text');
         if (elHeaderName) elHeaderName.textContent = nama;
+        const elProfileName = document.getElementById('header-profile-name');
+        if (elProfileName) elProfileName.textContent = nama;
+        const elInitials = document.getElementById('welcome-account-initials');
+        if (elInitials) {
+            const parts = nama.trim().split(/\s+/).filter(Boolean);
+            const initials = parts.length > 1
+                ? (parts[0][0] + parts[1][0])
+                : nama.trim().slice(0, 2);
+            elInitials.textContent = initials.toLocaleUpperCase('id-ID');
+            elInitials.setAttribute('aria-label', 'Inisial akun ' + nama);
+        }
     }
 }
 
@@ -527,12 +538,12 @@ function pasangNavigasiRole() {
     }
     if (spanRoleText) spanRoleText.textContent = isAdmin ? 'Admin' : 'Guru';
 
-    const headerName = document.getElementById('header-user-name');
-    const headerLogout = document.getElementById('header-logout-btn');
-    const headerSet = document.getElementById('header-settings-btn');
-    if (headerName) headerName.style.display = sesi ? 'flex' : 'none';
-    if (headerLogout) headerLogout.style.display = sesi ? 'inline-flex' : 'none';
-    if (headerSet) headerSet.style.display = sesi ? 'inline-flex' : 'none';
+    const profileRole = document.getElementById('header-profile-role');
+    if (profileRole) profileRole.textContent = isAdmin ? 'Administrator' : 'Guru';
+    const profileUsername = document.getElementById('header-user-name');
+    if (profileUsername) profileUsername.textContent = sesi ? ('@' + (sesi.username || sesi.nama || 'pengguna')) : '';
+    const headerProfile = document.getElementById('header-profile');
+    if (headerProfile) headerProfile.style.display = sesi ? 'block' : 'none';
 
     const welcomeBadge = document.getElementById('welcome-role-badge');
     if (welcomeBadge) {
@@ -542,6 +553,32 @@ function pasangNavigasiRole() {
         welcomeBadge.innerHTML = '<i class="fas fa-shield-halved"></i> ' + (isAdmin ? 'Admin' : 'Guru');
     }
 }
+
+function toggleHeaderProfile(event) {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById('header-profile-menu');
+    const trigger = document.getElementById('header-profile-trigger');
+    if (!menu || !trigger) return;
+    const isOpen = !menu.hidden;
+    menu.hidden = isOpen;
+    trigger.setAttribute('aria-expanded', String(!isOpen));
+}
+
+function tutupHeaderProfile() {
+    const menu = document.getElementById('header-profile-menu');
+    const trigger = document.getElementById('header-profile-trigger');
+    if (menu) menu.hidden = true;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', (event) => {
+    const profile = document.getElementById('header-profile');
+    if (profile && !profile.contains(event.target)) tutupHeaderProfile();
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') tutupHeaderProfile();
+});
 
 function bukaHalaman(idHalaman, elemenTombol) {
     // Access control: only admin can view akun-guru
