@@ -410,7 +410,7 @@ serve(async (req: Request) => {
 
       default:
         console.warn('[admin-proxy] Unknown action:', rawAction, 'norm:', normAction);
-        return new Response(JSON.stringify({ error: 'Unknown action: ' + String(rawAction) + '. Silakan deploy ulang edge function admin-proxy: npx supabase functions deploy admin-proxy --project-ref bkecjfrwqocguyvjymkn' }), {
+        return new Response(JSON.stringify({ error: 'Unknown action: ' + String(rawAction) + '. Silakan deploy ulang edge function admin-proxy: npx supabase functions deploy admin-proxy --project-ref kzuvqvxkrjiyuxontzar' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }

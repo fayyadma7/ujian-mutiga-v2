@@ -9,8 +9,8 @@
 // URL/key diambil dari js/supabase-config.js (wajib dimuat SEBELUM file ini).
 // Fallback hardcoded = profil harian, supaya file tetap jalan bila config belum termuat.
 var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
-const ADMIN_PROXY_URL = _activeProfile.proxyUrl || 'https://bkecjfrwqocguyvjymkn.supabase.co/functions/v1/admin-proxy';
-const ADMIN_PROXY_ANON_KEY = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+const ADMIN_PROXY_URL = _activeProfile.proxyUrl || 'https://kzuvqvxkrjiyuxontzar.supabase.co/functions/v1/admin-proxy';
+const ADMIN_PROXY_ANON_KEY = _activeProfile.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM';
 
 // — Global loader untuk delay — hanya tampil jika >300ms biar ga kedip untuk yang cepat
 let _globalLoaderTimer = null;
@@ -93,7 +93,7 @@ async function callProxy(action, body, opts) {
       // beri hint deploy jika Unknown action
       let msg = errBody.error || `HTTP ${res.status}`;
       if (String(msg).includes('Unknown action')) {
-        msg += ' — Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref bkecjfrwqocguyvjymkn lalu refresh.';
+        msg += ' — Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref kzuvqvxkrjiyuxontzar lalu refresh.';
       }
       return { data: null, error: new Error(msg) };
     }

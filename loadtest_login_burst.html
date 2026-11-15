@@ -53,7 +53,7 @@ a{color:#60a5fa}
 </head>
 <body>
 <h1>⚡ Burst Test — 300 Login Bareng (Remote Real)</h1>
-<p class="sub"><span id="statusSupabase" style="color:#f59e0b">⏳ inisialisasi...</span> — Target <b>bkecjfrwqocguyvjymkn.supabase.co</b> • Soal <b>50 PG</b> • Fokus <b>login bareng detik 0</b>. Hasil real karena hit DB produksi. Data test pakai kelas <b>LOADTEST</b> biar gampang hapus manual.</p>
+<p class="sub"><span id="statusSupabase" style="color:#f59e0b">⏳ inisialisasi...</span> — Target <b>kzuvqvxkrjiyuxontzar.supabase.co</b> • Soal <b>50 PG</b> • Fokus <b>login bareng detik 0</b>. Hasil real karena hit DB produksi. Data test pakai kelas <b>LOADTEST</b> biar gampang hapus manual.</p>
 
 <div class="info-box">
 <b>🧭 Cara pakai (3 menit):</b><br>
@@ -121,8 +121,8 @@ delete from jadwal_ujian where mapel='LOADTEST-50-SOAL';</pre>
 </div>
 
 <script>
-const SUPABASE_URL='https://bkecjfrwqocguyvjymkn.supabase.co';
-const SUPABASE_KEY='sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+const SUPABASE_URL='https://kzuvqvxkrjiyuxontzar.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM';
 if(!window.supabase||!window.supabase.createClient){document.getElementById('statusSupabase').textContent='❌ CDN gagal';throw new Error('CDN fail')}
 const sup=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 document.getElementById('statusSupabase').textContent='✅ siap — remote connected';

@@ -44,6 +44,6 @@ Proxy AI multi-provider. Body request: `{ provider?, promptText, temperature? }`
 6. **Anti-cheat hanya CSS/JS** — `user-select: none`, deteksi pindah tab, blokir print. Mudah dilewati.
 7. **Loading MathJax berbeda** — sisi siswa: script inline di `index.html`. Sisi admin: lazy via `loadMathJax()` di `admin-soal.js`. KaTeX di-load eager di `admin_pro.html`.
 8. **`chunkedInsert`** di `admin-core.js` membagi insert ke dalam potongan 50 via `adminDb.insert()`. Pertahankan pola ini untuk operasi massal.
-9. **ID project Supabase**: `Project_Web_Ujian_PRO`, remote: `bkecjfrwqocguyvjymkn`.
+9. **ID project Supabase**: `Project_Web_Ujian_PRO`, remote: `kzuvqvxkrjiyuxontzar`.
 10. **Cache-bust JS/CSS admin** — `admin-core.js?v=N` di `admin_pro.html` + `?v=N` di `moduleMap` (`admin-core.js`). Naikkan tiap deploy yang menyentuh file tsb, kalau tidak browser jalanin kode lama (filter basi, bug lama balik). Kolom `pelanggaran` bertipe TEXT — filter/sort harus `neq '0'` (bukan `gt`), sinkron dengan `parseInt` di render.
 11. **Font self-hosted di `assets/fonts/`** (`fonts.css` + 8 `.woff2`, sebagian variable-font range). Jangan hotlink Google Fonts lagi — HP siswa sering gagal download (wifi sekolah/proxy) sehingga aksara Jawa jatuh ke font HP (kotak/emot). Kalau tambah bobot/family: unduh woff2 + daftarkan `@font-face` di `fonts.css`, naikkan `?v=` di link-nya.

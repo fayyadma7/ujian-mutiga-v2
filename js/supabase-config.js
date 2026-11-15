@@ -16,8 +16,8 @@
     var PROFILES = {
         harian: {
             label: 'HARIAN',
-            url: 'https://bkecjfrwqocguyvjymkn.supabase.co',
-            key: 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C'
+            url: 'https://kzuvqvxkrjiyuxontzar.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM'
         },
         event: {
             label: 'EVENT',

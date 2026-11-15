@@ -1,6 +1,6 @@
 async function testRpc() {
-  const url = 'https://bkecjfrwqocguyvjymkn.supabase.co/rest/v1/rpc/koreksi_dan_submit';
-  const key = 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+  const url = 'https://kzuvqvxkrjiyuxontzar.supabase.co/rest/v1/rpc/koreksi_dan_submit';
+  const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM';
   
   const payload = {
     p_id_row: "1",

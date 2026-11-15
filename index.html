@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Config DB pusat (profil harian/event + flag ACTIVE_DB) — HARUS sebelum script inline -->
-    <script src="js/supabase-config.js?v=1"></script>
+    <script src="js/supabase-config.js?v=2"></script>
 
     <script>
         window.MathJax = {
@@ -4587,8 +4587,8 @@
 
         // URL/key dari js/supabase-config.js (flag ACTIVE_DB); fallback = profil harian.
         var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
-        const supabaseUrl = _activeProfile.url || 'https://bkecjfrwqocguyvjymkn.supabase.co';
-        const supabaseKey = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+        const supabaseUrl = _activeProfile.url || 'https://kzuvqvxkrjiyuxontzar.supabase.co';
+        const supabaseKey = _activeProfile.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM';
 
         let db;
         try {

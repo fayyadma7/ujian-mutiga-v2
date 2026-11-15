@@ -257,7 +257,7 @@ async function simpanEditGuru(){
             else if(res2 && res2.data && res2.data.success===false) pErr = res2.data.error || 'Gagal ganti password';
             // jika Unknown action, beri instruksi deploy yang jelas
             if(pErr && String(pErr).includes('Unknown action')){
-                pErr = 'Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref bkecjfrwqocguyvjymkn lalu npx supabase db push — atau refresh halaman setelah deploy.';
+                pErr = 'Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref kzuvqvxkrjiyuxontzar lalu refresh halaman setelah deploy.';
             }
             if(pErr){
                 // jika profil sudah terupdate, tetap informasikan

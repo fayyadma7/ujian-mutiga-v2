@@ -11,8 +11,8 @@
 
 // --- SUPABASE INIT (via js/supabase-config.js; fallback = profil harian) ---
 var _activeProfile = (typeof window !== 'undefined' && window.SUPABASE_PROFILE) || {};
-const supabaseUrl = _activeProfile.url || 'https://bkecjfrwqocguyvjymkn.supabase.co';
-const supabaseKey = _activeProfile.key || 'sb_publishable_4sQqxzUTiVhuf2h4SZCqNA_txpH0J8C';
+const supabaseUrl = _activeProfile.url || 'https://kzuvqvxkrjiyuxontzar.supabase.co';
+const supabaseKey = _activeProfile.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6dXZxdnhrcmppeXV4b250emFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTU3MjcsImV4cCI6MjEwNTc3MTcyN30.YImK_izAtHa_7ZZxjq2tpQy2agv1iuoOTtjH5UNX_vM';
 const db = supabase.createClient(supabaseUrl, supabaseKey);
 
 // --- LAZY LOAD SCRIPT HELPER ---
@@ -1163,7 +1163,7 @@ async function gantiPasswordSaya(){
         else if(res && res.data && res.data.error) errMsg = res.data.error;
         else if(res && res.data && res.data.success===false) errMsg = res.data.error;
         if(errMsg && String(errMsg).includes('Unknown action')){
-            errMsg = 'Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref bkecjfrwqocguyvjymkn';
+            errMsg = 'Edge function belum ter-deploy. Jalankan: npx supabase functions deploy admin-proxy --project-ref kzuvqvxkrjiyuxontzar';
         }
         if(errMsg){
             if(statusEl) statusEl.innerHTML='<span style="color:#fca5a5;">'+errMsg+'</span>';
