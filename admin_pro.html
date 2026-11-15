@@ -33,9 +33,9 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
     <link rel="stylesheet" href="admin/css/admin-base.css?v=11">
-    <link rel="stylesheet" href="admin/css/admin-components.css?v=6">
+    <link rel="stylesheet" href="admin/css/admin-components.css?v=7">
     <link rel="stylesheet" href="admin/css/admin-pages.css?v=3">
-    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=30">
+    <link rel="stylesheet" href="admin/css/admin-mobile.css?v=31">
     <link rel="stylesheet" href="admin/css/admin-hemat.css?v=6">
     <!-- Folder Bank Soal (file explorer) — sengaja file terpisah agar tidak menimpa admin-components.css -->
     <link rel="stylesheet" href="admin/css/admin-bank-folder.css?v=5">
@@ -998,21 +998,35 @@
             <section id="monitoring" class="page-section">
                 <div class="card-panel">
                     <div class="panel-header" style="position:relative; padding-left:0; padding-right:0;">
-                        <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
                             <!-- Baris 1: Filter -->
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                                <input type="text" id="search-nama-monitoring" class="form-control"
-                                    placeholder="Cari Nama..." style="width:160px; padding:7px 10px; font-size:12px;"
-                                    oninput="onMonSearchInput()" name="search_nama_monitoring" autocomplete="off" data-lpignore="true" data-form-type="other">
-                                <button class="btn btn-outline" style="padding:6px 10px; font-size:11px;" onclick="clearFilterMonitoring()"><i class="fas fa-filter-circle-xmark"></i> Clear Filter</button>
-                                <button class="btn btn-outline" style="padding:6px 10px; font-size:11px;" onclick="clearSortMonitoring()"><i class="fas fa-sort"></i> Clear Sort</button>
-                                <div style="position:relative;">
-                                    <button class="btn btn-outline" onclick="toggleDatePicker()" id="btn-date-filter" style="padding:6px 12px; font-size:11px; display:flex; align-items:center; gap:4px;">
+                            <div class="panel-filter-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                <div class="filter-search-wrap" style="position:relative; display:inline-flex; align-items:center; min-width:140px; width:170px;">
+                                    <i class="fas fa-search filter-search-icon" style="position:absolute; left:10px; font-size:11px; color:#64748b; pointer-events:none; z-index:2;"></i>
+                                    <input type="text" id="search-nama-monitoring" class="form-control"
+                                        placeholder="Cari siswa..."
+                                        style="width:100%; height:32px; padding:6px 28px; font-size:11px; border-radius:8px;"
+                                        oninput="onMonSearchInput()" name="search_nama_monitoring" autocomplete="off" data-lpignore="true" data-form-type="other">
+                                </div>
+                                <div class="filter-search-wrap" style="position:relative; display:inline-flex; align-items:center; min-width:140px; width:170px;">
+                                    <i class="fas fa-book filter-search-icon" style="position:absolute; left:10px; font-size:11px; color:#64748b; pointer-events:none; z-index:2;"></i>
+                                    <input type="text" id="filter-mapel-monitoring-search" class="form-control"
+                                        placeholder="Cari mapel..."
+                                        style="width:100%; height:32px; padding:6px 28px; font-size:11px; border-radius:8px;"
+                                        autocomplete="off" name="search_mapel_monitoring" data-lpignore="true" data-form-type="other">
+                                    <select id="filter-mapel-monitoring" style="display:none;" onchange="currentMonPage=1; loadMonitoring()"><option value="">Semua Mapel</option></select>
+                                    <div id="filter-mapel-monitoring-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; max-height:220px; overflow-y:auto; background:#1b2438; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.5); z-index:99; font-size:11px;"></div>
+                                </div>
+                                <select id="filter-kelas-monitoring" class="form-control" style="height:32px; padding:4px 10px; font-size:11px; border-radius:8px; width:130px; min-width:130px;" onchange="currentMonPage=1; loadMonitoring()">
+                                    <option value="">Semua Kelas</option>
+                                </select>
+                                <div class="panel-date-wrap" style="position:relative;">
+                                    <button type="button" class="btn btn-outline" onclick="toggleDatePicker()" id="btn-date-filter" style="height:32px; padding:0 10px; font-size:11px; display:inline-flex; align-items:center; gap:5px; border-radius:8px;">
                                         <i class="fas fa-calendar-alt"></i>
                                         <span id="date-filter-label">Semua Tanggal</span>
                                         <i class="fas fa-chevron-down" style="font-size:9px;"></i>
                                     </button>
-                                    <div id="date-picker-dropdown" style="display:none; position:absolute; top:100%; right:0; z-index:999; background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px 16px; margin-top:6px; box-shadow:0 16px 48px rgba(0,0,0,0.4); min-width:240px;">
+                                    <div id="date-picker-dropdown" style="display:none; position:absolute; top:calc(100% + 4px); right:0; z-index:999; background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px 16px; box-shadow:0 16px 48px rgba(0,0,0,0.4); min-width:240px; max-width:calc(100vw - 32px);">
                                         <div style="font-size:12px; font-weight:600; color:#94a3b8; margin-bottom:10px;">Filter Rentang Tanggal</div>
                                         <div style="display:flex; flex-direction:column; gap:8px;">
                                             <div style="display:flex; flex-direction:column; gap:2px;">
@@ -1030,20 +1044,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div style="position:relative; min-width:130px; width:140px;">
-                                    <input type="text" id="filter-mapel-monitoring-search" class="form-control" placeholder="Cari Mapel" autocomplete="off" name="search_mapel_monitoring" data-lpignore="true" data-form-type="other" style="padding:6px 10px; font-size:11px; width:100%;">
-                                    <select id="filter-mapel-monitoring" style="display:none;" onchange="currentMonPage=1; loadMonitoring()"><option value="">Semua Mapel</option></select>
-                                    <div id="filter-mapel-monitoring-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:180px; overflow-y:auto; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.4); z-index:20; font-size:11px;"></div>
-                                </div>
-                                <select id="filter-kelas-monitoring" style="display:none;"
-                                    onchange="currentMonPage=1; loadMonitoring()">
-                                    <option value="">Semua Kelas</option>
-                                </select>
+                                <button type="button" class="btn btn-outline" id="btnClearFilter" onclick="clearFilterMonitoring()" style="height:32px; padding:0 10px; font-size:11px; border-radius:8px;" title="Reset semua filter"><i class="fas fa-filter-circle-xmark"></i> Clear Filter</button>
+                                <button type="button" class="btn btn-outline" id="btnClearSort" onclick="clearSortMonitoring()" style="height:32px; padding:0 10px; font-size:11px; border-radius:8px;" title="Kembalikan urutan default"><i class="fas fa-sort"></i> Clear Sort</button>
                             </div>
                             <!-- Baris 2: Aksi -->
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                                <button class="btn btn-outline" onclick="loadMonitoring()" style="padding:6px 12px; font-size:11px;"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button class="btn btn-danger" onclick="bulkActionMonitoring('delete')" style="padding:6px 12px; font-size:11px;"><i class="fas fa-trash"></i> Hapus Data Terpilih</button>
+                            <div class="panel-action-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                <button type="button" class="btn btn-outline" id="btnRefresh" onclick="loadMonitoring()" style="padding:6px 12px; font-size:11px;"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <button type="button" class="btn btn-outline" id="btnHapus" style="color:#f87171; border-color:rgba(239, 68, 68, 0.3); background:rgba(239, 68, 68, 0.05); padding:6px 12px; font-size:11px;" onclick="bulkActionMonitoring('delete')"><i class="fas fa-trash"></i> Hapus Data Terpilih</button>
                             </div>
                         </div>
                     </div>
@@ -1146,21 +1153,34 @@
             <section id="laporan" class="page-section">
                 <div class="card-panel">
                     <div class="panel-header" style="position:relative; padding-left:0; padding-right:0;">
-                        <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
                             <!-- Baris 1: Filter -->
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                                <input type="text" id="search-nama-laporan" class="form-control"
-                                    placeholder="Cari Nama Siswa..." style="width:160px; padding:7px 10px; font-size:12px;"
-                                    oninput="currentLapPage=1; loadNilaiSiswa()" name="search_nama_laporan" autocomplete="off" data-lpignore="true" data-form-type="other">
-                                <button class="btn btn-outline" style="padding:6px 10px; font-size:11px;" onclick="clearFilterLaporan()"><i class="fas fa-filter-circle-xmark"></i> Clear Filter</button>
-                                <button class="btn btn-outline" style="padding:6px 10px; font-size:11px;" onclick="clearSortLaporan()"><i class="fas fa-sort"></i> Clear Sort</button>
-                                <div style="position:relative;">
-                                    <button class="btn btn-outline" onclick="toggleDatePickerLaporan()" id="btn-date-filter-laporan" style="padding:6px 12px; font-size:11px; display:flex; align-items:center; gap:4px;">
+                            <div class="panel-filter-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                <div class="filter-search-wrap" style="position:relative; display:inline-flex; align-items:center; min-width:140px; width:170px;">
+                                    <i class="fas fa-search filter-search-icon" style="position:absolute; left:10px; font-size:11px; color:#64748b; pointer-events:none; z-index:2;"></i>
+                                    <input type="text" id="search-nama-laporan" class="form-control"
+                                        placeholder="Cari siswa..."
+                                        style="width:100%; height:32px; padding:6px 28px; font-size:11px; border-radius:8px;"
+                                        oninput="currentLapPage=1; loadNilaiSiswa()" name="search_nama_laporan" autocomplete="off" data-lpignore="true" data-form-type="other">
+                                </div>
+                                <div class="filter-search-wrap" style="position:relative; display:inline-flex; align-items:center; min-width:140px; width:170px;">
+                                    <i class="fas fa-book filter-search-icon" style="position:absolute; left:10px; font-size:11px; color:#64748b; pointer-events:none; z-index:2;"></i>
+                                    <input type="text" id="filter-mapel-laporan-search" class="form-control" placeholder="Cari mapel..."
+                                        autocomplete="off" name="search_mapel_laporan" data-lpignore="true" data-form-type="other"
+                                        style="width:100%; height:32px; padding:6px 28px; font-size:11px; border-radius:8px;">
+                                    <select id="filter-mapel-laporan" style="display:none;" onchange="currentLapPage=1; loadNilaiSiswa()"><option value="">Semua Mapel</option></select>
+                                    <div id="filter-mapel-laporan-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; max-height:220px; overflow-y:auto; background:#1b2438; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.5); z-index:99; font-size:11px;"></div>
+                                </div>
+                                <select id="filter-kelas-laporan" class="form-control" style="height:32px; padding:4px 10px; font-size:11px; border-radius:8px; width:130px; min-width:130px;" onchange="currentLapPage=1; loadNilaiSiswa()">
+                                    <option value="">Semua Kelas</option>
+                                </select>
+                                <div class="panel-date-wrap" style="position:relative;">
+                                    <button type="button" class="btn btn-outline" onclick="toggleDatePickerLaporan()" id="btn-date-filter-laporan" style="height:32px; padding:0 10px; font-size:11px; display:inline-flex; align-items:center; gap:5px; border-radius:8px;">
                                         <i class="fas fa-calendar-alt"></i>
                                         <span id="date-filter-label-laporan">Semua Tanggal</span>
                                         <i class="fas fa-chevron-down" style="font-size:9px;"></i>
                                     </button>
-                                    <div id="date-picker-dropdown-laporan" style="display:none; position:absolute; top:100%; right:0; z-index:999; background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px 16px; margin-top:6px; box-shadow:0 16px 48px rgba(0,0,0,0.4); min-width:240px;">
+                                    <div id="date-picker-dropdown-laporan" style="display:none; position:absolute; top:calc(100% + 4px); right:0; z-index:999; background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px 16px; box-shadow:0 16px 48px rgba(0,0,0,0.4); min-width:240px; max-width:calc(100vw - 32px);">
                                         <div style="font-size:12px; font-weight:600; color:#94a3b8; margin-bottom:10px;">Filter Rentang Tanggal</div>
                                         <div style="display:flex; flex-direction:column; gap:8px;">
                                             <div style="display:flex; flex-direction:column; gap:2px;">
@@ -1178,20 +1198,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div style="position:relative; min-width:130px; width:140px;">
-                                    <input type="text" id="filter-mapel-laporan-search" class="form-control" placeholder="Cari Mapel" autocomplete="off" name="search_mapel_laporan" data-lpignore="true" data-form-type="other" style="padding:6px 10px; font-size:11px; width:100%;">
-                                    <select id="filter-mapel-laporan" style="display:none;" onchange="currentLapPage=1; loadNilaiSiswa()"><option value="">Semua Mapel</option></select>
-                                    <div id="filter-mapel-laporan-dropdown" class="csl-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:180px; overflow-y:auto; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 12px 32px rgba(0,0,0,0.4); z-index:20; font-size:11px;"></div>
-                                </div>
-                                <select id="filter-kelas-laporan" style="display:none;"
-                                    onchange="currentLapPage=1; loadNilaiSiswa()">
-                                    <option value="">Semua Kelas</option>
-                                </select>
+                                <button type="button" class="btn btn-outline" id="btnClearFilterLaporan" onclick="clearFilterLaporan()" style="height:32px; padding:0 10px; font-size:11px; border-radius:8px;" title="Reset semua filter"><i class="fas fa-filter-circle-xmark"></i> Clear Filter</button>
+                                <button type="button" class="btn btn-outline" id="btnClearSortLaporan" onclick="clearSortLaporan()" style="height:32px; padding:0 10px; font-size:11px; border-radius:8px;" title="Kembalikan urutan default"><i class="fas fa-sort"></i> Clear Sort</button>
                             </div>
                             <!-- Baris 2: Aksi -->
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                                <button class="btn btn-outline" onclick="loadNilaiSiswa()" style="padding:6px 12px; font-size:11px;"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button class="btn btn-outline" style="color:#f87171; border-color:rgba(239, 68, 68, 0.3); background:rgba(239, 68, 68, 0.05); padding:6px 12px; font-size:11px;"
+                            <div class="panel-action-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                <button type="button" class="btn btn-outline" id="btnRefreshLaporan" onclick="loadNilaiSiswa()" style="padding:6px 12px; font-size:11px;"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <button type="button" class="btn btn-outline" id="btnHapusLaporan" style="color:#f87171; border-color:rgba(239, 68, 68, 0.3); background:rgba(239, 68, 68, 0.05); padding:6px 12px; font-size:11px;"
                                     onclick="bulkActionLaporan('delete')"><i class="fas fa-trash"></i> Hapus Data Terpilih</button>
                                 <button class="btn btn-primary" onclick="exportExcel()" style="padding:6px 12px; font-size:11px;"><i class="fas fa-file-export"></i> Export Nilai</button>
                                 <button class="btn btn-warning" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('fileUploadDarurat').click()"><i class="fas fa-upload"></i> Upload Jawaban Darurat</button>

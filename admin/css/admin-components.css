@@ -2300,6 +2300,70 @@ header, .card-panel, .soal-item,
 
 /* Swal dark theme — samakan tema website (jangan putih) */
 .swal2-popup{ background:rgba(12,19,38,0.97) !important; color:#e2e8f0 !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:18px !important; backdrop-filter:blur(12px) !important; }
+
+/* Monitoring and report toolbars share the same control dimensions. */
+#monitoring .panel-filter-row .form-control,
+#laporan .panel-filter-row .form-control {
+  height: 32px !important;
+  padding: 6px 10px !important;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 11px !important;
+}
+#monitoring .panel-filter-row > #search-nama-monitoring,
+#laporan .panel-filter-row > #search-nama-laporan,
+#monitoring .panel-filter-row > .filter-search-wrap,
+#laporan .panel-filter-row > .filter-search-wrap {
+  width: 170px !important;
+}
+#monitoring .panel-filter-row .filter-search-wrap .form-control,
+#laporan .panel-filter-row .filter-search-wrap .form-control {
+  padding: 6px 28px !important;
+}
+#monitoring .panel-filter-row > .csl-container,
+#laporan .panel-filter-row > .csl-container {
+  width: 130px;
+  min-width: 130px;
+}
+#btnClearFilter,
+#btnClearFilterLaporan {
+  width: 118px;
+}
+#btnClearSort,
+#btnClearSortLaporan {
+  width: 100px;
+}
+#btn-date-filter,
+#btn-date-filter-laporan {
+  width: 132px;
+}
+#btnRefresh,
+#btnRefreshLaporan {
+  width: 89px;
+}
+#btnHapus,
+#btnHapusLaporan {
+  width: 164px;
+}
+#monitoring .panel-filter-row .btn,
+#laporan .panel-filter-row .btn,
+#monitoring .panel-action-row .btn,
+#laporan .panel-action-row .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px !important;
+  padding: 0 12px !important;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+#monitoring .panel-filter-row .csl-btn,
+#laporan .panel-filter-row .csl-btn {
+  height: 32px !important;
+  box-sizing: border-box;
+}
 .swal2-title{ color:#f1f5f9 !important; }
 .swal2-html-container{ color:#cbd5e1 !important; }
 .swal2-icon.swal2-question{ border-color:#60a5fa !important; color:#60a5fa !important; }

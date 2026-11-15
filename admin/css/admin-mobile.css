@@ -243,6 +243,71 @@
   #laporan .panel-header > div > div:nth-child(2) button[onclick*="fileUploadDarurat"]{
     grid-column:1 / -1 !important; background:linear-gradient(135deg, #f59e0b, #d97706) !important; border:none !important; color:white !important; height:40px !important; font-size:12px !important; font-weight:700 !important; border-radius:10px !important; box-shadow:0 4px 12px rgba(245,158,11,0.3) !important;
   }
+  /* Match the filter/action rows used by the desktop toolbar on small screens. */
+  #monitoring .panel-header > div > div.panel-filter-row,
+  #laporan .panel-header > div > div.panel-filter-row {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:8px !important;
+    width:100% !important;
+    justify-content:flex-start !important;
+  }
+  #monitoring .panel-filter-row > #search-nama-monitoring,
+  #laporan .panel-filter-row > #search-nama-laporan {
+    flex:1 1 100% !important;
+    width:100% !important;
+    height:38px !important;
+    font-size:13px !important;
+  }
+  #monitoring .panel-filter-row .filter-search-wrap .form-control,
+  #laporan .panel-filter-row .filter-search-wrap .form-control {
+    height:38px !important;
+    font-size:13px !important;
+  }
+  #monitoring .panel-filter-row > button,
+  #laporan .panel-filter-row > button,
+  #monitoring .panel-filter-row > .filter-search-wrap,
+  #laporan .panel-filter-row > .filter-search-wrap,
+  #monitoring .panel-filter-row > .panel-date-wrap,
+  #laporan .panel-filter-row > .panel-date-wrap,
+  #monitoring .panel-filter-row .csl-container,
+  #laporan .panel-filter-row .csl-container {
+    flex:1 1 calc(50% - 6px) !important;
+    min-width:130px !important;
+    width:auto !important;
+  }
+  #monitoring .panel-date-wrap #btn-date-filter,
+  #laporan .panel-date-wrap #btn-date-filter-laporan,
+  #monitoring .panel-filter-row .csl-btn,
+  #laporan .panel-filter-row .csl-btn {
+    width:100% !important;
+    height:36px !important;
+    justify-content:center !important;
+  }
+  #monitoring .panel-header > div > div.panel-action-row,
+  #laporan .panel-header > div > div.panel-action-row {
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:8px !important;
+    width:100% !important;
+  }
+  #monitoring .panel-action-row .btn,
+  #laporan .panel-action-row .btn {
+    width:100% !important;
+    min-width:0 !important;
+    height:36px !important;
+    font-size:11px !important;
+    justify-content:center !important;
+    white-space:normal !important;
+    grid-column:auto !important;
+  }
+  #laporan .panel-header > div > div.panel-action-row > button:nth-of-type(3),
+  #laporan .panel-header > div > div.panel-action-row > button:nth-of-type(4) {
+    grid-column:auto !important;
+    height:36px !important;
+    font-size:11px !important;
+    border-radius:8px !important;
+  }
   /* Soalku: horizontal card overflow fix */
   .soal-item{ padding:12px !important; }
   /* Stat cards di analisis */
