@@ -17,6 +17,14 @@
 // MathJax lazy loader
 let mathJaxLoaded = false;
 
+function isAdminSoalSession(session) {
+    return !!(session && (
+        session.isAdmin === true ||
+        session.role === 'admin' ||
+        session.role === 'superadmin'
+    ));
+}
+
 function loadMathJax() {
     if (mathJaxLoaded) return;
     mathJaxLoaded = true;
@@ -73,7 +81,7 @@ async function _populatePreviewMapelLegacy() {
     const tbody = document.getElementById('tabel-daftar-mapel');
     if (!tbody) return;
     const _sSesi = getGuruSession();
-    const _sIsAdmin = _sSesi && _sSesi.isAdmin === true;
+    const _sIsAdmin = isAdminSoalSession(_sSesi);
     const _sGuruId = _sSesi ? _sSesi.id : null;
 
     // Skeleton 3 cards biar tidak lompat kecil→besar
@@ -182,7 +190,7 @@ async function loadPreviewSoal() {
     const mapel = document.getElementById('preview-mapel').value;
     const container = document.getElementById('preview-container');
     const _psSesi = getGuruSession();
-    const _psIsAdmin = _psSesi && _psSesi.isAdmin === true;
+    const _psIsAdmin = isAdminSoalSession(_psSesi);
     const _psGuruId = _psSesi ? _psSesi.id : null;
 
     if (!mapel) {
@@ -408,7 +416,7 @@ async function hapusSatuMapel(mapel) {
 
 async function renameMapel(oldMapel) {
     const sesi = getGuruSession();
-    const isAdmin = sesi && sesi.isAdmin === true;
+    const isAdmin = isAdminSoalSession(sesi);
     const guruId = sesi ? sesi.id : null;
     if (!sesi) return showToast('Sesi tidak valid, silakan login ulang', 'error');
     // Cek kepemilikan & hitung soal
@@ -726,7 +734,7 @@ async function populateManualMapel() {
     const dl = document.getElementById('manual-mapel-list');
     const dd = document.getElementById('manual-mapel-dropdown');
     const _pmSesi = getGuruSession();
-    const _pmIsAdmin = _pmSesi && _pmSesi.isAdmin === true;
+    const _pmIsAdmin = isAdminSoalSession(_pmSesi);
     const _pmGuruId = _pmSesi ? _pmSesi.id : null;
 
     // FIX: paginated agar dropdown manual tidak hilang saat >1000 baris (order by id untuk paginasi stabil, sort alfabet di client)

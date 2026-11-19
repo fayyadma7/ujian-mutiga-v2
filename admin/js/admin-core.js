@@ -639,7 +639,7 @@ function bukaHalaman(idHalaman, elemenTombol) {
     // --- LAZY LOAD MODULE SCRIPTS ---
     const moduleMap = {
         'dashboard': 'admin-dashboard.js?v=6',
-        'bank-soal': 'admin-soal.js?v=11',
+        'bank-soal': 'admin-soal.js?v=12',
         'jadwal': 'admin-jadwal.js?v=10',
         'monitoring': 'admin-monitoring.js?v=12',
         'laporan': 'admin-laporan.js?v=4',

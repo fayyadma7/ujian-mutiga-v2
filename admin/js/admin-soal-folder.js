@@ -278,13 +278,47 @@ function bsNodeCount(n) {
     const key = owner + '|' + String(n.mapel).trim().toLowerCase();
     return (bsState.countsBy && bsState.countsBy[key]) || { total: 0, pg: 0, essay: 0 };
 }
+function bsCardCount(n) {
+    return bsIsAdmin() ? bsMapelCount(n && n.mapel) : bsNodeCount(n);
+}
+function bsMapelCardGroups(mapels) {
+    if (!bsIsAdmin()) return mapels;
+    const seen = new Set();
+    return mapels.filter(n => {
+        const key = JSON.stringify([n.parent_id == null ? null : String(n.parent_id), String(n.mapel || '')]);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+function bsMapelGroupNodes(n) {
+    if (!n || !n.mapel) return [];
+    if (!bsIsAdmin()) return [n];
+    return bsState.nodes.filter(candidate =>
+        !!candidate.mapel
+        && String(candidate.mapel) === String(n.mapel)
+        && bsSameParent(candidate.parent_id, n.parent_id)
+    );
+}
+function bsMapelNodes(mapel) {
+    return bsState.nodes.filter(n => !!n.mapel && String(n.mapel) === String(mapel));
+}
 function bsFolderTotals(id) {
     let folders = 0, mapels = 0, soal = 0;
+    const seenMapels = new Set();
     bsState.nodes
         .filter(n => bsSameParent(n.parent_id, id))
         .filter(n => !bsState.visibleIds || bsState.visibleIds.size === 0 || bsIsVisible(n))
         .forEach(n => {
             if (n.mapel) {
+                if (bsIsAdmin()) {
+                    const key = String(n.mapel);
+                    if (seenMapels.has(key)) return;
+                    seenMapels.add(key);
+                    mapels++;
+                    soal += bsCardCount(n).total;
+                    return;
+                }
                 mapels++;
                 soal += bsNodeCount(n).total;
             } else {
@@ -506,7 +540,7 @@ function bsCardHtml(n, showPath) {
     const other = !bsIsAdmin() && !own;
     let sub;
     if (isMapel) {
-        const c = bsNodeCount(n);
+        const c = bsCardCount(n);
         sub = c.total
             ? `${c.total} soal · ${c.pg} PG${c.essay ? ` · ${c.essay} essay` : ''}`
             : 'belum ada soal';
@@ -537,9 +571,6 @@ function bsCardHtml(n, showPath) {
             </span>`;
     // Label pemilik (mapel guru lain) / visibilitas (folder, hanya admin yang lihat).
     const tags = [];
-    if (isMapel && other) {
-        tags.push(`<span class="bs-node-owner"><i class="fas fa-user"></i> ${bsEsc(bsGuruName(n.created_by))}</span>`);
-    }
     if (!isMapel && bsIsAdmin()) tags.push(bsVisBadgeHtml(n));
     return `
         <div class="bs-node-card ${isMapel ? 'is-mapel' : 'is-folder'} ${other ? 'is-other' : ''} ${checked ? 'is-selected' : ''} ${pickable ? 'is-pickable' : ''}"
@@ -573,6 +604,7 @@ function bsRenderGrid() {
         folders = bsVisibleChildrenFolders(bsState.currentFolderId);
         mapels = bsVisibleChildrenMapels(bsState.currentFolderId);
     }
+    mapels = bsMapelCardGroups(mapels);
 
     grid.style.display = 'grid';
     grid.classList.toggle('is-select-mode', !!bsState.selectMode);
@@ -793,12 +825,19 @@ function bsSyncSelectionUi() {
 }
 
 async function bsPindahkanTerpilih() {
-    const ids = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel && bsCanManage(n); });
-    if (!ids.length) return bsToast('Pilih dulu mapel milik Anda yang mau dipindah', 'warning');
+    const selected = bsSelectedIds().filter(id => { const n = bsFindNode(id); return n && n.mapel && bsCanManage(n); });
+    if (!selected.length) return bsToast('Pilih dulu mapel milik Anda yang mau dipindah', 'warning');
+    const ids = [];
+    selected.forEach(id => {
+        const n = bsFindNode(id);
+        bsMapelGroupNodes(n).forEach(groupNode => {
+            if (!ids.some(existing => String(existing) === String(groupNode.id))) ids.push(groupNode.id);
+        });
+    });
 
     const pick = await bsPickFolder({
-        title: ids.length === 1 ? 'Pindahkan 1 mapel' : `Pindahkan ${ids.length} mapel`,
-        hint: 'Semua mapel yang dipilih akan dipindah ke folder yang sama.',
+        title: selected.length === 1 ? 'Pindahkan 1 mapel' : `Pindahkan ${selected.length} mapel`,
+        hint: 'Semua mapel yang dipilih, termasuk entri dari pembuat lain, akan dipindah ke folder yang sama.',
         confirmText: 'Pindahkan ke sini',
         defaultFolderId: bsState.currentFolderId,
         allowRoot: true
@@ -1045,11 +1084,26 @@ async function bsRenameMapel(id) {
             const r1 = await adminDb.renameMapel(n.mapel, baru, { silent: true });
             if (r1 && r1.error) throw r1.error;
         }
-        const r2 = await adminDb.update('bank_soal_folder', n.id, { nama: baru, mapel: baru }, { silent: true });
-        if (r2 && r2.error) {
-            // rollback supaya soal tidak kehilangan entri
-            if (jumlahSoal > 0) await adminDb.renameMapel(baru, n.mapel, { silent: true });
-            throw r2.error;
+        const nodes = bsMapelNodes(n.mapel);
+        const updated = [];
+        for (const node of nodes) {
+            const result = await adminDb.update('bank_soal_folder', node.id, { nama: baru, mapel: baru }, { silent: true });
+            if (result && result.error) {
+                const rollbackErrors = [];
+                for (const changed of updated) {
+                    const rollback = await adminDb.update('bank_soal_folder', changed.id, { nama: n.mapel, mapel: n.mapel }, { silent: true });
+                    if (rollback && rollback.error) rollbackErrors.push(rollback.error);
+                }
+                if (jumlahSoal > 0) {
+                    const rollback = await adminDb.renameMapel(baru, n.mapel, { silent: true });
+                    if (rollback && rollback.error) rollbackErrors.push(rollback.error);
+                }
+                const message = result.error.message || result.error;
+                throw new Error(rollbackErrors.length
+                    ? `${message}; rollback ${rollbackErrors.length} entri juga gagal`
+                    : message);
+            }
+            updated.push(node);
         }
         bsToast(`Mapel di-rename menjadi "${baru}"`, 'success');
         bsSyncJadwalDropdown();
@@ -1066,13 +1120,14 @@ async function bsHapusMapel(id) {
     if (!n || !n.mapel) return;
     if (!bsCanManage(n)) return bsTolakBukaMapel(n);
     const jumlah = bsMapelCount(n.mapel).total;
+    const nodeIds = bsMapelNodes(n.mapel).map(node => node.id);
 
     const res = await bsSwal({
         title: 'Hapus Mapel?',
         html: `<div class="bs-del-box">
             <div class="bs-del-folder"><i class="fas fa-book-open"></i> ${bsEsc(n.mapel)}</div>
             <div class="bs-del-info">${jumlah
-                ? `<b>${jumlah} soal</b> mapel ini akan dihapus permanen.`
+                ? `<b>${jumlah} soal</b> dari semua pembuat akan dihapus permanen. Entri mapel di semua folder juga dihapus.`
                 : 'Mapel ini belum punya soal.'}</div>
             <div class="bs-del-note">Tindakan ini tidak bisa dibatalkan.</div>
         </div>`,
@@ -1088,14 +1143,14 @@ async function bsHapusMapel(id) {
     bsLoading(true, 'Menghapus mapel...');
     try {
         if (jumlah) {
-            const filter = { mapel: n.mapel };
-            if (n.created_by !== null && n.created_by !== undefined) filter.created_by = n.created_by;
-            const d1 = await adminDb.deleteWhere('bank_soal', filter, { silent: true });
+            const d1 = await adminDb.deleteWhere('bank_soal', { mapel: n.mapel }, { silent: true });
             if (d1 && d1.error) throw d1.error;
         }
-        const d2 = await adminDb.delete('bank_soal_folder', n.id, { silent: true });
+        const d2 = await adminDb.batchDelete('bank_soal_folder', nodeIds, { silent: true });
         if (d2 && d2.error) throw d2.error;
-        if (String(bsState.currentFolderId) === String(n.id)) bsState.currentFolderId = n.parent_id || null;
+        if (nodeIds.some(nodeId => String(bsState.currentFolderId) === String(nodeId))) {
+            bsState.currentFolderId = n.parent_id || null;
+        }
         bsToast(`Mapel "${n.mapel}" dihapus`, 'success');
         bsSyncJadwalDropdown();
     } catch (e) {
@@ -1207,10 +1262,11 @@ async function bsPindahkanNode(id) {
     if (!n) return;
     if (!bsCanManage(n)) return bsToast('Item ini bukan buatan Anda', 'warning');
     const isFolder = !n.mapel;
-    const exclude = isFolder ? bsCollectSubtreeIds(n.id).map(String) : [String(n.id)];
+    const mapelNodes = isFolder ? [] : bsMapelGroupNodes(n);
+    const exclude = isFolder ? bsCollectSubtreeIds(n.id).map(String) : mapelNodes.map(node => String(node.id));
 
     const pick = await bsPickFolder({
-        title: isFolder ? `Pindahkan folder "${n.nama}"` : `Pindahkan mapel "${n.nama}"`,
+        title: isFolder ? `Pindahkan folder "${n.nama}"` : `Pindahkan mapel "${n.nama}"${mapelNodes.length > 1 ? ` (${mapelNodes.length} entri)` : ''}`,
         confirmText: 'Pindahkan ke sini',
         defaultFolderId: n.parent_id || null,
         excludeIds: exclude,
@@ -1229,8 +1285,17 @@ async function bsPindahkanNode(id) {
         }
     }
 
-    const { error } = await adminDb.update('bank_soal_folder', n.id, { parent_id: dest });
-    if (error) return bsToast('Gagal memindahkan: ' + (error.message || error), 'error');
+    const nodesToMove = isFolder ? [n] : mapelNodes;
+    let failed = 0;
+    let moved = 0;
+    for (const node of nodesToMove) {
+        if (bsSameParent(node.parent_id, dest)) continue;
+        const { error } = await adminDb.update('bank_soal_folder', node.id, { parent_id: dest }, { silent: true });
+        if (error) failed++;
+        else moved++;
+    }
+    if (failed) return bsToast(`${moved} entri dipindahkan, ${failed} gagal`, 'error');
+    if (!moved) return bsToast('Item sudah berada di folder itu', 'info');
     bsToast(`${isFolder ? 'Folder' : 'Mapel'} "${n.nama}" dipindahkan ke ${dest === null ? 'Bank Soal' : pick.folderPath}`, 'success');
     await bsRefreshExplorer();
 }
